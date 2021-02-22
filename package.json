@@ -1,0 +1,28 @@
+{
+  "name": "phalanx",
+  "version": "1.0.0",
+  "description": "A byzantine consensus system",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Grivn/phalanx.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Grivn/phalanx/issues"
+  },
+  "homepage": "https://github.com/Grivn/phalanx#readme",
+  "devDependencies": {
+    "cz-conventional-changelog": "^3.3.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  }
+}
