@@ -1,7 +1,7 @@
 package phalanx
 
 import (
-	commonProto "github.com/Grivn/phalanx-common/types/protos"
+	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/order"
 
 	logger "github.com/ultramesh/fancylogger"
