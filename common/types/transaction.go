@@ -4,7 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/Grivn/phalanx-common/types/protos"
+	"github.com/Grivn/phalanx/common/types/protos"
 
 	fTypes "github.com/ultramesh/flato-common/types"
 )
