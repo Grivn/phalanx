@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	enclaveFile = "enclave/libusig.signed.so"
+	enclaveFile = "/home/grivn/go/src/github.com/Grivn/phalanx/sgx/enclave/libusig.signed.so"
 )
 
 func TestSGXUSIG(t *testing.T) {
@@ -16,7 +16,7 @@ func TestSGXUSIG(t *testing.T) {
 	wrongMsg := []byte("Another message")
 
 	// Create the first USIG instance to generate a new USIG key
-	usig, err := NewUSIG(enclaveFile, nil)
+	usig, err := New(enclaveFile, nil)
 	assert.NoError(t, err, "Error creating fist SGXUSIG instance")
 	assert.NotNil(t, usig, "Got nil SGXUSIG instance")
 
@@ -32,7 +32,7 @@ func TestSGXUSIG(t *testing.T) {
 	usig.enclave.Destroy()
 
 	// Recreate USIG restoring the key from the first instance
-	usig, err = NewUSIG(enclaveFile, key)
+	usig, err = New(enclaveFile, key)
 	assert.NoError(t, err, "Error creating SGXUSIG instance with key unsealing")
 	assert.NotNil(t, usig, "Got nil SGXUSIG instance")
 	defer usig.enclave.Destroy()

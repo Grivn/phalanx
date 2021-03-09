@@ -168,10 +168,10 @@ func (tp *txPoolImpl) generateBatch() *commonProto.Batch {
 		Timestamp: time.Now().UnixNano(),
 	}
 
-	hash := commonTypes.CalculateMD5Hash(batch.HashList, batch.Timestamp)
+	hash := commonTypes.CalculateListHash(batch.HashList, batch.Timestamp)
 	batch.BatchId = &commonProto.BatchId{
 		Author:    tp.author,
-		BatchHash: commonTypes.BytesToString(hash),
+		BatchHash: hash,
 	}
 
 	tp.pending.reset()
@@ -186,7 +186,7 @@ func (tp *txPoolImpl) verifyBatch(batch *commonProto.Batch) bool {
 	for _, tx := range batch.TxList {
 		hashList = append(hashList, commonTypes.GetHash(tx))
 	}
-	batchHash := commonTypes.BytesToString(commonTypes.CalculateMD5Hash(hashList, batch.Timestamp))
+	batchHash := commonTypes.CalculateListHash(hashList, batch.Timestamp)
 
 	if batchHash != batch.BatchId.BatchHash {
 		tp.logger.Warningf("Replica %d received a batch with miss-matched hash from replica %d", tp.author, batch.BatchId.Author)

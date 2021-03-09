@@ -2,14 +2,13 @@ syntax = "proto3";
 
 package protos;
 
-import "github.com/ultramesh/flato-common/types/protos/transaction.proto";
-
 //======================================================
 //             transaction message
 //======================================================
 
 message transaction {
-  protos.Transaction tx = 1;
+  string hash = 1;
+  bytes payload = 2;
 }
 
 message batch_id {
@@ -23,7 +22,6 @@ message batch {
   repeated transaction tx_list = 3;
   int64 timestamp = 4;
 }
-
 
 //======================================================
 //             unique identifier message
@@ -49,14 +47,16 @@ enum order_type {
 
 message ordered_msg {
   order_type type = 1;
-  uint64 sequence = 2;
-  batch_id batch_id = 3;
+  uint64 author = 2;
+  uint64 sequence = 3;
+  batch_id batch_id = 4;
 }
 
-message UI_msg {
-  uint64 author = 1;
-  bytes payload = 2;
-  UI UI = 3;
+message signed_msg {
+  order_type type = 1;
+  uint64 author = 2;
+  bytes payload = 3;
+  bytes signature = 4;
 }
 
 //======================================================
@@ -66,10 +66,21 @@ message UI_msg {
 enum comm_type {
   BATCH = 0;
   ORDER = 1;
+  BBA = 2;
 }
 
 message comm_msg {
   uint64 author = 1;
   comm_type type = 2;
   bytes payload = 3;
+}
+
+//======================================================
+//             binary agreement message
+//======================================================
+
+message binary_notification {
+  uint64 author = 1;
+  uint64 log_id = 2;
+  repeated uint64 id_list = 3;
 }

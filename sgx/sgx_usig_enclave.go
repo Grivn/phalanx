@@ -78,7 +78,7 @@ import (
 )
 
 const (
-	untrustedFile = "shim/libusig_shim.so"
+	untrustedFile = "/home/grivn/go/src/github.com/Grivn/phalanx/sgx/shim/libusig_shim.so"
 )
 
 // Digest represents the data type of the message digest used to

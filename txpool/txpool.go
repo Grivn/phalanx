@@ -1,12 +1,12 @@
 package txpool
 
 import (
+	"github.com/Grivn/phalanx/api"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
-	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/txpool/types"
 )
 
-func NewTxPool(config types.Config) internal.TxPool {
+func NewTxPool(config types.Config) api.TxPool {
 	return newTxPoolImpl(config)
 }
 

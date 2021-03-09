@@ -12,3 +12,5 @@ TAGS
 tags
 .config_*
 
+/keytool/shim/
+/sample/lib/
