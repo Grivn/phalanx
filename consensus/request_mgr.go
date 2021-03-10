@@ -11,7 +11,7 @@ type requestMgr struct {
 
 	sequence uint64
 
-	sequencePool api.SequencePool
+	sequencePool api.LogPool
 
 	auth *usigProxy
 
@@ -24,7 +24,7 @@ type requestMgr struct {
 	logger external.Logger
 }
 
-func newRequestMgr(author uint64, sp api.SequencePool, auth *usigProxy, sender *senderProxy, logger external.Logger) *requestMgr {
+func newRequestMgr(author uint64, sp api.LogPool, auth *usigProxy, sender *senderProxy, logger external.Logger) *requestMgr {
 	return &requestMgr{
 		author:       author,
 		sequence:     uint64(0),

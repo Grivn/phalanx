@@ -12,3 +12,26 @@ func NewTx() *protos.Transaction {
 	rand.Read(payload)
 	return types.GenerateTransaction(payload)
 }
+
+func NewOrderedRequests(author uint64, from, to int) []*protos.OrderedMsg {
+	var list []*protos.OrderedMsg
+	for index:= from; index<= to; index++ {
+		payload := make([]byte, 1024)
+		rand.Read(payload)
+
+		bid := &protos.BatchId{
+			Author:    author,
+			BatchHash: types.CalculatePayloadHash(payload, 0),
+		}
+
+		msg := &protos.OrderedMsg{
+			Type:     protos.OrderType_REQ,
+			Author:   author,
+			Sequence: uint64(index),
+			BatchId:  bid,
+		}
+
+		list = append(list, msg)
+	}
+	return list
+}

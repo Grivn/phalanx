@@ -7,6 +7,8 @@ import (
 type TxPool interface {
 	Basic
 
+	Reset()
+
 	PostTx(tx *commonProto.Transaction)
 
 	PostBatch(batch *commonProto.Batch)
