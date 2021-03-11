@@ -27,7 +27,8 @@ type RecvEvent struct {
 }
 
 const (
-	ReplyBatchEvent = iota
+	ReplyGenerateBatchEvent = iota
+	ReplyLoadBatchEvent
 	ReplyMissingBatchEvent
 )
 

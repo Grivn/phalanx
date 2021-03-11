@@ -1,11 +1,11 @@
-package reqpool
+package reqmgr
 
 import (
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
 )
 
-type requestPoolImpl struct {
+type requestPool struct {
 	id uint64
 
 	sequence uint64
@@ -18,9 +18,9 @@ type requestPoolImpl struct {
 	logger external.Logger
 }
 
-func newRequestPoolImpl(id uint64, replyC chan *commonProto.BatchId, logger external.Logger) *requestPoolImpl {
+func newRequestPool(id uint64, replyC chan *commonProto.BatchId, logger external.Logger) *requestPool {
 	logger.Noticef("Init request pool for replica %d", id)
-	return &requestPoolImpl{
+	return &requestPool{
 		id: id,
 
 		sequence: uint64(0),
@@ -34,11 +34,11 @@ func newRequestPoolImpl(id uint64, replyC chan *commonProto.BatchId, logger exte
 	}
 }
 
-func (rp *requestPoolImpl) start() {
+func (rp *requestPool) start() {
 	go rp.listener()
 }
 
-func (rp *requestPoolImpl) stop() {
+func (rp *requestPool) stop() {
 	select {
 	case <-rp.closeC:
 	default:
@@ -46,23 +46,23 @@ func (rp *requestPoolImpl) stop() {
 	}
 }
 
-func (rp *requestPoolImpl) record(msg *commonProto.OrderedMsg) {
+func (rp *requestPool) record(msg *commonProto.OrderedMsg) {
 	rp.recvC <- msg
 }
 
-func (rp *requestPoolImpl) listener() {
+func (rp *requestPool) listener() {
 	for {
 		select {
 		case <-rp.closeC:
 			rp.logger.Noticef("exist requestRecorderMgr listener for %d", rp.id)
 			return
 		case msg := <-rp.recvC:
-			rp.process(msg)
+			rp.processOrderedMsg(msg)
 		}
 	}
 }
 
-func (rp *requestPoolImpl) process(msg *commonProto.OrderedMsg) {
+func (rp *requestPool) processOrderedMsg(msg *commonProto.OrderedMsg) {
 	rp.logger.Infof("receive ordered request from replica %d, hash %s", msg.Author, msg.BatchId.BatchHash)
 
 	if _, ok := rp.recorder[msg.Sequence]; ok {

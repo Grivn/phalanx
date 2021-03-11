@@ -130,7 +130,7 @@ func (tp *txPoolImpl) processRecvTxEvent(tx *commonProto.Transaction) {
 			tp.logger.Warningf("Replica %d generated a nil batch", tp.author)
 			return
 		}
-		tp.replyBatch(batch)
+		tp.replyGenerateBatch(batch)
 	}
 	return
 }
@@ -154,7 +154,7 @@ func (tp *txPoolImpl) processLoadBatchEvent(bid *commonProto.BatchId) {
 		tp.replyMissingEvent(bid)
 		return
 	}
-	tp.replyBatch(batch)
+	tp.replyLoadBatch(batch)
 }
 
 //===================================
@@ -198,9 +198,17 @@ func (tp *txPoolImpl) verifyBatch(batch *commonProto.Batch) bool {
 //===================================
 //       reply messages
 //===================================
-func (tp *txPoolImpl) replyBatch(batch *commonProto.Batch) {
+func (tp *txPoolImpl) replyGenerateBatch(batch *commonProto.Batch) {
 	reply := types.ReplyEvent{
-		EventType: types.ReplyBatchEvent,
+		EventType: types.ReplyGenerateBatchEvent,
+		Event:     batch,
+	}
+	tp.replyC <- reply
+}
+
+func (tp *txPoolImpl) replyLoadBatch(batch *commonProto.Batch) {
+	reply := types.ReplyEvent{
+		EventType: types.ReplyLoadBatchEvent,
 		Event:     batch,
 	}
 	tp.replyC <- reply

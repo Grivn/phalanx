@@ -36,6 +36,42 @@ message UI {
   bytes  cert = 2;
 }
 
+enum message_type {
+  RBC_REQUEST = 0;
+  RBC_ECHO = 1;
+  RBC_READY = 2;
+
+  ORDERED_LOG = 3;
+}
+
+message consensus_message {
+  message_type type = 1;
+  bytes payload = 2;
+}
+
+//======================================================
+//           reliable broadcast message
+//======================================================
+
+message request {
+  string hash = 1;
+  uint64 sequence = 2;
+  uint64 author = 3;
+  batch batch = 4;
+}
+
+message echo {
+  string hash = 1;
+  uint64 sequence = 2;
+  uint64 verifier = 3;
+}
+
+message ready {
+  string hash = 1;
+  uint64 sequence = 2;
+  uint64 verifier = 3;
+}
+
 //======================================================
 //                 ordered message
 //======================================================
@@ -50,13 +86,7 @@ message ordered_msg {
   uint64 author = 2;
   uint64 sequence = 3;
   batch_id batch_id = 4;
-}
-
-message signed_msg {
-  order_type type = 1;
-  uint64 author = 2;
-  bytes payload = 3;
-  bytes signature = 4;
+  bytes signature = 5;
 }
 
 //======================================================

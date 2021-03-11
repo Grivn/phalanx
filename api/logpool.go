@@ -2,7 +2,7 @@ package api
 
 import commonProto "github.com/Grivn/phalanx/common/types/protos"
 
-type LogPool interface {
+type LogManager interface {
 	Save(msg *commonProto.OrderedMsg)
 
 	Load(key interface{}) (*commonProto.OrderedMsg, error)

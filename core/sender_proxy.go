@@ -1,4 +1,4 @@
-package consensus
+package phalanx
 
 import (
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
@@ -19,7 +19,7 @@ func newSenderProxy(author uint64, network external.Network) *senderProxy {
 	}
 }
 
-func (sp *senderProxy) broadcast(signed *commonProto.SignedMsg) {
+func (sp *senderProxy) broadcast(signed *commonProto.OrderedMsg) {
 	payload, err := proto.Marshal(signed)
 	if err != nil {
 		panic(err)
