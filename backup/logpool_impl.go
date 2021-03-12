@@ -1,4 +1,4 @@
-package logmgr
+package backup
 
 import (
 	"errors"

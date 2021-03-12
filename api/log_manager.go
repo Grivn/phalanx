@@ -2,10 +2,12 @@ package api
 
 import commonProto "github.com/Grivn/phalanx/common/types/protos"
 
-type RequestManager interface {
+type LogManager interface {
 	Basic
 
 	Generate(bid *commonProto.BatchId)
 
-	Record(msg *commonProto.OrderedMsg)
+	Record(msg *commonProto.SignedMsg)
+
+	Ready(binarySet []byte)
 }

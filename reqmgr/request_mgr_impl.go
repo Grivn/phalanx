@@ -10,12 +10,18 @@ type requestMgrImpl struct {
 
 	author uint64
 
+	sequence uint64
+
 	pool map[uint64]*requestPool
+
+	replyC chan interface{}
+
+	sender *senderProxy
 
 	logger external.Logger
 }
 
-func newRequestMgrImpl(n int, author uint64, replyC chan *commonProto.BatchId, logger external.Logger) *requestMgrImpl {
+func newRequestMgrImpl(n int, author uint64, replyC chan interface{}, network external.Network, logger external.Logger) *requestMgrImpl {
 	logger.Noticef("[INIT] replica %d init request manager, cluster amount %d", author, n)
 	rps := make(map[uint64]*requestPool)
 
@@ -29,6 +35,8 @@ func newRequestMgrImpl(n int, author uint64, replyC chan *commonProto.BatchId, l
 		n:      n,
 		author: author,
 		pool:   rps,
+		replyC: replyC,
+		sender: newSenderProxy(author, network),
 		logger: logger,
 	}
 }
@@ -43,6 +51,25 @@ func (rm *requestMgrImpl) stop() {
 	for _, pool := range rm.pool {
 		pool.stop()
 	}
+}
+
+func (rm *requestMgrImpl) generate(bid *commonProto.BatchId) {
+	if bid == nil {
+		rm.logger.Warningf("[%d Warning] received a nil batch id", rm.author)
+		return
+	}
+
+	rm.sequence++
+	msg := &commonProto.OrderedMsg{
+		Type:     commonProto.OrderType_REQ,
+		Author:   rm.author,
+		Sequence: rm.sequence,
+		BatchId:  bid,
+	}
+
+	rm.logger.Infof("[%d Generate] ordered req for seq %d batch %s", rm.author, rm.sequence, bid.BatchHash)
+	rm.sender.broadcast(msg)
+	rm.record(msg)
 }
 
 func (rm *requestMgrImpl) record(msg *commonProto.OrderedMsg) {

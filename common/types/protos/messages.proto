@@ -86,7 +86,12 @@ message ordered_msg {
   uint64 author = 2;
   uint64 sequence = 3;
   batch_id batch_id = 4;
-  bytes signature = 5;
+}
+
+message signed_msg {
+  uint64 author = 1;
+  bytes payload = 2;
+  bytes signature = 3;
 }
 
 //======================================================
@@ -109,8 +114,13 @@ message comm_msg {
 //             binary agreement message
 //======================================================
 
+message binary_tag {
+  uint64 log_id = 1;
+  string binary_hash = 2;
+  bytes  binary_set = 3;
+}
+
 message binary_notification {
   uint64 author = 1;
-  uint64 log_id = 2;
-  repeated uint64 id_list = 3;
+  binary_tag binary_tag = 2;
 }

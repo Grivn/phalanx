@@ -4,20 +4,22 @@ import (
 	"github.com/Grivn/phalanx/api"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
-	txpoolTypes "github.com/Grivn/phalanx/txpool/types"
+	lm "github.com/Grivn/phalanx/logmgr/types"
+	rm "github.com/Grivn/phalanx/reqmgr/types"
+	tp "github.com/Grivn/phalanx/txpool/types"
 )
 
 type phalanxImpl struct {
 	author uint64
 
 	txpool  api.TxPool
-	requestMgr *requestMgr
-	logMgr *logMgrImpl
-	logpool api.LogPool
+	requestMgr api.RequestManager
+	logMgr api.LogManager
 
 	recvC chan interface{}
-	txpoolC  chan txpoolTypes.ReplyEvent
-	reqpoolC chan *commonProto.BatchId
+	tpC chan tp.ReplyEvent
+	rmC chan rm.ReplyEvent
+	lmC chan lm.ReplyEvent
 	closeC   chan bool
 
 	logger external.Logger
@@ -25,6 +27,73 @@ type phalanxImpl struct {
 
 func newPhalanxImpl() *phalanxImpl {
 	return &phalanxImpl{}
+}
+
+func (phi *phalanxImpl) listenTxPool() {
+	for {
+		select {
+		case <-phi.closeC:
+			phi.logger.Notice("exist tx pool listener for phalanx")
+			return
+		case ev := <-phi.tpC:
+			phi.dispatchTxPoolEvent(ev)
+		}
+	}
+}
+
+func (phi *phalanxImpl) listenReqManager() {
+	for {
+		select {
+		case <-phi.closeC:
+			phi.logger.Notice("exist request manager listener for phalanx")
+			return
+		case ev := <-phi.rmC:
+			phi.dispatchRequestEvent(ev)
+		}
+	}
+}
+
+func (phi *phalanxImpl) listenLogManager() {
+	for {
+		select {
+		case <-phi.closeC:
+			phi.logger.Notice("exist log manager listener for phalanx")
+			return
+		case ev := <-phi.lmC:
+			phi.dispatchLogEvent(ev)
+		}
+	}
+}
+
+func (phi *phalanxImpl) dispatchTxPoolEvent(event tp.ReplyEvent) {
+	switch event.EventType {
+	case tp.ReplyGenerateBatchEvent:
+		batch := event.Event.(*commonProto.Batch)
+		phi.requestMgr.Generate(batch.BatchId)
+	case tp.ReplyLoadBatchEvent:
+	case tp.ReplyMissingBatchEvent:
+	default:
+		return
+	}
+}
+
+func (phi *phalanxImpl) dispatchRequestEvent(event rm.ReplyEvent) {
+	switch event.EventType {
+	case rm.ReqReplyBatchByOrder:
+		bid := event.Event.(*commonProto.BatchId)
+		phi.logMgr.Generate(bid)
+	default:
+		return
+	}
+}
+
+func (phi *phalanxImpl) dispatchLogEvent(event lm.ReplyEvent) {
+	switch event.EventType {
+	case lm.LogReplyQuorumBinaryEvent:
+	case lm.LogReplyExecuteEvent:
+	default:
+		return
+	}
 }
 
 func (phi *phalanxImpl) postTxs(txs []*commonProto.Transaction) {
@@ -36,48 +105,4 @@ func (phi *phalanxImpl) postTxs(txs []*commonProto.Transaction) {
 
 func (phi *phalanxImpl) propose(event interface{}) {
 	phi.recvC <- event
-}
-
-func (phi *phalanxImpl) listenTxPool() {
-	for {
-		select {
-		case <-phi.closeC:
-			phi.logger.Noticef("exist main listener for phalanx")
-			return
-		case event := <-phi.recvC:
-			phi.dispatchEvents(event)
-		}
-	}
-}
-
-func (phi *phalanxImpl) dispatchEvents(event interface{}) {
-	switch e := event.(type) {
-	case txpoolTypes.ReplyEvent:
-		phi.processTxPoolEvents(e)
-	case *commonProto.OrderedMsg:
-		phi.processOrderedMsg(e)
-	case *commonProto.BatchId:
-		phi.logMgr.propose(e)
-	}
-}
-
-func (phi *phalanxImpl) processTxPoolEvents(event txpoolTypes.ReplyEvent) {
-	switch event.EventType {
-	case txpoolTypes.ReplyGenerateBatchEvent:
-		batch := event.Event.(*commonProto.Batch)
-		phi.requestMgr.generate(batch.BatchId)
-	case txpoolTypes.ReplyLoadBatchEvent:
-	case txpoolTypes.ReplyMissingBatchEvent:
-	default:
-		phi.logger.Warningf("Invalid event type: code %d", event.EventType)
-	}
-}
-
-func (phi *phalanxImpl) processOrderedMsg(msg *commonProto.OrderedMsg) {
-	switch msg.Type {
-	case commonProto.OrderType_REQ:
-		phi.requestMgr.propose(msg)
-	case commonProto.OrderType_LOG:
-		phi.logMgr.propose(msg)
-	}
 }

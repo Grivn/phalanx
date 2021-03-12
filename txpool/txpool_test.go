@@ -61,7 +61,7 @@ func TestTxPoolImpl_Basic(t *testing.T) {
 		wg1.Done()
 	}()
 	wg1.Wait()
-	assert.Equal(t, types.ReplyBatchEvent, reply1.EventType)
+	assert.Equal(t, types.ReplyGenerateBatchEvent, reply1.EventType)
 	batch, ok := reply1.Event.(*commonProto.Batch)
 	assert.True(t, ok)
 
@@ -95,7 +95,7 @@ func TestTxPoolImpl_Basic(t *testing.T) {
 		wg2.Done()
 	}()
 	wg2.Wait()
-	assert.Equal(t, types.ReplyBatchEvent, reply2.EventType)
+	assert.Equal(t, types.ReplyLoadBatchEvent, reply2.EventType)
 	batch2, ok := reply2.Event.(*commonProto.Batch)
 	assert.True(t, ok)
 	assert.Equal(t, batch.BatchId.BatchHash, batch2.BatchId.BatchHash)

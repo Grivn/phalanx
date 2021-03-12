@@ -3,6 +3,7 @@ package reqmgr
 import (
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/reqmgr/types"
 )
 
 type requestPool struct {
@@ -12,13 +13,13 @@ type requestPool struct {
 	recorder map[uint64]*commonProto.BatchId
 
 	recvC  chan *commonProto.OrderedMsg
-	replyC chan *commonProto.BatchId
+	replyC chan interface{}
 	closeC chan bool
 
 	logger external.Logger
 }
 
-func newRequestPool(id uint64, replyC chan *commonProto.BatchId, logger external.Logger) *requestPool {
+func newRequestPool(id uint64, replyC chan interface{}, logger external.Logger) *requestPool {
 	logger.Noticef("Init request pool for replica %d", id)
 	return &requestPool{
 		id: id,
@@ -78,7 +79,13 @@ func (rp *requestPool) processOrderedMsg(msg *commonProto.OrderedMsg) {
 		}
 		rp.sequence++
 		rp.logger.Infof("propose batch id for replica %d sequence %d", rp.id, rp.sequence)
-		rp.replyC <- bid
+
+		event := types.ReplyEvent{
+			EventType: types.ReqReplyBatchByOrder,
+			Event:     bid,
+		}
+
+		rp.replyC <- event
 		delete(rp.recorder, rp.sequence)
 	}
 }

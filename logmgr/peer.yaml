@@ -1,0 +1,25 @@
+# Sample configuration file for peer command
+
+# Consensus configuration
+consensusConf: "consensus.yaml"
+
+# Keyset file
+keys: "keys.yaml"
+
+# Replica options
+replica:
+  # ID of the replica instance
+  id: 0
+
+# Client options
+client:
+  # ID of the client instance
+  id: 0
+
+  # Client request timeout (default: 0s, i.e. never timeout)
+  timeout: 3s
+
+# USIG options
+usig:
+  # USIG enclave file (environment expansion is supported)
+  enclaveFile: "lib/libusig.signed.so"

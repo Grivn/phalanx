@@ -7,12 +7,17 @@ import (
 
 type network struct {
 	value *commonProto.CommMsg
+	logger external.Logger
 }
 
 func NewFakeNetwork() external.Network {
-	return &network{}
+	logger := NewRawLogger()
+	return &network{
+		logger: logger,
+	}
 }
 
 func (network *network) Broadcast(msg *commonProto.CommMsg) {
+	network.logger.Debugf("broadcast message, type %d", msg.Type)
 	network.value = msg
 }

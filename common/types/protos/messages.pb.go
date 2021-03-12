@@ -574,11 +574,10 @@ func (m *Ready) GetVerifier() uint64 {
 }
 
 type OrderedMsg struct {
-	Type      OrderType `protobuf:"varint,1,opt,name=type,proto3,enum=protos.OrderType" json:"type,omitempty"`
-	Author    uint64    `protobuf:"varint,2,opt,name=author,proto3" json:"author,omitempty"`
-	Sequence  uint64    `protobuf:"varint,3,opt,name=sequence,proto3" json:"sequence,omitempty"`
-	BatchId   *BatchId  `protobuf:"bytes,4,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
-	Signature []byte    `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
+	Type     OrderType `protobuf:"varint,1,opt,name=type,proto3,enum=protos.OrderType" json:"type,omitempty"`
+	Author   uint64    `protobuf:"varint,2,opt,name=author,proto3" json:"author,omitempty"`
+	Sequence uint64    `protobuf:"varint,3,opt,name=sequence,proto3" json:"sequence,omitempty"`
+	BatchId  *BatchId  `protobuf:"bytes,4,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
 }
 
 func (m *OrderedMsg) Reset()         { *m = OrderedMsg{} }
@@ -642,7 +641,60 @@ func (m *OrderedMsg) GetBatchId() *BatchId {
 	return nil
 }
 
-func (m *OrderedMsg) GetSignature() []byte {
+type SignedMsg struct {
+	Author    uint64 `protobuf:"varint,1,opt,name=author,proto3" json:"author,omitempty"`
+	Payload   []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
+	Signature []byte `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
+}
+
+func (m *SignedMsg) Reset()         { *m = SignedMsg{} }
+func (m *SignedMsg) String() string { return proto.CompactTextString(m) }
+func (*SignedMsg) ProtoMessage()    {}
+func (*SignedMsg) Descriptor() ([]byte, []int) {
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{9}
+}
+func (m *SignedMsg) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SignedMsg) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SignedMsg.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *SignedMsg) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SignedMsg.Merge(m, src)
+}
+func (m *SignedMsg) XXX_Size() int {
+	return m.Size()
+}
+func (m *SignedMsg) XXX_DiscardUnknown() {
+	xxx_messageInfo_SignedMsg.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SignedMsg proto.InternalMessageInfo
+
+func (m *SignedMsg) GetAuthor() uint64 {
+	if m != nil {
+		return m.Author
+	}
+	return 0
+}
+
+func (m *SignedMsg) GetPayload() []byte {
+	if m != nil {
+		return m.Payload
+	}
+	return nil
+}
+
+func (m *SignedMsg) GetSignature() []byte {
 	if m != nil {
 		return m.Signature
 	}
@@ -659,7 +711,7 @@ func (m *CommMsg) Reset()         { *m = CommMsg{} }
 func (m *CommMsg) String() string { return proto.CompactTextString(m) }
 func (*CommMsg) ProtoMessage()    {}
 func (*CommMsg) Descriptor() ([]byte, []int) {
-	return fileDescriptor_4dc296cbfe5ffcd5, []int{9}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{10}
 }
 func (m *CommMsg) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -709,17 +761,76 @@ func (m *CommMsg) GetPayload() []byte {
 	return nil
 }
 
+type BinaryTag struct {
+	LogId      uint64 `protobuf:"varint,1,opt,name=log_id,json=logId,proto3" json:"log_id,omitempty"`
+	BinaryHash string `protobuf:"bytes,2,opt,name=binary_hash,json=binaryHash,proto3" json:"binary_hash,omitempty"`
+	BinarySet  []byte `protobuf:"bytes,3,opt,name=binary_set,json=binarySet,proto3" json:"binary_set,omitempty"`
+}
+
+func (m *BinaryTag) Reset()         { *m = BinaryTag{} }
+func (m *BinaryTag) String() string { return proto.CompactTextString(m) }
+func (*BinaryTag) ProtoMessage()    {}
+func (*BinaryTag) Descriptor() ([]byte, []int) {
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{11}
+}
+func (m *BinaryTag) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *BinaryTag) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_BinaryTag.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *BinaryTag) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BinaryTag.Merge(m, src)
+}
+func (m *BinaryTag) XXX_Size() int {
+	return m.Size()
+}
+func (m *BinaryTag) XXX_DiscardUnknown() {
+	xxx_messageInfo_BinaryTag.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_BinaryTag proto.InternalMessageInfo
+
+func (m *BinaryTag) GetLogId() uint64 {
+	if m != nil {
+		return m.LogId
+	}
+	return 0
+}
+
+func (m *BinaryTag) GetBinaryHash() string {
+	if m != nil {
+		return m.BinaryHash
+	}
+	return ""
+}
+
+func (m *BinaryTag) GetBinarySet() []byte {
+	if m != nil {
+		return m.BinarySet
+	}
+	return nil
+}
+
 type BinaryNotification struct {
-	Author uint64   `protobuf:"varint,1,opt,name=author,proto3" json:"author,omitempty"`
-	LogId  uint64   `protobuf:"varint,2,opt,name=log_id,json=logId,proto3" json:"log_id,omitempty"`
-	IdList []uint64 `protobuf:"varint,3,rep,packed,name=id_list,json=idList,proto3" json:"id_list,omitempty"`
+	Author    uint64     `protobuf:"varint,1,opt,name=author,proto3" json:"author,omitempty"`
+	BinaryTag *BinaryTag `protobuf:"bytes,2,opt,name=binary_tag,json=binaryTag,proto3" json:"binary_tag,omitempty"`
 }
 
 func (m *BinaryNotification) Reset()         { *m = BinaryNotification{} }
 func (m *BinaryNotification) String() string { return proto.CompactTextString(m) }
 func (*BinaryNotification) ProtoMessage()    {}
 func (*BinaryNotification) Descriptor() ([]byte, []int) {
-	return fileDescriptor_4dc296cbfe5ffcd5, []int{10}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{12}
 }
 func (m *BinaryNotification) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -755,16 +866,9 @@ func (m *BinaryNotification) GetAuthor() uint64 {
 	return 0
 }
 
-func (m *BinaryNotification) GetLogId() uint64 {
+func (m *BinaryNotification) GetBinaryTag() *BinaryTag {
 	if m != nil {
-		return m.LogId
-	}
-	return 0
-}
-
-func (m *BinaryNotification) GetIdList() []uint64 {
-	if m != nil {
-		return m.IdList
+		return m.BinaryTag
 	}
 	return nil
 }
@@ -782,54 +886,59 @@ func init() {
 	proto.RegisterType((*Echo)(nil), "protos.echo")
 	proto.RegisterType((*Ready)(nil), "protos.ready")
 	proto.RegisterType((*OrderedMsg)(nil), "protos.ordered_msg")
+	proto.RegisterType((*SignedMsg)(nil), "protos.signed_msg")
 	proto.RegisterType((*CommMsg)(nil), "protos.comm_msg")
+	proto.RegisterType((*BinaryTag)(nil), "protos.binary_tag")
 	proto.RegisterType((*BinaryNotification)(nil), "protos.binary_notification")
 }
 
 func init() { proto.RegisterFile("messages.proto", fileDescriptor_4dc296cbfe5ffcd5) }
 
 var fileDescriptor_4dc296cbfe5ffcd5 = []byte{
-	// 637 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x54, 0xdd, 0x6e, 0xd3, 0x30,
-	0x14, 0xae, 0x93, 0xf4, 0x27, 0xa7, 0xdb, 0xc8, 0x3c, 0x7e, 0xa2, 0x31, 0xa2, 0x2a, 0x08, 0x54,
-	0x15, 0xb4, 0x8b, 0x72, 0xc9, 0x55, 0xbb, 0x55, 0x6c, 0xd2, 0xd0, 0x34, 0x6f, 0x13, 0xe2, 0x02,
-	0x45, 0x5e, 0xe2, 0xb5, 0x96, 0xda, 0xb8, 0xc4, 0xee, 0xb4, 0xbe, 0x05, 0x2f, 0xc0, 0x5b, 0xf0,
-	0x10, 0x5c, 0xee, 0x92, 0x4b, 0xb4, 0xbd, 0x08, 0xb2, 0xd3, 0xac, 0x2d, 0xda, 0x40, 0x48, 0x5c,
-	0xe5, 0xfc, 0xf9, 0xf3, 0xf9, 0xbe, 0x73, 0x1c, 0x58, 0x1b, 0x31, 0x29, 0x69, 0x9f, 0xc9, 0xed,
-	0x71, 0x26, 0x94, 0xc0, 0x15, 0xf3, 0x91, 0xe1, 0x5b, 0xa8, 0xab, 0x8c, 0xa6, 0x92, 0xc6, 0x8a,
-	0x8b, 0x14, 0x63, 0x70, 0x06, 0x54, 0x0e, 0x7c, 0xd4, 0x40, 0x4d, 0x97, 0x18, 0x1b, 0xfb, 0x50,
-	0x1d, 0xd3, 0xe9, 0x50, 0xd0, 0xc4, 0xb7, 0x1a, 0xa8, 0xb9, 0x42, 0x0a, 0x37, 0xec, 0x40, 0xed,
-	0x8c, 0xaa, 0x78, 0x10, 0xf1, 0x04, 0x3f, 0x86, 0x0a, 0x9d, 0xa8, 0x81, 0xc8, 0xcc, 0x59, 0x87,
-	0xcc, 0x3c, 0xfc, 0x0c, 0x20, 0xaf, 0x31, 0xb8, 0x96, 0xc1, 0x75, 0x4d, 0x64, 0x8f, 0xca, 0x41,
-	0xf8, 0x15, 0x41, 0xd9, 0x78, 0xf8, 0xd5, 0x1c, 0xcc, 0x40, 0xd4, 0xdb, 0x5e, 0xde, 0xab, 0xdc,
-	0x2e, 0xe2, 0xa4, 0x6a, 0xac, 0xfd, 0x04, 0x3f, 0x05, 0x57, 0xe3, 0x45, 0x43, 0x2e, 0x95, 0x6f,
-	0x35, 0xec, 0xa6, 0x4b, 0x6a, 0x3a, 0x70, 0xc0, 0xa5, 0xc2, 0xaf, 0xa1, 0xaa, 0x2e, 0xf3, 0x94,
-	0xdd, 0xb0, 0x9b, 0xf5, 0xf6, 0x46, 0x01, 0xb4, 0x40, 0x95, 0x54, 0xd4, 0xa5, 0xa9, 0xde, 0x02,
-	0x57, 0xf1, 0x11, 0x93, 0x8a, 0x8e, 0xc6, 0xbe, 0xd3, 0x40, 0x4d, 0x9b, 0xcc, 0x03, 0x61, 0x1b,
-	0xac, 0xd3, 0x7d, 0x2d, 0x41, 0x2c, 0x26, 0xa9, 0x62, 0x05, 0xbb, 0xc2, 0xd5, 0x82, 0xc5, 0x2c,
-	0x53, 0x33, 0x65, 0x8c, 0x1d, 0x7e, 0x80, 0xf5, 0x58, 0xa4, 0x92, 0xa5, 0x72, 0x22, 0xa3, 0x99,
-	0xee, 0xb8, 0x09, 0x8e, 0x9a, 0x8e, 0x99, 0x39, 0xbf, 0xd6, 0x7e, 0x58, 0x74, 0x34, 0x4b, 0x47,
-	0x3a, 0x47, 0x4c, 0xc5, 0x1f, 0xf4, 0xbe, 0x80, 0x6a, 0xc6, 0x3e, 0x4f, 0x98, 0x54, 0x77, 0x0e,
-	0x6a, 0x13, 0x6a, 0x52, 0xa7, 0xd3, 0x98, 0x99, 0x93, 0x0e, 0xb9, 0xf5, 0x17, 0xc6, 0x63, 0x2f,
-	0x8d, 0xe7, 0xf9, 0x4c, 0x7e, 0xc3, 0xbc, 0xde, 0x5e, 0x5d, 0x92, 0x9c, 0xe4, 0xb9, 0x90, 0x80,
-	0xc3, 0xe2, 0x81, 0xf8, 0xe7, 0x4b, 0x37, 0xa1, 0x76, 0xc1, 0x32, 0x7e, 0xce, 0x59, 0x71, 0xed,
-	0xad, 0x1f, 0x1e, 0x43, 0x39, 0x63, 0x34, 0x99, 0xfe, 0x57, 0xd0, 0x6f, 0x08, 0xea, 0x22, 0x4b,
-	0x58, 0xc6, 0x92, 0x68, 0x24, 0xfb, 0xf8, 0xe5, 0x92, 0xe8, 0xb8, 0x20, 0x67, 0x4a, 0x16, 0x25,
-	0x9f, 0xab, 0x63, 0x2d, 0xa9, 0xb3, 0xd8, 0x87, 0xfd, 0x5b, 0x1f, 0x8b, 0xfb, 0xea, 0xfc, 0x6d,
-	0x5f, 0xb7, 0xc0, 0x95, 0xbc, 0x9f, 0x52, 0x35, 0xc9, 0x98, 0x5f, 0x36, 0x53, 0x9d, 0x07, 0xc2,
-	0x18, 0x6a, 0xb1, 0x18, 0x8d, 0x4c, 0xcb, 0xf7, 0xbd, 0xa3, 0x17, 0x33, 0x2a, 0x96, 0xa1, 0xb2,
-	0x5e, 0x5c, 0x65, 0xce, 0xdd, 0xbd, 0x3c, 0xf6, 0xf2, 0xf2, 0x7c, 0x82, 0x8d, 0x33, 0x9e, 0xd2,
-	0x6c, 0x1a, 0xa5, 0x42, 0xf1, 0x73, 0x1e, 0x53, 0xf3, 0xe2, 0xef, 0xbb, 0xef, 0x11, 0x54, 0x86,
-	0xa2, 0xaf, 0xc9, 0xe5, 0x92, 0x94, 0x87, 0xa2, 0xbf, 0x9f, 0xe0, 0x27, 0x50, 0xe5, 0xc9, 0xfc,
-	0x6d, 0x39, 0xa4, 0xc2, 0x13, 0xfd, 0x8c, 0x5a, 0xef, 0x61, 0x65, 0x71, 0x97, 0xf1, 0x03, 0xa8,
-	0x93, 0xee, 0x4e, 0x44, 0x7a, 0x47, 0xa7, 0xbd, 0xe3, 0x13, 0xaf, 0x84, 0x57, 0xa0, 0xa6, 0x03,
-	0xbd, 0x9d, 0xbd, 0x43, 0x0f, 0xe1, 0x55, 0x70, 0xf3, 0x74, 0x67, 0xf7, 0xa3, 0x67, 0xe9, 0xea,
-	0x43, 0xb2, 0xdb, 0x23, 0xbd, 0xdd, 0xe8, 0xe0, 0xf0, 0x9d, 0x67, 0xb7, 0x02, 0x80, 0xf9, 0x94,
-	0x70, 0x15, 0x6c, 0xd2, 0x3b, 0xf2, 0x4a, 0xda, 0xd0, 0x79, 0xd4, 0x6a, 0x81, 0x7b, 0x4b, 0x1d,
-	0xbb, 0x50, 0xee, 0x76, 0x4e, 0x76, 0xf6, 0xbc, 0x92, 0x36, 0x0d, 0x90, 0x87, 0x74, 0x6d, 0xb7,
-	0xdb, 0xf1, 0xac, 0xae, 0xff, 0xfd, 0x3a, 0x40, 0x57, 0xd7, 0x01, 0xfa, 0x79, 0x1d, 0xa0, 0x2f,
-	0x37, 0x41, 0xe9, 0xea, 0x26, 0x28, 0xfd, 0xb8, 0x09, 0x4a, 0x67, 0xf9, 0x5f, 0xf0, 0xcd, 0xaf,
-	0x00, 0x00, 0x00, 0xff, 0xff, 0x37, 0x62, 0x54, 0x51, 0x1e, 0x05, 0x00, 0x00,
+	// 675 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x54, 0xcd, 0x6e, 0xd3, 0x40,
+	0x10, 0x8e, 0x7f, 0xf2, 0xe3, 0x71, 0x5a, 0xdc, 0x2d, 0xa0, 0xa8, 0x40, 0x88, 0x8c, 0x40, 0x51,
+	0x40, 0x95, 0x08, 0x47, 0x4e, 0x49, 0x1b, 0xd1, 0x4a, 0x45, 0x55, 0xb7, 0xad, 0x10, 0x12, 0x92,
+	0xd9, 0xda, 0x5b, 0xc7, 0x52, 0xe2, 0x0d, 0xde, 0x4d, 0xd5, 0xbc, 0x05, 0x27, 0x6e, 0xbc, 0x0f,
+	0xc7, 0x1e, 0x39, 0xa2, 0xf6, 0x45, 0xd0, 0xae, 0xed, 0xda, 0x41, 0x6d, 0x11, 0x12, 0x27, 0xcf,
+	0xef, 0xb7, 0x33, 0xdf, 0xcc, 0x18, 0x56, 0xa7, 0x94, 0x73, 0x12, 0x52, 0xbe, 0x39, 0x4b, 0x98,
+	0x60, 0xa8, 0xa6, 0x3e, 0xdc, 0x7d, 0x0b, 0xb6, 0x48, 0x48, 0xcc, 0x89, 0x2f, 0x22, 0x16, 0x23,
+	0x04, 0xe6, 0x98, 0xf0, 0x71, 0x4b, 0xeb, 0x68, 0x5d, 0x0b, 0x2b, 0x19, 0xb5, 0xa0, 0x3e, 0x23,
+	0x8b, 0x09, 0x23, 0x41, 0x4b, 0xef, 0x68, 0xdd, 0x26, 0xce, 0x55, 0x77, 0x00, 0x8d, 0x13, 0x22,
+	0xfc, 0xb1, 0x17, 0x05, 0xe8, 0x21, 0xd4, 0xc8, 0x5c, 0x8c, 0x59, 0xa2, 0x72, 0x4d, 0x9c, 0x69,
+	0xe8, 0x09, 0x40, 0x1a, 0xa3, 0x70, 0x75, 0x85, 0x6b, 0x29, 0xcb, 0x0e, 0xe1, 0x63, 0xf7, 0xbb,
+	0x06, 0x55, 0xa5, 0xa1, 0x97, 0x05, 0x98, 0x82, 0xb0, 0xfb, 0x4e, 0x5a, 0x2b, 0xdf, 0xcc, 0xed,
+	0xb8, 0xae, 0xa4, 0xdd, 0x00, 0x3d, 0x02, 0x4b, 0xe2, 0x79, 0x93, 0x88, 0x8b, 0x96, 0xde, 0x31,
+	0xba, 0x16, 0x6e, 0x48, 0xc3, 0x5e, 0xc4, 0x05, 0x7a, 0x05, 0x75, 0x71, 0x9e, 0xba, 0x8c, 0x8e,
+	0xd1, 0xb5, 0xfb, 0xeb, 0x39, 0x50, 0xa9, 0x55, 0x5c, 0x13, 0xe7, 0x2a, 0xfa, 0x31, 0x58, 0x22,
+	0x9a, 0x52, 0x2e, 0xc8, 0x74, 0xd6, 0x32, 0x3b, 0x5a, 0xd7, 0xc0, 0x85, 0xc1, 0xed, 0x83, 0x7e,
+	0xbc, 0x2b, 0x29, 0xf0, 0xd9, 0x3c, 0x16, 0x34, 0xef, 0x2e, 0x57, 0x25, 0x61, 0x3e, 0x4d, 0x44,
+	0xc6, 0x8c, 0x92, 0xdd, 0x0f, 0xb0, 0xe6, 0xb3, 0x98, 0xd3, 0x98, 0xcf, 0xb9, 0x97, 0xf1, 0x8e,
+	0xba, 0x60, 0x8a, 0xc5, 0x8c, 0xaa, 0xfc, 0xd5, 0xfe, 0xfd, 0xbc, 0xa2, 0xcc, 0xed, 0x49, 0x1f,
+	0x56, 0x11, 0x77, 0xf0, 0x7d, 0x06, 0xf5, 0x84, 0x7e, 0x99, 0x53, 0x2e, 0x6e, 0x1c, 0xd4, 0x06,
+	0x34, 0xb8, 0x74, 0xc7, 0x3e, 0x55, 0x99, 0x26, 0xbe, 0xd6, 0x4b, 0xe3, 0x31, 0x96, 0xc6, 0xf3,
+	0x2c, 0xa3, 0x5f, 0x75, 0x6e, 0xf7, 0x57, 0x96, 0x28, 0xc7, 0xa9, 0xcf, 0xc5, 0x60, 0x52, 0x7f,
+	0xcc, 0xfe, 0xf9, 0xd1, 0x0d, 0x68, 0x9c, 0xd1, 0x24, 0x3a, 0x8d, 0x68, 0xfe, 0xec, 0xb5, 0xee,
+	0x1e, 0x42, 0x35, 0xa1, 0x24, 0x58, 0xfc, 0x57, 0xd0, 0x6f, 0x1a, 0xd8, 0x2c, 0x09, 0x68, 0x42,
+	0x03, 0x6f, 0xca, 0x43, 0xf4, 0x62, 0x89, 0x74, 0x94, 0x37, 0xa7, 0x42, 0xca, 0x94, 0x17, 0xec,
+	0xe8, 0x4b, 0xec, 0x94, 0xeb, 0x30, 0xfe, 0xa8, 0xa3, 0xbc, 0xaf, 0xe6, 0x5f, 0xf6, 0xd5, 0xfd,
+	0x04, 0xc0, 0xa3, 0x30, 0xce, 0xca, 0xba, 0xed, 0x56, 0x6e, 0x9d, 0xbc, 0x5c, 0x52, 0x99, 0x4f,
+	0xc4, 0x3c, 0x49, 0x2b, 0x69, 0xe2, 0xc2, 0xe0, 0xfa, 0xd0, 0xf0, 0xd9, 0x74, 0x7a, 0x27, 0xf6,
+	0xf3, 0x8c, 0x0a, 0x5d, 0x51, 0xb1, 0x96, 0x97, 0xaa, 0xf2, 0x6e, 0x5e, 0x3e, 0x63, 0x79, 0xf9,
+	0x7c, 0x80, 0x93, 0x28, 0x26, 0xc9, 0xc2, 0x13, 0x24, 0x44, 0x0f, 0xa0, 0x36, 0x61, 0x61, 0x7e,
+	0xab, 0x26, 0xae, 0x4e, 0x58, 0xb8, 0x1b, 0xa0, 0xa7, 0x60, 0x67, 0x41, 0xa5, 0x73, 0xcf, 0xf2,
+	0xe4, 0xbd, 0xab, 0xdf, 0x41, 0x1a, 0xc0, 0xa9, 0xc8, 0x3b, 0x49, 0x2d, 0x87, 0x54, 0xb8, 0x9f,
+	0x61, 0x3d, 0x73, 0xc7, 0x4c, 0x44, 0xa7, 0x91, 0x4f, 0xd4, 0x6f, 0xe9, 0xb6, 0xa6, 0x5e, 0x97,
+	0x6b, 0x52, 0xaf, 0xd9, 0xc5, 0x94, 0x0b, 0x4f, 0xfe, 0xc2, 0x11, 0x09, 0x7b, 0xef, 0xa1, 0x59,
+	0xbe, 0x39, 0x74, 0x0f, 0x6c, 0x3c, 0xdc, 0xf2, 0xf0, 0xe8, 0xe0, 0x78, 0x74, 0x78, 0xe4, 0x54,
+	0x50, 0x13, 0x1a, 0xd2, 0x30, 0xda, 0xda, 0xd9, 0x77, 0x34, 0xb4, 0x02, 0x56, 0xea, 0x1e, 0x6c,
+	0x7f, 0x74, 0x74, 0x19, 0xbd, 0x8f, 0xb7, 0x47, 0x78, 0xb4, 0xed, 0xed, 0xed, 0xbf, 0x73, 0x8c,
+	0x5e, 0x1b, 0xa0, 0xd8, 0x26, 0x54, 0x07, 0x03, 0x8f, 0x0e, 0x9c, 0x8a, 0x14, 0xa4, 0x5f, 0xeb,
+	0xf5, 0xc0, 0xba, 0xa6, 0x18, 0x59, 0x50, 0x1d, 0x0e, 0x8e, 0xb6, 0x76, 0x9c, 0x8a, 0x14, 0x15,
+	0x90, 0xa3, 0xc9, 0xd8, 0xe1, 0x70, 0xe0, 0xe8, 0xc3, 0xd6, 0x8f, 0xcb, 0xb6, 0x76, 0x71, 0xd9,
+	0xd6, 0x7e, 0x5d, 0xb6, 0xb5, 0xaf, 0x57, 0xed, 0xca, 0xc5, 0x55, 0xbb, 0xf2, 0xf3, 0xaa, 0x5d,
+	0x39, 0x49, 0xff, 0xd6, 0x6f, 0x7e, 0x07, 0x00, 0x00, 0xff, 0xff, 0x35, 0xd3, 0xac, 0x65, 0xc6,
+	0x05, 0x00, 0x00,
 }
 
 func (m *Transaction) Marshal() (dAtA []byte, err error) {
@@ -1161,8 +1270,37 @@ func (m *OrderedMsg) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n3
 	}
+	return i, nil
+}
+
+func (m *SignedMsg) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SignedMsg) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Author != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.Author))
+	}
+	if len(m.Payload) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Payload)))
+		i += copy(dAtA[i:], m.Payload)
+	}
 	if len(m.Signature) > 0 {
-		dAtA[i] = 0x2a
+		dAtA[i] = 0x1a
 		i++
 		i = encodeVarintMessages(dAtA, i, uint64(len(m.Signature)))
 		i += copy(dAtA[i:], m.Signature)
@@ -1204,6 +1342,41 @@ func (m *CommMsg) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
+func (m *BinaryTag) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *BinaryTag) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.LogId != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.LogId))
+	}
+	if len(m.BinaryHash) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.BinaryHash)))
+		i += copy(dAtA[i:], m.BinaryHash)
+	}
+	if len(m.BinarySet) > 0 {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.BinarySet)))
+		i += copy(dAtA[i:], m.BinarySet)
+	}
+	return i, nil
+}
+
 func (m *BinaryNotification) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -1224,27 +1397,15 @@ func (m *BinaryNotification) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintMessages(dAtA, i, uint64(m.Author))
 	}
-	if m.LogId != 0 {
-		dAtA[i] = 0x10
+	if m.BinaryTag != nil {
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintMessages(dAtA, i, uint64(m.LogId))
-	}
-	if len(m.IdList) > 0 {
-		dAtA5 := make([]byte, len(m.IdList)*10)
-		var j4 int
-		for _, num := range m.IdList {
-			for num >= 1<<7 {
-				dAtA5[j4] = uint8(uint64(num)&0x7f | 0x80)
-				num >>= 7
-				j4++
-			}
-			dAtA5[j4] = uint8(num)
-			j4++
+		i = encodeVarintMessages(dAtA, i, uint64(m.BinaryTag.Size()))
+		n4, err := m.BinaryTag.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
 		}
-		dAtA[i] = 0x1a
-		i++
-		i = encodeVarintMessages(dAtA, i, uint64(j4))
-		i += copy(dAtA[i:], dAtA5[:j4])
+		i += n4
 	}
 	return i, nil
 }
@@ -1431,6 +1592,22 @@ func (m *OrderedMsg) Size() (n int) {
 		l = m.BatchId.Size()
 		n += 1 + l + sovMessages(uint64(l))
 	}
+	return n
+}
+
+func (m *SignedMsg) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Author != 0 {
+		n += 1 + sovMessages(uint64(m.Author))
+	}
+	l = len(m.Payload)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
 	l = len(m.Signature)
 	if l > 0 {
 		n += 1 + l + sovMessages(uint64(l))
@@ -1457,6 +1634,26 @@ func (m *CommMsg) Size() (n int) {
 	return n
 }
 
+func (m *BinaryTag) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.LogId != 0 {
+		n += 1 + sovMessages(uint64(m.LogId))
+	}
+	l = len(m.BinaryHash)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	l = len(m.BinarySet)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	return n
+}
+
 func (m *BinaryNotification) Size() (n int) {
 	if m == nil {
 		return 0
@@ -1466,15 +1663,9 @@ func (m *BinaryNotification) Size() (n int) {
 	if m.Author != 0 {
 		n += 1 + sovMessages(uint64(m.Author))
 	}
-	if m.LogId != 0 {
-		n += 1 + sovMessages(uint64(m.LogId))
-	}
-	if len(m.IdList) > 0 {
-		l = 0
-		for _, e := range m.IdList {
-			l += sovMessages(uint64(e))
-		}
-		n += 1 + sovMessages(uint64(l)) + l
+	if m.BinaryTag != nil {
+		l = m.BinaryTag.Size()
+		n += 1 + l + sovMessages(uint64(l))
 	}
 	return n
 }
@@ -2628,7 +2819,113 @@ func (m *OrderedMsg) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 5:
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SignedMsg) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: signed_msg: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: signed_msg: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Author", wireType)
+			}
+			m.Author = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Author |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Payload", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Payload = append(m.Payload[:0], dAtA[iNdEx:postIndex]...)
+			if m.Payload == nil {
+				m.Payload = []byte{}
+			}
+			iNdEx = postIndex
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Signature", wireType)
 			}
@@ -2811,6 +3108,144 @@ func (m *CommMsg) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *BinaryTag) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: binary_tag: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: binary_tag: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LogId", wireType)
+			}
+			m.LogId = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LogId |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BinaryHash", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BinaryHash = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BinarySet", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BinarySet = append(m.BinarySet[:0], dAtA[iNdEx:postIndex]...)
+			if m.BinarySet == nil {
+				m.BinarySet = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *BinaryNotification) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -2860,10 +3295,10 @@ func (m *BinaryNotification) Unmarshal(dAtA []byte) error {
 				}
 			}
 		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LogId", wireType)
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BinaryTag", wireType)
 			}
-			m.LogId = 0
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowMessages
@@ -2873,87 +3308,28 @@ func (m *BinaryNotification) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.LogId |= uint64(b&0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-		case 3:
-			if wireType == 0 {
-				var v uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowMessages
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					v |= uint64(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				m.IdList = append(m.IdList, v)
-			} else if wireType == 2 {
-				var packedLen int
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowMessages
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					packedLen |= int(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				if packedLen < 0 {
-					return ErrInvalidLengthMessages
-				}
-				postIndex := iNdEx + packedLen
-				if postIndex < 0 {
-					return ErrInvalidLengthMessages
-				}
-				if postIndex > l {
-					return io.ErrUnexpectedEOF
-				}
-				var elementCount int
-				var count int
-				for _, integer := range dAtA[iNdEx:postIndex] {
-					if integer < 128 {
-						count++
-					}
-				}
-				elementCount = count
-				if elementCount != 0 && len(m.IdList) == 0 {
-					m.IdList = make([]uint64, 0, elementCount)
-				}
-				for iNdEx < postIndex {
-					var v uint64
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowMessages
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						v |= uint64(b&0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					m.IdList = append(m.IdList, v)
-				}
-			} else {
-				return fmt.Errorf("proto: wrong wireType = %d for field IdList", wireType)
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
 			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.BinaryTag == nil {
+				m.BinaryTag = &BinaryTag{}
+			}
+			if err := m.BinaryTag.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipMessages(dAtA[iNdEx:])

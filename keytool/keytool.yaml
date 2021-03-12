@@ -3,7 +3,7 @@
 # Replica key options
 replicas:
   # Number of replicas
-  number: 3
+  number: 5
 
   # Keyspec to use
   keyspec: "ECDSA"

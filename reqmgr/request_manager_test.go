@@ -1,6 +1,8 @@
 package reqmgr
 
 import (
+	"github.com/Grivn/phalanx/reqmgr/types"
+	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
 
@@ -10,13 +12,14 @@ import (
 
 func TestNewRequestPool(t *testing.T) {
 	logger := utils.NewRawLogger()
+	network := utils.NewFakeNetwork()
 
-	replyC := make(chan *commonProto.BatchId)
+	replyC := make(chan interface{})
 	closeC := make(chan bool)
 
 	n := 5
 	author := uint64(1)
-	rm := NewRequestManager(n, author, replyC, logger)
+	rm := NewRequestManager(n, author, replyC, network, logger)
 	rm.Start()
 
 	var reqs []*commonProto.OrderedMsg
@@ -33,7 +36,9 @@ func TestNewRequestPool(t *testing.T) {
 	go func() {
 		for {
 			select {
-			case <-replyC:
+			case ev := <-replyC:
+				event := ev.(types.ReplyEvent)
+				assert.Equal(t, types.ReqReplyBatchByOrder, event.EventType)
 				wg.Done()
 			case <-closeC:
 				return
