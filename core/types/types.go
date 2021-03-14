@@ -12,7 +12,6 @@ type Config struct {
 type ReqConfig struct {
 	Author  uint64
 	Network external.Network
-	SeqPool api.LogPool
 	Auth    api.Authenticator
 	Logger  external.Logger
 }

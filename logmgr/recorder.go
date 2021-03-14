@@ -9,6 +9,7 @@ import (
 )
 
 type recorder struct {
+	author uint64
 	id     uint64
 	seqNo  uint64
 	logs   map[uint64]*commonProto.OrderedMsg
@@ -16,10 +17,11 @@ type recorder struct {
 	logger external.Logger
 }
 
-func newRecorder(id uint64, auth api.Authenticator, logger external.Logger) *recorder {
+func newRecorder(author, id uint64, auth api.Authenticator, logger external.Logger) *recorder {
 	return &recorder{
+		author: author,
 		id:     id,
-		seqNo:  uint64(0),
+		seqNo:  uint64(1),
 		logs:   make(map[uint64]*commonProto.OrderedMsg),
 		auth:   auth,
 		logger: logger,
@@ -27,11 +29,11 @@ func newRecorder(id uint64, auth api.Authenticator, logger external.Logger) *rec
 }
 
 func (re *recorder) update(signed *commonProto.SignedMsg) *commonProto.OrderedMsg {
-	re.logger.Infof("[Record] receive a signed ordered log from replica %d", signed.Author)
+	re.logger.Infof("[Record] replica %d receive a signed ordered log from replica %d", re.author, signed.Author)
 
-	err := re.auth.VerifyMessageAuthenTag(api.USIGAuthen, uint32(signed.Author), signed.Payload, signed.Signature)
+	err := re.auth.VerifyMessageAuthenTag(api.USIGAuthen, uint32(signed.Author-1), signed.Payload, signed.Signature)
 	if err != nil {
-		re.logger.Warningf("[Invalid] receive an invalid ordered log from replica %d", signed.Author)
+		re.logger.Warningf("[Invalid] receive an invalid ordered log from replica %d, error %s", signed.Author, err)
 		return nil
 	}
 
@@ -43,7 +45,7 @@ func (re *recorder) update(signed *commonProto.SignedMsg) *commonProto.OrderedMs
 		return nil
 	}
 
-	re.logs[msg.Author] = msg
+	re.logs[msg.Sequence] = msg
 	return msg
 }
 
@@ -53,7 +55,7 @@ func (re *recorder) upgrade(agreed uint64) {
 			break
 		}
 
-		re.logger.Debugf("[UPGRADE] already agree the sequence %d, remove the logs of replica %d", re.seqNo, re.id)
+		re.logger.Debugf("[UPGRADE] replica %d already agree the sequence %d, remove the logs of replica %d", re.author, re.seqNo, re.id)
 		delete(re.logs, re.seqNo)
 		re.seqNo++
 	}

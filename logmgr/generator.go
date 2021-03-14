@@ -6,6 +6,7 @@ import (
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/logmgr/types"
 	"github.com/gogo/protobuf/proto"
+	"time"
 )
 
 type generator struct {
@@ -31,15 +32,19 @@ func newGenerator(author uint64, replyC chan types.ReplyEvent, recorder *recorde
 }
 
 func (generator *generator) generate(bid *commonProto.BatchId) *commonProto.OrderedMsg {
+	generator.sequence++
+
 	msg := &commonProto.OrderedMsg{
-		Type:     commonProto.OrderType_LOG,
-		Author:   generator.author,
-		Sequence: generator.sequence,
-		BatchId:  bid,
+		Type:      commonProto.OrderType_LOG,
+		Author:    generator.author,
+		Sequence:  generator.sequence,
+		BatchId:   bid,
+		Timestamp: time.Now().UnixNano(),
 	}
 
 	signed := generator.sign(msg)
 
+	generator.logger.Infof("[GENERATE LOG] replica %d sequence %d", generator.author, generator.sequence)
 	generator.sender.broadcast(signed)
 	return msg
 }

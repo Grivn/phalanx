@@ -27,6 +27,6 @@ func (lm *logMgrImpl) Record(msg *commonProto.SignedMsg) {
 	lm.record(msg)
 }
 
-func (lm *logMgrImpl) Ready(binarySet []byte) {
-	lm.ready(binarySet)
+func (lm *logMgrImpl) Ready(tag *commonProto.BinaryTag) {
+	lm.ready(tag)
 }

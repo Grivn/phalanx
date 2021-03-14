@@ -1,27 +1,173 @@
 package logmgr
 
 import (
-	"fmt"
 	"github.com/Grivn/phalanx/api"
 	authen "github.com/Grivn/phalanx/authentication"
-	"github.com/a8m/envsubst"
-	"github.com/spf13/viper"
+	types2 "github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/common/types/protos"
+	"github.com/Grivn/phalanx/common/utils"
+	"github.com/Grivn/phalanx/logmgr/types"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"sync"
 	"testing"
 )
 
 func TestNewLogManager(t *testing.T) {
-	id := uint32(viper.GetInt("replica.id"))
+	var lms []api.LogManager
+	var auths []api.Authenticator
+	var replyCs []chan types.ReplyEvent
+	var netChans []chan interface{}
+	ch := make(chan interface{})
 
-	usigEnclaveFile, err := envsubst.String(viper.GetString("usig.enclaveFile"))
-	assert.Error(t, err)
+	n := 5
+	for i:=0; i<n; i++ {
+		id := uint64(i+1)
+		usigEnclaveFile := "libusig.signed.so"
+		keysFile, err := os.Open("keys.yaml")
+		assert.Nil(t, err)
+		auth, err := authen.NewWithSGXUSIG([]api.AuthenticationRole{api.ReplicaAuthen, api.USIGAuthen}, uint32(id-1), keysFile, usigEnclaveFile)
+		assert.Nil(t, err)
+		auths = append(auths, auth)
 
-	keysFile, err := os.Open(viper.GetString("keys"))
-	assert.Error(t, err)
+		logger := utils.NewRawLogger()
 
-	auth, err := authen.NewWithSGXUSIG([]api.AuthenticationRole{api.ReplicaAuthen, api.USIGAuthen}, id, keysFile, usigEnclaveFile)
-	assert.Error(t, err)
+		replyC := make(chan types.ReplyEvent)
+		replyCs = append(replyCs, replyC)
 
-	fmt.Println(auth)
+		netChan := make(chan interface{})
+		netChans = append(netChans, netChan)
+		network := utils.NewReplyNetwork(ch)
+
+		lm := NewLogManager(5, id, replyC, auth, network, logger)
+		lms = append(lms, lm)
+	}
+
+	for _, lm := range lms{
+		lm.Start()
+	}
+
+	var bidsset [][]*protos.BatchId
+	count := 3
+	for index := range lms {
+		id := uint64(index+1)
+		bids := utils.NewBatchId(id, count)
+		assert.Equal(t, count, len(bids))
+		bidsset = append(bidsset, bids)
+	}
+
+	// start network dispatcher
+	go func() {
+		for {
+			select {
+			case ev := <-ch:
+				comm := ev.(*protos.CommMsg)
+				for index, netChan := range netChans {
+					if index == int(comm.Author-1) {
+						continue
+					}
+					netChan <- comm
+				}
+			}
+		}
+	}()
+
+	// wg to control the routine
+	var wg sync.WaitGroup
+
+	// wg for quorum events
+	wg.Add(n * count)
+
+	// start replicas' network event listener
+	for index, lm := range lms {
+		go func(lm api.LogManager, index int) {
+			for {
+				select {
+				case ev := <-netChans[index]:
+					comm := ev.(*protos.CommMsg)
+					signed := &protos.SignedMsg{}
+					_ = proto.Unmarshal(comm.Payload, signed)
+					lm.Record(signed)
+					//wg.Done()
+				}
+			}
+		}(lm, index)
+	}
+
+	close1 := make(chan bool)
+	for index, lm := range lms {
+		go func(lm api.LogManager, index int) {
+			for {
+				select {
+				case ev := <-replyCs[index]:
+					assert.Equal(t, types.LogReplyQuorumBinaryEvent, ev.EventType)
+					wg.Done()
+				case <-close1:
+					return
+				}
+			}
+		}(lm, index)
+	}
+
+	for index, lm := range lms {
+		go func(lm api.LogManager, index int) {
+			for _, bid := range bidsset[index] {
+				lm.Generate(bid)
+			}
+		}(lm, index)
+	}
+	wg.Wait()
+	close(close1)
+
+	// wg for execute events
+	wg.Add(n * count)
+
+	var tags []*protos.BinaryTag
+	for i:=0; i<count; i++ {
+		set := []byte{1, 1, 1, 1, 1}
+		hash := types2.CalculatePayloadHash(set, 0)
+		tag := &protos.BinaryTag{
+			Sequence:   uint64(i+1),
+			BinaryHash: hash,
+			BinarySet:  set,
+		}
+		tags = append(tags, tag)
+	}
+
+	for index, lm := range lms {
+		go func(lm api.LogManager, index int) {
+			for _, tag := range tags {
+				lm.Ready(tag)
+			}
+		}(lm, index)
+	}
+
+	for index, lm := range lms {
+		go func(lm api.LogManager, index int) {
+			for {
+				select {
+				case ev := <-replyCs[index]:
+					if ev.EventType == types.LogReplyMissingEvent {
+						mm := ev.Event.(types.MissingMsg)
+
+						// todo we need to start a timer for ready event when we use log manager, and stop it when we received the execute event
+						go lm.Ready(mm.Tag)
+						continue
+					}
+					wg.Done()
+				}
+			}
+		}(lm, index)
+	}
+
+	wg.Wait()
+
+	for _, lm := range lms {
+		lm.Stop()
+	}
+
+	for _, lm := range lms {
+		lm.Stop()
+	}
 }

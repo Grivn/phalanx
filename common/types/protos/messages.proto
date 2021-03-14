@@ -86,6 +86,7 @@ message ordered_msg {
   uint64 author = 2;
   uint64 sequence = 3;
   batch_id batch_id = 4;
+  int64 timestamp = 5;
 }
 
 message signed_msg {
@@ -115,7 +116,7 @@ message comm_msg {
 //======================================================
 
 message binary_tag {
-  uint64 log_id = 1;
+  uint64 sequence = 1;
   string binary_hash = 2;
   bytes  binary_set = 3;
 }

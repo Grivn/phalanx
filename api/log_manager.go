@@ -9,5 +9,5 @@ type LogManager interface {
 
 	Record(msg *commonProto.SignedMsg)
 
-	Ready(binarySet []byte)
+	Ready(tag *commonProto.BinaryTag)
 }

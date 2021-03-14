@@ -32,11 +32,12 @@ type logMgrImpl struct {
 }
 
 func newLogMgrImpl(n int, author uint64, replyC chan types.ReplyEvent, auth api.Authenticator, network external.Network, logger external.Logger) *logMgrImpl {
+	logger.Noticef("Init log manager for replica %d", author)
 	re := make(map[uint64]*recorder)
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		re[id] = newRecorder(id, auth, logger)
+		re[id] = newRecorder(author, id, auth, logger)
 	}
 	return &logMgrImpl{
 		n:         n,
@@ -68,10 +69,10 @@ func (lm *logMgrImpl) record(msg *commonProto.SignedMsg) {
 	lm.recvC <- event
 }
 
-func (lm *logMgrImpl) ready(binarySet []byte) {
+func (lm *logMgrImpl) ready(tag *commonProto.BinaryTag) {
 	event := types.RecvEvent{
 		EventType: types.LogRecvReady,
-		Event:     binarySet,
+		Event:     tag,
 	}
 	lm.recvC <- event
 }
@@ -108,7 +109,13 @@ func (lm *logMgrImpl) dispatchRecvEvent(event types.RecvEvent) {
 			return
 		}
 		msg := lm.generator.generate(bid)
-		lm.binary[msg.Sequence].update(msg)
+		bin, ok := lm.binary[msg.Sequence]
+		if !ok {
+			bin = newBinary(lm.n, lm.author, msg.Sequence, lm.replyC, lm.logger)
+			lm.binary[msg.Sequence] = bin
+		}
+		bin.update(msg)
+		lm.recorder[msg.Author].logs[msg.Sequence] = msg
 	case types.LogRecvRecord:
 		signed, ok := event.Event.(*commonProto.SignedMsg)
 		if !ok {
@@ -125,21 +132,53 @@ func (lm *logMgrImpl) dispatchRecvEvent(event types.RecvEvent) {
 		}
 		bin.update(msg)
 	case types.LogRecvReady:
+		// todo we need to request ready event until we get the sequence of execute logs
 		bTag := event.Event.(*commonProto.BinaryTag)
+
+		lm.logger.Infof("replica %d is ready on sequence %d, set %v", lm.author, bTag.Sequence, bTag.BinarySet)
+
+		bin, ok := lm.binary[bTag.Sequence]
+		if !ok || !bin.finished {
+			lm.logger.Warningf("replica %d cannot trigger ready for sequence %d", lm.author, bTag.Sequence)
+			return
+		}
+
 		var logs []*commonProto.OrderedMsg
+		var missing []uint64
+
 		for index, value := range bTag.BinarySet {
 			id := uint64(index+1)
 			if value == 1 {
-				log := lm.recorder[id].logs[bTag.LogId]
+				log, ok := lm.recorder[id].logs[bTag.Sequence]
+				if !ok {
+					missing = append(missing, id)
+				}
 				logs = append(logs, log)
 			}
-			lm.recorder[id].upgrade(bTag.LogId)
 		}
-		event := types.ReplyEvent{
-			EventType: types.LogReplyExecuteEvent,
-			Event:     logs,
+
+		if len(missing) > 0 {
+			lm.logger.Debugf("replica %d miss the logs from %v", lm.author, missing)
+			mm := types.MissingMsg{
+				Tag:       bTag,
+				MissingID: missing,
+			}
+			event := types.ReplyEvent{
+				EventType: types.LogReplyMissingEvent,
+				Event:     mm,
+			}
+			lm.replyC <- event
+		} else {
+			for _, re := range lm.recorder {
+				re.upgrade(bTag.Sequence)
+			}
+
+			event := types.ReplyEvent{
+				EventType: types.LogReplyExecuteEvent,
+				Event:     logs,
+			}
+			lm.replyC <- event
 		}
-		lm.replyC <- event
 	default:
 		return
 	}

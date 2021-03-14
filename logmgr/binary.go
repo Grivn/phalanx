@@ -8,6 +8,7 @@ import (
 )
 
 type binary struct {
+	finished bool
 	n        int
 	f        int
 	author   uint64
@@ -19,6 +20,7 @@ type binary struct {
 
 func newBinary(n int, author uint64, sequence uint64, replyC chan types.ReplyEvent, logger external.Logger) *binary {
 	return &binary{
+		finished: false,
 		n:        n,
 		f:        (n-1)/4,
 		author:   author,
@@ -30,17 +32,22 @@ func newBinary(n int, author uint64, sequence uint64, replyC chan types.ReplyEve
 }
 
 func (binary *binary) update(msg *commonProto.OrderedMsg) {
-	binary.logger.Infof("receive log from replica %d, try to update binary set for sequence %d", msg.Author, binary.sequence)
+	binary.logger.Infof("replica %d receive log from replica %d, try to update binary set for sequence %d", binary.author, msg.Author, binary.sequence)
+
+	if binary.finished {
+		binary.logger.Debugf("replica %d has already locked sequence %d, just ignore it", binary.author, binary.sequence)
+		return
+	}
 
 	if msg.Sequence != binary.sequence {
-		binary.logger.Warningf("mismatched sequence number expected %d recv %d", binary.sequence, msg.Sequence)
+		binary.logger.Warningf("replica %d received mismatched sequence number expected %d recv %d", binary.author, binary.sequence, msg.Sequence)
 		return
 	}
 
 	binary.occurred[msg.Author] = true
 
 	if !binary.occurred[binary.author]{
-		binary.logger.Infof("Current replica hasn't generated a log on sequence %d", binary.sequence)
+		binary.logger.Infof("replica %d hasn't generated a log on sequence %d", binary.author, binary.sequence)
 		return
 	}
 
@@ -50,7 +57,8 @@ func (binary *binary) update(msg *commonProto.OrderedMsg) {
 			EventType: types.LogReplyQuorumBinaryEvent,
 			Event:     tag,
 		}
-		binary.logger.Infof("reach quorum size for sequence %d, generate quorum binary tag, set %v", binary.sequence, tag.BinarySet)
+		binary.finished = true
+		binary.logger.Infof("replica %d reach quorum size for sequence %d, generate quorum binary tag, set %v", binary.author, binary.sequence, tag.BinarySet)
 		binary.replyC <- event
 	}
 }
@@ -65,7 +73,7 @@ func (binary *binary) convert() *commonProto.BinaryTag {
 	hash := commonTypes.CalculatePayloadHash(set, 0)
 
 	bTag := &commonProto.BinaryTag{
-		LogId:      binary.sequence,
+		Sequence:   binary.sequence,
 		BinaryHash: hash,
 		BinarySet:  set,
 	}

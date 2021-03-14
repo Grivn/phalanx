@@ -16,8 +16,6 @@ type logMgrImpl struct {
 
 	auth api.Authenticator
 
-	pools map[uint64]api.LogPool
-
 	recvC chan interface{}
 
 	closeC chan bool
@@ -85,5 +83,4 @@ func (lm *logMgrImpl) generateLog(bid *commonProto.BatchId) {
 
 func (lm *logMgrImpl) processOrderedMsg(msg *commonProto.OrderedMsg) {
 	lm.logger.Infof("Replica %d received ordered log from replica %d in sequence %d for hash %s", lm.author, msg.Author, msg.BatchId.BatchHash)
-	lm.pools[msg.Author].Save(msg)
 }
