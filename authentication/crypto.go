@@ -222,7 +222,9 @@ func (au *SGXUSIGAuthenticationScheme) VerifyAuthenticationTag(m []byte, sig []b
 	// UIs. This, for example, can be achieved using some
 	// bootstrapping procedure.
 	epoch, ok := au.epoch[fingerprint]
-	if !ok && ui.Counter == uint64(1) {
+	//if !ok && ui.Counter == uint64(1) {
+	// todo we need some other secure measure to init the epoch value of cluster
+	if !ok {
 		epoch, _, err = sgx.ParseCert(ui.Cert)
 		if err != nil {
 			return fmt.Errorf("failed to parse UI certificate: %s", err)

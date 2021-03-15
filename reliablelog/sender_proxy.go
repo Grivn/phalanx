@@ -1,4 +1,4 @@
-package logmgr
+package reliablelog
 
 import (
 	commonProto "github.com/Grivn/phalanx/common/types/protos"

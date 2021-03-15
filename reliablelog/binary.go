@@ -1,14 +1,15 @@
-package logmgr
+package reliablelog
 
 import (
 	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/logmgr/types"
+	"github.com/Grivn/phalanx/reliablelog/types"
 )
 
 type binary struct {
 	finished bool
+	readyTag *commonProto.BinaryTag
 	n        int
 	f        int
 	author   uint64
@@ -21,6 +22,7 @@ type binary struct {
 func newBinary(n int, author uint64, sequence uint64, replyC chan types.ReplyEvent, logger external.Logger) *binary {
 	return &binary{
 		finished: false,
+		readyTag: nil,
 		n:        n,
 		f:        (n-1)/4,
 		author:   author,
@@ -78,6 +80,14 @@ func (binary *binary) convert() *commonProto.BinaryTag {
 		BinarySet:  set,
 	}
 	return bTag
+}
+
+func (binary *binary) ready(tag *commonProto.BinaryTag) {
+	binary.readyTag = tag
+}
+
+func (binary *binary) getTag() *commonProto.BinaryTag {
+	return binary.readyTag
 }
 
 func (binary *binary) quorum() int {

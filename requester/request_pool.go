@@ -1,9 +1,9 @@
-package reqmgr
+package requester
 
 import (
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/reqmgr/types"
+	"github.com/Grivn/phalanx/requester/types"
 )
 
 type requestPool struct {

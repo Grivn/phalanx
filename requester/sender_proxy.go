@@ -1,4 +1,4 @@
-package reqmgr
+package requester
 
 import (
 	commonProto "github.com/Grivn/phalanx/common/types/protos"

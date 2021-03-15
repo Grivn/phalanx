@@ -1,0 +1,11 @@
+package binbyzantine
+
+import commonProto "github.com/Grivn/phalanx/common/types/protos"
+
+type cert struct {
+	counter map[string]map[uint64]bool
+
+	tags map[string]*commonProto.BinaryTag
+
+	bits map[uint64]uint64
+}

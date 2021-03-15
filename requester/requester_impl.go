@@ -1,11 +1,11 @@
-package reqmgr
+package requester
 
 import (
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
 )
 
-type requestMgrImpl struct {
+type requesterImpl struct {
 	n int
 
 	author uint64
@@ -21,7 +21,7 @@ type requestMgrImpl struct {
 	logger external.Logger
 }
 
-func newRequestMgrImpl(n int, author uint64, replyC chan interface{}, network external.Network, logger external.Logger) *requestMgrImpl {
+func newRequesterImpl(n int, author uint64, replyC chan interface{}, network external.Network, logger external.Logger) *requesterImpl {
 	logger.Noticef("[INIT] replica %d init request manager, cluster amount %d", author, n)
 	rps := make(map[uint64]*requestPool)
 
@@ -31,7 +31,7 @@ func newRequestMgrImpl(n int, author uint64, replyC chan interface{}, network ex
 		rps[id] = rp
 	}
 
-	return &requestMgrImpl{
+	return &requesterImpl{
 		n:      n,
 		author: author,
 		pool:   rps,
@@ -41,37 +41,37 @@ func newRequestMgrImpl(n int, author uint64, replyC chan interface{}, network ex
 	}
 }
 
-func (rm *requestMgrImpl) start() {
-	for _, pool := range rm.pool {
+func (r *requesterImpl) start() {
+	for _, pool := range r.pool {
 		pool.start()
 	}
 }
 
-func (rm *requestMgrImpl) stop() {
-	for _, pool := range rm.pool {
+func (r *requesterImpl) stop() {
+	for _, pool := range r.pool {
 		pool.stop()
 	}
 }
 
-func (rm *requestMgrImpl) generate(bid *commonProto.BatchId) {
+func (r *requesterImpl) generate(bid *commonProto.BatchId) {
 	if bid == nil {
-		rm.logger.Warningf("[%d Warning] received a nil batch id", rm.author)
+		r.logger.Warningf("[%d Warning] received a nil batch id", r.author)
 		return
 	}
 
-	rm.sequence++
+	r.sequence++
 	msg := &commonProto.OrderedMsg{
 		Type:     commonProto.OrderType_REQ,
-		Author:   rm.author,
-		Sequence: rm.sequence,
+		Author:   r.author,
+		Sequence: r.sequence,
 		BatchId:  bid,
 	}
 
-	rm.logger.Infof("[%d Generate] ordered req for seq %d batch %s", rm.author, rm.sequence, bid.BatchHash)
-	rm.sender.broadcast(msg)
-	rm.record(msg)
+	r.logger.Infof("[%d Generate] ordered req for seq %d batch %s", r.author, r.sequence, bid.BatchHash)
+	r.sender.broadcast(msg)
+	r.record(msg)
 }
 
-func (rm *requestMgrImpl) record(msg *commonProto.OrderedMsg) {
-	rm.pool[msg.Author].record(msg)
+func (r *requesterImpl) record(msg *commonProto.OrderedMsg) {
+	r.pool[msg.Author].record(msg)
 }

@@ -1,34 +1,34 @@
-package reqmgr
+package requester
 
 import (
-	"github.com/Grivn/phalanx/reqmgr/types"
+	"github.com/Grivn/phalanx/requester/types"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
 
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
-	"github.com/Grivn/phalanx/common/utils"
+	"github.com/Grivn/phalanx/common/mocks"
 )
 
 func TestNewRequestPool(t *testing.T) {
-	logger := utils.NewRawLogger()
-	network := utils.NewFakeNetwork()
+	logger := mocks.NewRawLogger()
+	network := mocks.NewFakeNetwork()
 
 	replyC := make(chan interface{})
 	closeC := make(chan bool)
 
 	n := 5
 	author := uint64(1)
-	rm := NewRequestManager(n, author, replyC, network, logger)
+	rm := NewRequester(n, author, replyC, network, logger)
 	rm.Start()
 
 	var reqs []*commonProto.OrderedMsg
 	for index:= 0; index <n; index++ {
 		id := uint64(index + 1)
-		tmp := utils.NewOrderedMessages(id, 1, 20, commonProto.OrderType_REQ)
+		tmp := mocks.NewOrderedMessages(id, 1, 20, commonProto.OrderType_REQ)
 		reqs = append(reqs, tmp...)
 	}
-	utils.Shuffle(reqs)
+	mocks.Shuffle(reqs)
 
 	var wg sync.WaitGroup
 	wg.Add(len(reqs))

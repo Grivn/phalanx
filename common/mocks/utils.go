@@ -1,4 +1,4 @@
-package utils
+package mocks
 
 import (
 	commonProto "github.com/Grivn/phalanx/common/types/protos"

@@ -1,4 +1,4 @@
-package utils
+package mocks
 
 import (
 	"os"

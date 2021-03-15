@@ -1,21 +1,22 @@
-package logmgr
+package reliablelog
 
 import (
 	"github.com/Grivn/phalanx/api"
 	authen "github.com/Grivn/phalanx/authentication"
 	types2 "github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/common/types/protos"
-	"github.com/Grivn/phalanx/common/utils"
-	"github.com/Grivn/phalanx/logmgr/types"
+	"github.com/Grivn/phalanx/common/mocks"
+	"github.com/Grivn/phalanx/reliablelog/types"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestNewLogManager(t *testing.T) {
-	var lms []api.LogManager
+	var lms []api.ReliableLog
 	var auths []api.Authenticator
 	var replyCs []chan types.ReplyEvent
 	var netChans []chan interface{}
@@ -31,16 +32,16 @@ func TestNewLogManager(t *testing.T) {
 		assert.Nil(t, err)
 		auths = append(auths, auth)
 
-		logger := utils.NewRawLogger()
+		logger := mocks.NewRawLogger()
 
 		replyC := make(chan types.ReplyEvent)
 		replyCs = append(replyCs, replyC)
 
 		netChan := make(chan interface{})
 		netChans = append(netChans, netChan)
-		network := utils.NewReplyNetwork(ch)
+		network := mocks.NewReplyNetwork(ch)
 
-		lm := NewLogManager(5, id, replyC, auth, network, logger)
+		lm := NewReliableLog(5, id, replyC, auth, network, logger)
 		lms = append(lms, lm)
 	}
 
@@ -49,10 +50,10 @@ func TestNewLogManager(t *testing.T) {
 	}
 
 	var bidsset [][]*protos.BatchId
-	count := 3
+	count := 10
 	for index := range lms {
 		id := uint64(index+1)
-		bids := utils.NewBatchId(id, count)
+		bids := mocks.NewBatchId(id, count)
 		assert.Equal(t, count, len(bids))
 		bidsset = append(bidsset, bids)
 	}
@@ -81,15 +82,15 @@ func TestNewLogManager(t *testing.T) {
 
 	// start replicas' network event listener
 	for index, lm := range lms {
-		go func(lm api.LogManager, index int) {
+		go func(lm api.ReliableLog, index int) {
 			for {
 				select {
 				case ev := <-netChans[index]:
 					comm := ev.(*protos.CommMsg)
 					signed := &protos.SignedMsg{}
 					_ = proto.Unmarshal(comm.Payload, signed)
+					time.Sleep(1*time.Millisecond)
 					lm.Record(signed)
-					//wg.Done()
 				}
 			}
 		}(lm, index)
@@ -97,7 +98,7 @@ func TestNewLogManager(t *testing.T) {
 
 	close1 := make(chan bool)
 	for index, lm := range lms {
-		go func(lm api.LogManager, index int) {
+		go func(lm api.ReliableLog, index int) {
 			for {
 				select {
 				case ev := <-replyCs[index]:
@@ -111,7 +112,7 @@ func TestNewLogManager(t *testing.T) {
 	}
 
 	for index, lm := range lms {
-		go func(lm api.LogManager, index int) {
+		go func(lm api.ReliableLog, index int) {
 			for _, bid := range bidsset[index] {
 				lm.Generate(bid)
 			}
@@ -136,7 +137,7 @@ func TestNewLogManager(t *testing.T) {
 	}
 
 	for index, lm := range lms {
-		go func(lm api.LogManager, index int) {
+		go func(lm api.ReliableLog, index int) {
 			for _, tag := range tags {
 				lm.Ready(tag)
 			}
@@ -144,15 +145,12 @@ func TestNewLogManager(t *testing.T) {
 	}
 
 	for index, lm := range lms {
-		go func(lm api.LogManager, index int) {
+		go func(lm api.ReliableLog, index int) {
 			for {
 				select {
 				case ev := <-replyCs[index]:
 					if ev.EventType == types.LogReplyMissingEvent {
-						mm := ev.Event.(types.MissingMsg)
-
 						// todo we need to start a timer for ready event when we use log manager, and stop it when we received the execute event
-						go lm.Ready(mm.Tag)
 						continue
 					}
 					wg.Done()

@@ -4,8 +4,8 @@ import (
 	"github.com/Grivn/phalanx/api"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
-	lm "github.com/Grivn/phalanx/logmgr/types"
-	rm "github.com/Grivn/phalanx/reqmgr/types"
+	lm "github.com/Grivn/phalanx/reliablelog/types"
+	rm "github.com/Grivn/phalanx/requester/types"
 	tp "github.com/Grivn/phalanx/txpool/types"
 )
 
@@ -13,8 +13,8 @@ type phalanxImpl struct {
 	author uint64
 
 	txpool  api.TxPool
-	requestMgr api.RequestManager
-	logMgr api.LogManager
+	requestMgr api.Requester
+	logMgr api.ReliableLog
 
 	recvC chan interface{}
 	tpC chan tp.ReplyEvent

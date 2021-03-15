@@ -7,7 +7,7 @@ import (
 
 	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
-	"github.com/Grivn/phalanx/common/utils"
+	"github.com/Grivn/phalanx/common/mocks"
 	"github.com/Grivn/phalanx/txpool/types"
 
 	"github.com/stretchr/testify/assert"
@@ -18,8 +18,8 @@ func generateConfig(author uint64, replyC chan types.ReplyEvent) types.Config {
 		Author:  author,
 		Size:    500,
 		ReplyC:  replyC,
-		Network: utils.NewFakeNetwork(),
-		Logger:  utils.NewRawLogger(),
+		Network: mocks.NewFakeNetwork(),
+		Logger:  mocks.NewRawLogger(),
 	}
 }
 
@@ -55,7 +55,7 @@ func TestTxPoolImpl_Basic(t *testing.T) {
 	}()
 	go func() {
 		for i:= 0; i< config1.Size; i++ {
-			tx := utils.NewTx()
+			tx := mocks.NewTx()
 			txpool1.PostTx(tx)
 		}
 		wg1.Done()
@@ -101,7 +101,7 @@ func TestTxPoolImpl_Basic(t *testing.T) {
 	assert.Equal(t, batch.BatchId.BatchHash, batch2.BatchId.BatchHash)
 
 	// replica 2 receive a illegal batch and load it
-	tx := utils.NewTx()
+	tx := mocks.NewTx()
 	id := &commonProto.BatchId{
 		Author:    uint64(1),
 		BatchHash: "illegal",

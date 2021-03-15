@@ -1,4 +1,4 @@
-package logmgr
+package reliablelog
 
 import (
 	"github.com/Grivn/phalanx/api"
@@ -11,7 +11,7 @@ import (
 type recorder struct {
 	author uint64
 	id     uint64
-	seqNo  uint64
+	agreed map[uint64]bool
 	logs   map[uint64]*commonProto.OrderedMsg
 	auth   api.Authenticator
 	logger external.Logger
@@ -21,7 +21,7 @@ func newRecorder(author, id uint64, auth api.Authenticator, logger external.Logg
 	return &recorder{
 		author: author,
 		id:     id,
-		seqNo:  uint64(1),
+		agreed: make(map[uint64]bool),
 		logs:   make(map[uint64]*commonProto.OrderedMsg),
 		auth:   auth,
 		logger: logger,
@@ -40,8 +40,8 @@ func (re *recorder) update(signed *commonProto.SignedMsg) *commonProto.OrderedMs
 	msg := &commonProto.OrderedMsg{}
 	_ = proto.Unmarshal(signed.Payload, msg)
 
-	if msg.Sequence < re.seqNo {
-		re.logger.Infof("[TIMEOUT] receive a timeout ordered log from replica %d with sequence %d", msg.Author, msg.Sequence)
+	if re.agreed[msg.Sequence] {
+		re.logger.Warningf("[TIMEOUT] receive a timeout ordered log from replica %d with sequence %d", msg.Author, msg.Sequence)
 		return nil
 	}
 
@@ -50,14 +50,8 @@ func (re *recorder) update(signed *commonProto.SignedMsg) *commonProto.OrderedMs
 }
 
 func (re *recorder) upgrade(agreed uint64) {
-	for {
-		if re.seqNo > agreed {
-			break
-		}
-
-		re.logger.Debugf("[UPGRADE] replica %d already agree the sequence %d, remove the logs of replica %d", re.author, re.seqNo, re.id)
-		delete(re.logs, re.seqNo)
-		re.seqNo++
-	}
+	re.logger.Debugf("[UPGRADE] replica %d already agree the sequence %d, remove the logs of replica %d", re.author, agreed, re.id)
+	delete(re.logs, agreed)
+	re.agreed[agreed] = true
 }
 

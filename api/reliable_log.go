@@ -2,7 +2,7 @@ package api
 
 import commonProto "github.com/Grivn/phalanx/common/types/protos"
 
-type LogManager interface {
+type ReliableLog interface {
 	Basic
 
 	Generate(bid *commonProto.BatchId)
