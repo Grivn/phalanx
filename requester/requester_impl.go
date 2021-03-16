@@ -3,6 +3,7 @@ package requester
 import (
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/requester/types"
 )
 
 type requesterImpl struct {
@@ -14,14 +15,14 @@ type requesterImpl struct {
 
 	pool map[uint64]*requestPool
 
-	replyC chan interface{}
+	replyC chan types.ReplyEvent
 
 	sender *senderProxy
 
 	logger external.Logger
 }
 
-func newRequesterImpl(n int, author uint64, replyC chan interface{}, network external.Network, logger external.Logger) *requesterImpl {
+func newRequesterImpl(n int, author uint64, replyC chan types.ReplyEvent, network external.Network, logger external.Logger) *requesterImpl {
 	logger.Noticef("[INIT] replica %d init request manager, cluster amount %d", author, n)
 	rps := make(map[uint64]*requestPool)
 

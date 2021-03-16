@@ -186,9 +186,14 @@ func (rl *reliableLogImpl) processBinaryTag(tag *commonProto.BinaryTag) {
 			re.upgrade(tag.Sequence)
 		}
 
+		exec := types.ExecuteLogs{
+			Sequence: tag.Sequence,
+			Logs:     logs,
+		}
+
 		event := types.ReplyEvent{
 			EventType: types.LogReplyExecuteEvent,
-			Event:     logs,
+			Event:     exec,
 		}
 		rl.replyC <- event
 	}

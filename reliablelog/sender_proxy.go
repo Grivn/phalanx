@@ -27,7 +27,7 @@ func (sp *senderProxy) broadcast(signed *commonProto.SignedMsg) {
 
 	comm := &commonProto.CommMsg{
 		Author:  sp.author,
-		Type:    commonProto.CommType_ORDER,
+		Type:    commonProto.CommType_SIGNED,
 		Payload: payload,
 	}
 	sp.network.Broadcast(comm)

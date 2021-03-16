@@ -7,7 +7,7 @@ import (
 	"github.com/Grivn/phalanx/common/types/protos"
 )
 
-func NewOrderedMessages(author uint64, from, to , typ protos.OrderType) []*protos.OrderedMsg {
+func NewOrderedMessages(author, from, to uint64, typ protos.OrderType) []*protos.OrderedMsg {
 	var list []*protos.OrderedMsg
 	for index:= from; index<= to; index++ {
 		payload := make([]byte, 1024)

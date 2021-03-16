@@ -11,8 +11,6 @@ type byzantineImpl struct {
 
 	recvC chan types.RecvEvent
 
-	replyC chan types.ReplyEvent
-
 	closeC chan bool
 
 	verifier *verificationMgr
@@ -23,12 +21,13 @@ type byzantineImpl struct {
 }
 
 func newByzantineImpl(n int, author uint64, replyC chan types.ReplyEvent, network external.Network, logger external.Logger) *byzantineImpl {
+	logger.Noticef("replica %d init the binary byzantine module", author)
+
 	return &byzantineImpl{
 		author:   author,
 		recvC:    make(chan types.RecvEvent),
-		replyC:   replyC,
 		closeC:   make(chan bool),
-		verifier: newVerificationMgr(n, author, network, logger),
+		verifier: newVerificationMgr(n, author, replyC, network, logger),
 		sender:   newSenderProxy(author, network, logger),
 		logger:   logger,
 	}

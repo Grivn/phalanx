@@ -6,4 +6,6 @@ type BinaryByzantine interface {
 	Basic
 
 	Trigger(tag *commonProto.BinaryTag)
+
+	Propose(ntf *commonProto.BinaryNotification)
 }

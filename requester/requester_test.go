@@ -14,7 +14,7 @@ func TestNewRequestPool(t *testing.T) {
 	logger := mocks.NewRawLogger()
 	network := mocks.NewFakeNetwork()
 
-	replyC := make(chan interface{})
+	replyC := make(chan types.ReplyEvent)
 	closeC := make(chan bool)
 
 	n := 5
@@ -36,8 +36,7 @@ func TestNewRequestPool(t *testing.T) {
 	go func() {
 		for {
 			select {
-			case ev := <-replyC:
-				event := ev.(types.ReplyEvent)
+			case event := <-replyC:
 				assert.Equal(t, types.ReqReplyBatchByOrder, event.EventType)
 				wg.Done()
 			case <-closeC:

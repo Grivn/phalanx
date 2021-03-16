@@ -6,7 +6,7 @@ const (
 )
 
 type RecvEvent struct {
-	EventType uint64
+	EventType int
 	Event     interface{}
 }
 
@@ -15,6 +15,6 @@ const (
 )
 
 type ReplyEvent struct {
-	EventType uint64
+	EventType int
 	Event     interface{}
 }

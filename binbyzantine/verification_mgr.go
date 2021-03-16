@@ -24,7 +24,7 @@ type verificationMgr struct {
 	logger external.Logger
 }
 
-func newVerificationMgr(n int, author uint64, network external.Network, logger external.Logger) *verificationMgr {
+func newVerificationMgr(n int, author uint64, replyC chan types.ReplyEvent, network external.Network, logger external.Logger) *verificationMgr {
 	return &verificationMgr{
 		n: n,
 
@@ -35,6 +35,8 @@ func newVerificationMgr(n int, author uint64, network external.Network, logger e
 		local: make(map[uint64]*binary),
 
 		certs: make(map[uint64]*cert),
+
+		replyC: replyC,
 
 		sender: newSenderProxy(author, network, logger),
 

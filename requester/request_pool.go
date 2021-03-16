@@ -13,13 +13,13 @@ type requestPool struct {
 	recorder map[uint64]*commonProto.BatchId
 
 	recvC  chan *commonProto.OrderedMsg
-	replyC chan interface{}
+	replyC chan types.ReplyEvent
 	closeC chan bool
 
 	logger external.Logger
 }
 
-func newRequestPool(id uint64, replyC chan interface{}, logger external.Logger) *requestPool {
+func newRequestPool(id uint64, replyC chan types.ReplyEvent, logger external.Logger) *requestPool {
 	logger.Noticef("Init request pool for replica %d", id)
 	return &requestPool{
 		id: id,

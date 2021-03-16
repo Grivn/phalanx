@@ -22,3 +22,7 @@ func (bi *byzantineImpl) Stop() {
 func (bi *byzantineImpl) Trigger(tag *commonProto.BinaryTag) {
 	bi.trigger(tag)
 }
+
+func (bi *byzantineImpl) Propose(ntf *commonProto.BinaryNotification) {
+	bi.propose(ntf)
+}

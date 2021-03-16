@@ -28,3 +28,8 @@ type MissingMsg struct {
 	Tag       *protos.BinaryTag
 	MissingID []uint64
 }
+
+type ExecuteLogs struct {
+	Sequence uint64
+	Logs     []*protos.OrderedMsg
+}
