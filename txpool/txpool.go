@@ -2,12 +2,14 @@ package txpool
 
 import (
 	"github.com/Grivn/phalanx/api"
+	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
+	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/txpool/types"
 )
 
-func NewTxPool(config types.Config) api.TxPool {
-	return newTxPoolImpl(config)
+func NewTxPool(author uint64, size int, replyC chan types.ReplyEvent, executor external.Executor, network external.Network, logger external.Logger) api.TxPool {
+	return newTxPoolImpl(author, size, replyC, executor, network, logger)
 }
 
 func (tp *txPoolImpl) Start() {
@@ -30,8 +32,8 @@ func (tp *txPoolImpl) PostBatch(batch *commonProto.Batch) {
 	tp.postBatch(batch)
 }
 
-func (tp *txPoolImpl) Load(bid *commonProto.BatchId) {
-	tp.load(bid)
+func (tp *txPoolImpl) ExecuteBlock(block *commonTypes.Block) {
+	tp.executeBlock(block)
 }
 
 

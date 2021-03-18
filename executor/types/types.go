@@ -18,7 +18,7 @@ type RecvEvent struct {
 }
 
 const (
-	ExecReplyLoadBatch = iota
+	ExecReplyExecuteBlock = iota
 )
 
 type ReplyEvent struct {

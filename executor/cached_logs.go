@@ -29,6 +29,11 @@ func newCachedLogs(author uint64, logger external.Logger) *cachedLogs {
 }
 
 func (cached *cachedLogs) write(exec types.ExecuteLogs) {
+	if exec.Sequence <= cached.lastSeq {
+		cached.logger.Warningf("Invalid sequence number, now last sequence %d", cached.lastSeq)
+		return
+	}
+
 	cached.logger.Debugf("replica %d cached the logs of sequence %d", cached.author, exec.Sequence)
 	cached.logs[exec.Sequence] = exec.Logs
 }
@@ -39,7 +44,7 @@ func (cached *cachedLogs) read() []*commonProto.OrderedMsg {
 
 	logs, ok := cached.logs[sequence]
 	if !ok {
-		cached.logger.Warningf("replica %d cannot find the logs on sequence %d", cached.author, sequence)
+		cached.logger.Debugf("replica %d cannot find the logs on sequence %d", cached.author, sequence)
 		return nil
 	}
 

@@ -5,38 +5,32 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Grivn/phalanx/common/mocks"
 	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
-	"github.com/Grivn/phalanx/common/mocks"
 	"github.com/Grivn/phalanx/txpool/types"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func generateConfig(author uint64, replyC chan types.ReplyEvent) types.Config {
-	return types.Config{
-		Author:  author,
-		Size:    500,
-		ReplyC:  replyC,
-		Network: mocks.NewFakeNetwork(),
-		Logger:  mocks.NewRawLogger(),
-	}
-}
-
 func TestNewTxPool(t *testing.T) {
+	network := mocks.NewFakeNetwork()
+	logger := mocks.NewRawLogger()
 	replyC := make(chan types.ReplyEvent)
-	txpool := newTxPoolImpl(generateConfig(uint64(1), replyC))
-	assert.Equal(t, 500, txpool.size)
+	txpool := newTxPoolImpl(uint64(1), 100, replyC, nil, network, logger)
+	assert.Equal(t, 100, txpool.size)
 }
 
 func TestTxPoolImpl_Basic(t *testing.T) {
+	size := 100
+	network := mocks.NewFakeNetwork()
+	logger := mocks.NewRawLogger()
+
 	replyC1 := make(chan types.ReplyEvent)
-	config1 := generateConfig(uint64(1), replyC1)
-	txpool1 := NewTxPool(config1)
+	txpool1 := NewTxPool(uint64(1), size, replyC1, nil, network, logger)
 
 	replyC2 := make(chan types.ReplyEvent)
-	config2 := generateConfig(uint64(2), replyC2)
-	txpool2 := NewTxPool(config2)
+	txpool2 := NewTxPool(uint64(1), size, replyC2, nil, network, logger)
 
 	txpool1.Start()
 	txpool2.Start()
@@ -45,7 +39,6 @@ func TestTxPoolImpl_Basic(t *testing.T) {
 	var wg2 sync.WaitGroup
 
 	var reply1 types.ReplyEvent
-	var reply2 types.ReplyEvent
 
 	// replica 1 generate batch
 	wg1.Add(2)
@@ -54,7 +47,7 @@ func TestTxPoolImpl_Basic(t *testing.T) {
 		wg1.Done()
 	}()
 	go func() {
-		for i:= 0; i< config1.Size; i++ {
+		for i:= 0; i< size; i++ {
 			tx := mocks.NewTx()
 			txpool1.PostTx(tx)
 		}
@@ -65,19 +58,6 @@ func TestTxPoolImpl_Basic(t *testing.T) {
 	batch, ok := reply1.Event.(*commonProto.Batch)
 	assert.True(t, ok)
 
-	// replica 2 load a missing batch
-	wg2.Add(2)
-	go func() {
-		txpool2.Load(batch.BatchId)
-		wg2.Done()
-	}()
-	go func() {
-		reply2 = <-replyC2
-		wg2.Done()
-	}()
-	wg2.Wait()
-	assert.Equal(t, types.ReplyMissingBatchEvent, reply2.EventType)
-
 	// replica 2 receive the batch from replica 1 and load it
 	wg2.Add(1)
 	go func() {
@@ -85,20 +65,6 @@ func TestTxPoolImpl_Basic(t *testing.T) {
 		wg2.Done()
 	}()
 	wg2.Wait()
-	wg2.Add(2)
-	go func() {
-		reply2 = <-replyC2
-		wg2.Done()
-	}()
-	go func() {
-		txpool2.Load(batch.BatchId)
-		wg2.Done()
-	}()
-	wg2.Wait()
-	assert.Equal(t, types.ReplyLoadBatchEvent, reply2.EventType)
-	batch2, ok := reply2.Event.(*commonProto.Batch)
-	assert.True(t, ok)
-	assert.Equal(t, batch.BatchId.BatchHash, batch2.BatchId.BatchHash)
 
 	// replica 2 receive a illegal batch and load it
 	tx := mocks.NewTx()
@@ -118,17 +84,6 @@ func TestTxPoolImpl_Basic(t *testing.T) {
 		wg2.Done()
 	}()
 	wg2.Wait()
-	wg2.Add(2)
-	go func() {
-		reply2 = <-replyC2
-		wg2.Done()
-	}()
-	go func() {
-		txpool2.Load(illegalBatch.BatchId)
-		wg2.Done()
-	}()
-	wg2.Wait()
-	assert.Equal(t, types.ReplyMissingBatchEvent, reply2.EventType)
 
 	txpool1.Reset()
 	txpool2.Reset()

@@ -7,6 +7,8 @@ import (
 )
 
 type requestPool struct {
+	author uint64
+
 	id uint64
 
 	sequence uint64
@@ -19,9 +21,11 @@ type requestPool struct {
 	logger external.Logger
 }
 
-func newRequestPool(id uint64, replyC chan types.ReplyEvent, logger external.Logger) *requestPool {
+func newRequestPool(author, id uint64, replyC chan types.ReplyEvent, logger external.Logger) *requestPool {
 	logger.Noticef("Init request pool for replica %d", id)
 	return &requestPool{
+		author: author,
+
 		id: id,
 
 		sequence: uint64(0),
@@ -64,7 +68,7 @@ func (rp *requestPool) listener() {
 }
 
 func (rp *requestPool) processOrderedMsg(msg *commonProto.OrderedMsg) {
-	rp.logger.Infof("receive ordered request from replica %d, hash %s", msg.Author, msg.BatchId.BatchHash)
+	rp.logger.Infof("replica %d receive ordered request from replica %d, hash %s", rp.author, msg.Author, msg.BatchId.BatchHash)
 
 	if _, ok := rp.recorder[msg.Sequence]; ok {
 		rp.logger.Warningf("already received batch for replica %d sequence %d", msg.Author, msg.Sequence)
@@ -78,7 +82,7 @@ func (rp *requestPool) processOrderedMsg(msg *commonProto.OrderedMsg) {
 			break
 		}
 		rp.sequence++
-		rp.logger.Infof("propose batch id for replica %d sequence %d", rp.id, rp.sequence)
+		rp.logger.Infof("replica %d propose batch id for replica %d sequence %d", rp.author, rp.id, rp.sequence)
 
 		event := types.ReplyEvent{
 			EventType: types.ReqReplyBatchByOrder,

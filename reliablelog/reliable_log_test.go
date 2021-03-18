@@ -3,16 +3,16 @@ package reliablelog
 import (
 	"github.com/Grivn/phalanx/api"
 	authen "github.com/Grivn/phalanx/authentication"
+	"github.com/Grivn/phalanx/common/mocks"
 	types2 "github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/common/types/protos"
-	"github.com/Grivn/phalanx/common/mocks"
 	"github.com/Grivn/phalanx/reliablelog/types"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
-	"time"
 )
 
 func TestNewLogManager(t *testing.T) {
@@ -32,7 +32,7 @@ func TestNewLogManager(t *testing.T) {
 		assert.Nil(t, err)
 		auths = append(auths, auth)
 
-		logger := mocks.NewRawLogger()
+		logger := mocks.NewRawLoggerFile("node"+strconv.Itoa(int(id)))
 
 		replyC := make(chan types.ReplyEvent)
 		replyCs = append(replyCs, replyC)
@@ -89,7 +89,6 @@ func TestNewLogManager(t *testing.T) {
 					comm := ev.(*protos.CommMsg)
 					signed := &protos.SignedMsg{}
 					_ = proto.Unmarshal(comm.Payload, signed)
-					time.Sleep(1*time.Millisecond)
 					lm.Record(signed)
 				}
 			}

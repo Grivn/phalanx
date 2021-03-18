@@ -3,6 +3,8 @@ package binbyzantine
 import commonProto "github.com/Grivn/phalanx/common/types/protos"
 
 type cert struct {
+	finished bool
+
 	counter map[string]map[uint64]bool
 
 	tags map[string]*commonProto.BinaryTag

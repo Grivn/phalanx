@@ -28,7 +28,7 @@ func newRequesterImpl(n int, author uint64, replyC chan types.ReplyEvent, networ
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		rp := newRequestPool(id, replyC, logger)
+		rp := newRequestPool(author, id, replyC, logger)
 		rps[id] = rp
 	}
 

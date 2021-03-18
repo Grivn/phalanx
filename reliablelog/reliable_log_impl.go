@@ -116,6 +116,10 @@ func (rl *reliableLogImpl) dispatchRecvEvent(event types.RecvEvent) {
 		}
 		bin.update(msg)
 		rl.recorder[msg.Author].logs[msg.Sequence] = msg
+
+		if tag := bin.getTag(); tag != nil {
+			rl.processBinaryTag(tag)
+		}
 	case types.LogRecvRecord:
 		signed, ok := event.Event.(*commonProto.SignedMsg)
 		if !ok {
@@ -144,11 +148,16 @@ func (rl *reliableLogImpl) dispatchRecvEvent(event types.RecvEvent) {
 
 		bin, ok := rl.binary[bTag.Sequence]
 		if !ok || !bin.finished {
+			bin = newBinary(rl.n, rl.author, bTag.Sequence, rl.replyC, rl.logger)
+			rl.binary[bTag.Sequence] = bin
+		}
+		bin.ready(bTag)
+
+		if !bin.finished {
 			rl.logger.Warningf("replica %d cannot trigger ready for sequence %d", rl.author, bTag.Sequence)
 			return
 		}
 
-		bin.ready(bTag)
 		rl.processBinaryTag(bTag)
 	default:
 		return

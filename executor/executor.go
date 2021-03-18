@@ -7,8 +7,8 @@ import (
 	"github.com/Grivn/phalanx/external"
 )
 
-func NewExecutor(n int, author uint64, replyC chan types.ReplyEvent, executor external.Executor, logger external.Logger) api.Executor {
-	return newExecuteImpl(n, author, replyC, executor, logger)
+func NewExecutor(n int, author uint64, replyC chan types.ReplyEvent, logger external.Logger) api.Executor {
+	return newExecuteImpl(n, author, replyC, logger)
 }
 
 func (ei *executorImpl) Start() {
@@ -21,8 +21,4 @@ func (ei *executorImpl) Stop() {
 
 func (ei *executorImpl) ExecuteLogs(sequence uint64, logs []*commonProto.OrderedMsg){
 	ei.executeLogs(sequence, logs)
-}
-
-func (ei *executorImpl) ExecuteBatch(batch *commonProto.Batch){
-	ei.executeBatch(batch)
 }

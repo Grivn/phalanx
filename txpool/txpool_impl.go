@@ -1,6 +1,7 @@
 package txpool
 
 import (
+	"container/list"
 	"time"
 
 	commonTypes "github.com/Grivn/phalanx/common/types"
@@ -14,9 +15,11 @@ type txPoolImpl struct {
 
 	size int // batch size
 
-	pending *recorder
+	blockList *list.List
 
-	batches map[*commonProto.BatchId]*commonProto.Batch
+	pendingTxs *recorder
+
+	batches map[commonTypes.LogID]batchEntry
 
 	recvC chan types.RecvEvent
 
@@ -26,20 +29,39 @@ type txPoolImpl struct {
 
 	sender *sender
 
+	pendingBlock *pendingBlock
+
+	executor external.Executor
+
 	logger external.Logger
 }
 
-func newTxPoolImpl(config types.Config) *txPoolImpl {
+type batchEntry struct {
+	batch *commonProto.Batch
+	local bool
+}
+
+type pendingBlock struct {
+	e         *list.Element
+	blk       *commonTypes.Block
+	endIndex  int
+	txList    []*commonProto.Transaction
+	localList []bool
+}
+
+func newTxPoolImpl(author uint64, size int, replyC chan types.ReplyEvent, executor external.Executor, network external.Network, logger external.Logger) *txPoolImpl {
 	return &txPoolImpl{
-		author:  config.Author,
-		size:    config.Size,
-		pending: newRecorder(),
-		batches: make(map[*commonProto.BatchId]*commonProto.Batch),
-		recvC:   make(chan types.RecvEvent),
-		replyC:  config.ReplyC,
-		close:   make(chan bool),
-		sender:  newSender(config.Author, config.Network),
-		logger:  config.Logger,
+		author:     author,
+		size:       size,
+		blockList:  list.New(),
+		pendingTxs: newRecorder(),
+		batches:    make(map[commonTypes.LogID]batchEntry),
+		recvC:      make(chan types.RecvEvent),
+		replyC:     replyC,
+		close:      make(chan bool),
+		executor:   executor,
+		sender:     newSender(author, network),
+		logger:     logger,
 	}
 }
 
@@ -52,8 +74,8 @@ func (tp *txPoolImpl) stop() {
 }
 
 func (tp *txPoolImpl) reset() {
-	tp.pending.reset()
-	tp.batches = make(map[*commonProto.BatchId]*commonProto.Batch)
+	tp.pendingTxs.reset()
+	tp.batches = make(map[commonTypes.LogID]batchEntry)
 }
 
 func (tp *txPoolImpl) postBatch(batch *commonProto.Batch) {
@@ -72,10 +94,10 @@ func (tp *txPoolImpl) postTx(tx *commonProto.Transaction) {
 	tp.recvC <- event
 }
 
-func (tp *txPoolImpl) load(bid *commonProto.BatchId) {
+func (tp *txPoolImpl) executeBlock(block *commonTypes.Block) {
 	event := types.RecvEvent{
-		EventType: types.RecvLoadBatchEvent,
-		Event:     bid,
+		EventType: types.RecvExecuteBlock,
+		Event:     block,
 	}
 	tp.recvC <- event
 }
@@ -101,30 +123,33 @@ func (tp *txPoolImpl) processEvents(event types.RecvEvent) {
 	case types.RecvRecordTxEvent:
 		tx, ok := event.Event.(*commonProto.Transaction)
 		if !ok {
+			tp.logger.Error("parsing error")
 			return
 		}
 		tp.processRecvTxEvent(tx)
 	case types.RecvRecordBatchEvent:
 		batch, ok := event.Event.(*commonProto.Batch)
 		if !ok {
+			tp.logger.Error("parsing error")
 			return
 		}
 		tp.processRecvBatchEvent(batch)
-	case types.RecvLoadBatchEvent:
-		bid, ok := event.Event.(*commonProto.BatchId)
+	case types.RecvExecuteBlock:
+		blk, ok := event.Event.(*commonTypes.Block)
 		if !ok {
+			tp.logger.Error("parsing error")
 			return
 		}
-		tp.processLoadBatchEvent(bid)
+		tp.processExecuteBlock(blk)
 	default:
 		return
 	}
 }
 
 func (tp *txPoolImpl) processRecvTxEvent(tx *commonProto.Transaction) {
-	tp.pending.update(tx)
+	tp.pendingTxs.update(tx)
 
-	if tp.pending.len() == tp.size {
+	if tp.pendingTxs.len() == tp.size {
 		batch := tp.generateBatch()
 		if batch == nil {
 			tp.logger.Warningf("Replica %d generated a nil batch", tp.author)
@@ -140,21 +165,21 @@ func (tp *txPoolImpl) processRecvBatchEvent(batch *commonProto.Batch) {
 	if !tp.verifyBatch(batch) {
 		return
 	}
-	tp.batches[batch.BatchId] = batch
+
+	id := commonTypes.LogID{
+		Author: batch.BatchId.Author,
+		Hash:   batch.BatchId.BatchHash,
+	}
+	entry := batchEntry{
+		batch: batch,
+		local: false,
+	}
+	tp.batches[id] = entry
 }
 
-func (tp *txPoolImpl) processLoadBatchEvent(bid *commonProto.BatchId) {
-	if bid == nil {
-		tp.logger.Warningf("Replica %d received a nil request", tp.author)
-		return
-	}
-	batch, ok := tp.batches[bid]
-	if !ok {
-		tp.logger.Warningf("Replica %d cannot find batch %s", tp.author, bid.BatchHash)
-		tp.replyMissingEvent(bid)
-		return
-	}
-	tp.replyLoadBatch(batch)
+func (tp *txPoolImpl) processExecuteBlock(blk *commonTypes.Block) {
+	tp.blockList.PushBack(blk)
+	tp.tryExecuteBlock()
 }
 
 //===================================
@@ -163,8 +188,8 @@ func (tp *txPoolImpl) processLoadBatchEvent(bid *commonProto.BatchId) {
 
 func (tp *txPoolImpl) generateBatch() *commonProto.Batch {
 	batch := &commonProto.Batch{
-		HashList:  tp.pending.hashes(),
-		TxList:    tp.pending.txs(),
+		HashList:  tp.pendingTxs.hashes(),
+		TxList:    tp.pendingTxs.txs(),
 		Timestamp: time.Now().UnixNano(),
 	}
 
@@ -174,8 +199,18 @@ func (tp *txPoolImpl) generateBatch() *commonProto.Batch {
 		BatchHash: hash,
 	}
 
-	tp.pending.reset()
-	tp.batches[batch.BatchId] = batch
+	tp.pendingTxs.reset()
+
+	id := commonTypes.LogID{
+		Author: tp.author,
+		Hash:   hash,
+	}
+	entry := batchEntry{
+		batch: batch,
+		local: true,
+	}
+	tp.batches[id] = entry
+
 	tp.logger.Noticef("Replica %d generate a batch %s", tp.author, batch.BatchId.BatchHash)
 	tp.sender.broadcast(batch)
 	return batch
@@ -189,10 +224,64 @@ func (tp *txPoolImpl) verifyBatch(batch *commonProto.Batch) bool {
 	batchHash := commonTypes.CalculateListHash(hashList, batch.Timestamp)
 
 	if batchHash != batch.BatchId.BatchHash {
-		tp.logger.Warningf("Replica %d received a batch with miss-matched hash from replica %d", tp.author, batch.BatchId.Author)
+		tp.logger.Warningf("Replica %d received a batch with mis-matched hash from replica %d", tp.author, batch.BatchId.Author)
 		return false
 	}
 	return true
+}
+
+func (tp *txPoolImpl) tryExecuteBlock() {
+	if tp.blockList.Len() == 0 {
+		return
+	}
+
+	if tp.pendingBlock == nil {
+		e := tp.blockList.Front()
+		blk, ok := e.Value.(*commonTypes.Block)
+		if !ok {
+			tp.logger.Error("parsing block type error")
+			return
+		}
+
+		tp.pendingBlock = &pendingBlock{
+			e:         e,
+			blk:       blk,
+			endIndex:  0,
+			txList:    nil,
+			localList: nil,
+		}
+	}
+
+	blk := tp.pendingBlock.blk
+	for index, log := range blk.Logs {
+		if index < tp.pendingBlock.endIndex {
+			continue
+		}
+
+		entry, ok := tp.batches[log.ID]
+		if !ok {
+			tp.logger.Debugf("replica %d hasn't received batch %v for block %d", tp.author, log.ID, blk.Sequence)
+			tp.pendingBlock.endIndex = index
+			return
+		}
+
+		for _, tx := range entry.batch.TxList {
+			tp.pendingBlock.txList = append(tp.pendingBlock.txList, tx)
+			tp.pendingBlock.localList = append(tp.pendingBlock.localList, entry.local)
+		}
+	}
+
+	tp.logger.Noticef("======== replica %d call execute, seqNo=%d, timestamp=%d", tp.author, blk.Sequence, blk.Timestamp)
+	tp.executor.Execute(tp.pendingBlock.txList, tp.pendingBlock.localList, blk.Sequence, blk.Timestamp)
+
+	// remove the stored batches
+	for _, log := range blk.Logs {
+		delete(tp.batches, log.ID)
+	}
+
+	// remove the executed block
+	tp.blockList.Remove(tp.pendingBlock.e)
+	tp.pendingBlock = nil
 }
 
 //===================================
@@ -202,22 +291,6 @@ func (tp *txPoolImpl) replyGenerateBatch(batch *commonProto.Batch) {
 	reply := types.ReplyEvent{
 		EventType: types.ReplyGenerateBatchEvent,
 		Event:     batch,
-	}
-	tp.replyC <- reply
-}
-
-func (tp *txPoolImpl) replyLoadBatch(batch *commonProto.Batch) {
-	reply := types.ReplyEvent{
-		EventType: types.ReplyLoadBatchEvent,
-		Event:     batch,
-	}
-	tp.replyC <- reply
-}
-
-func (tp *txPoolImpl) replyMissingEvent(id *commonProto.BatchId) {
-	reply := types.ReplyEvent{
-		EventType: types.ReplyMissingBatchEvent,
-		Event:     id,
 	}
 	tp.replyC <- reply
 }

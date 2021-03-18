@@ -1,12 +1,14 @@
 package reliablelog
 
 import (
+	"time"
+
 	"github.com/Grivn/phalanx/api"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/reliablelog/types"
+
 	"github.com/gogo/protobuf/proto"
-	"time"
 )
 
 type generator struct {

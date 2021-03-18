@@ -1,6 +1,7 @@
 package executor
 
 import (
+	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
 )
@@ -10,7 +11,7 @@ type pendingLogs struct {
 
 	author uint64
 
-	logs map[logID]*log
+	logs map[commonTypes.LogID]*commonTypes.Log
 
 	logger external.Logger
 }
@@ -21,48 +22,33 @@ func newPendingLogs(n int, author uint64, logger external.Logger) *pendingLogs {
 
 		author: author,
 
-		logs: make(map[logID]*log),
+		logs: make(map[commonTypes.LogID]*commonTypes.Log),
 
 		logger: logger,
 	}
 }
 
-func (pending *pendingLogs) update(msg *commonProto.OrderedMsg) *log {
-	id := logID{
-		author: msg.BatchId.Author,
-		hash:   msg.BatchId.BatchHash,
+func (pending *pendingLogs) update(msg *commonProto.OrderedMsg) *commonTypes.Log {
+	id := commonTypes.LogID{
+		Author: msg.BatchId.Author,
+		Hash:   msg.BatchId.BatchHash,
 	}
 
-	l, ok := pending.logs[id]
+	log, ok := pending.logs[id]
 	if !ok {
-		l = newLog(pending.n, id)
-		pending.logs[id] = l
+		log = commonTypes.NewLog(pending.n, id)
+		pending.logs[id] = log
 	}
 
-	l.update(msg.Timestamp)
+	log.Update(msg.Timestamp)
 
-	if l.isQuorum() {
-		return l
+	if log.IsQuorum() {
+		return log
 	}
 
 	return nil
 }
 
-func (pending *pendingLogs) assign(batch *commonProto.Batch) {
-	id := logID{
-		author: batch.BatchId.Author,
-		hash:   batch.BatchId.BatchHash,
-	}
-
-	l, ok := pending.logs[id]
-	if !ok {
-		l = newLog(pending.n, id)
-		pending.logs[id] = l
-	}
-
-	l.assign(batch)
-}
-
-func (pending *pendingLogs) remove(id logID) {
+func (pending *pendingLogs) remove(id commonTypes.LogID) {
 	delete(pending.logs, id)
 }

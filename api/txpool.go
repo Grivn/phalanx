@@ -1,6 +1,7 @@
 package api
 
 import (
+	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 )
 
@@ -13,5 +14,5 @@ type TxPool interface {
 
 	PostBatch(batch *commonProto.Batch)
 
-	Load(bid *commonProto.BatchId)
+	ExecuteBlock(block *commonTypes.Block)
 }

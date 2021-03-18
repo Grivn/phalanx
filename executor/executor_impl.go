@@ -1,7 +1,8 @@
 package executor
 
 import (
-	"container/list"
+	"container/heap"
+	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/executor/types"
 	"github.com/Grivn/phalanx/external"
@@ -12,42 +13,34 @@ type executorImpl struct {
 
 	last uint64
 
-	blockList *list.List
-
 	pendingLogs *pendingLogs
 
 	cachedLogs *cachedLogs
 
-	recvC chan types.RecvEvent
+	recvC chan types.ExecuteLogs
 
 	replyC chan types.ReplyEvent
 
 	closeC chan bool
 
-	executor external.Executor
-
 	logger external.Logger
 }
 
-func newExecuteImpl(n int, author uint64, replyC chan types.ReplyEvent, executor external.Executor, logger external.Logger) *executorImpl {
+func newExecuteImpl(n int, author uint64, replyC chan types.ReplyEvent, logger external.Logger) *executorImpl {
 	return &executorImpl{
 		author: author,
 
 		last: uint64(0),
 
-		blockList: list.New(),
-
 		pendingLogs: newPendingLogs(n, author, logger),
 
 		cachedLogs: newCachedLogs(author, logger),
 
-		recvC: make(chan types.RecvEvent),
+		recvC: make(chan types.ExecuteLogs),
 
 		replyC: replyC,
 
 		closeC: make(chan bool),
-
-		executor: executor,
 
 		logger: logger,
 	}
@@ -58,21 +51,8 @@ func (ei *executorImpl) executeLogs(sequence uint64, logs []*commonProto.Ordered
 		Sequence: sequence,
 		Logs:     logs,
 	}
-	event := types.RecvEvent{
-		EventType: types.ExecRecvLogs,
-		Event:     exec,
-	}
 
-	ei.recvC <- event
-}
-
-func (ei *executorImpl) executeBatch(batch *commonProto.Batch) {
-	event := types.RecvEvent{
-		EventType: types.ExecRecvBatch,
-		Event:     batch,
-	}
-
-	ei.recvC <- event
+	ei.recvC <- exec
 }
 
 func (ei *executorImpl) start() {
@@ -93,107 +73,45 @@ func (ei *executorImpl) listener() {
 		case <-ei.closeC:
 			ei.logger.Notice("exist executor listener")
 			return
-		case ev := <-ei.recvC:
-			ei.dispatchEvent(ev)
+		case exec := <-ei.recvC:
+			ei.processExecuteLogs(exec)
 		}
 	}
 }
 
-func (ei *executorImpl) dispatchEvent(event types.RecvEvent) {
-	switch event.EventType {
-	case types.ExecRecvLogs:
-		exec := event.Event.(types.ExecuteLogs)
-		ei.cachedLogs.write(exec)
+func (ei *executorImpl) processExecuteLogs(exec types.ExecuteLogs) {
+	ei.cachedLogs.write(exec)
 
-		for {
-			orderedLogs := ei.cachedLogs.read()
-			if orderedLogs == nil {
-				break
-			}
-
-			finishedLogs := make(map[logID]*log)
-			for _, orderedLog := range orderedLogs {
-				l := ei.pendingLogs.update(orderedLog)
-				if l == nil {
-					continue
-				}
-				finishedLogs[l.id] = l
-			}
-
-			if len(finishedLogs) > 0 {
-				var slice []*log
-				for _, finishedLog := range finishedLogs {
-					slice = append(slice, finishedLog)
-				}
-				blk := newBlock(slice)
-				e := ei.blockList.PushBack(blk)
-
-				if ei.tryToExecute(blk) {
-					ei.blockList.Remove(e)
-				}
-			}
+	for {
+		orderedLogs := ei.cachedLogs.read()
+		if orderedLogs == nil {
+			ei.logger.Debugf("replica %d cannot find any ordered-logs on next sequence number", ei.author)
+			break
 		}
-	case types.ExecRecvBatch:
-		batch := event.Event.(*commonProto.Batch)
-		ei.pendingLogs.assign(batch)
 
-		for {
-			if ei.blockList.Len() == 0 {
-				break
+		lh := commonTypes.NewLogHeap()
+		for _, orderedLog := range orderedLogs {
+			log := ei.pendingLogs.update(orderedLog)
+			if log == nil {
+				continue
 			}
-			e := ei.blockList.Front()
-			blk := e.Value.(*block)
 
-			if ei.tryToExecute(blk) {
-				ei.blockList.Remove(e)
-			}
+			heap.Push(lh, log)
 		}
-	default:
-		ei.logger.Errorf("Invalid event type: code %d", event.EventType)
-		return
-	}
-}
 
-func (ei *executorImpl) tryToExecute(blk *block) bool {
-	for _, l := range blk.logs {
-		if !l.assigned() {
-			bid := &commonProto.BatchId{
-				Author:    l.id.author,
-				BatchHash: l.id.hash,
+		if lh.Len() > 0 {
+			ei.last++
+			blk := commonTypes.NewBlock(ei.last, lh.GetSlice())
+
+			for _, log := range blk.Logs {
+				ei.pendingLogs.remove(log.ID)
 			}
+
 			event := types.ReplyEvent{
-				EventType: types.ExecReplyLoadBatch,
-				Event:     bid,
+				EventType: types.ExecReplyExecuteBlock,
+				Event:     blk,
 			}
 			ei.replyC <- event
-			return false
 		}
 	}
-
-	var txs []*commonProto.Transaction
-	var localList []bool
-	var local bool
-
-	for _, l := range blk.logs {
-		if l.batch.BatchId.Author == ei.author {
-			local = true
-		} else {
-			local = false
-		}
-
-		for _, tx := range l.batch.TxList {
-			txs = append(txs, tx)
-			localList = append(localList, local)
-		}
-	}
-
-	ei.last++
-	ei.logger.Noticef("======== replica %d call execute, seqNo=%d", ei.author, ei.last)
-	ei.executor.Execute(txs, localList, ei.last, blk.timestamp)
-
-	for _, l := range blk.logs {
-		ei.pendingLogs.remove(l.id)
-	}
-
-	return true
 }

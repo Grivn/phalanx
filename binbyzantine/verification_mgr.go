@@ -13,6 +13,8 @@ type verificationMgr struct {
 
 	author uint64
 
+	lastSeq uint64
+
 	local map[uint64]*binary
 
 	certs map[uint64]*cert
@@ -31,6 +33,8 @@ func newVerificationMgr(n int, author uint64, replyC chan types.ReplyEvent, netw
 		f: (n-1)/4,
 
 		author: author,
+
+		lastSeq: uint64(0),
 
 		local: make(map[uint64]*binary),
 
@@ -81,6 +85,11 @@ func (v *verificationMgr) processRemote(ntf *commonProto.BinaryNotification) {
 func (v *verificationMgr) updateCert(author uint64, tag *commonProto.BinaryTag) []byte {
 	c := v.getCert(tag.Sequence)
 
+	if c.finished {
+		v.logger.Infof("replica %d reject tag for sequence %d", v.author, tag.Sequence)
+		return nil
+	}
+
 	counter, ok := c.counter[tag.BinaryHash]
 	if !ok {
 		counter = make(map[uint64]bool)
@@ -88,15 +97,16 @@ func (v *verificationMgr) updateCert(author uint64, tag *commonProto.BinaryTag) 
 	}
 	counter[author] = true
 
+	v.logger.Infof("replica %d received set %v for sequence %d, count %d", v.author, tag.BinarySet, tag.Sequence, len(c.counter[tag.BinaryHash]))
+
 	// we need to check if there are quorum replicas have agreed on current binary tag, if so, directly return tag
 	if len(c.counter[tag.BinaryHash]) >= v.quorum() {
+		c.finished = true
 		v.logger.Infof("replica %d find quorum set %v for sequence %d", v.author, tag.BinarySet, tag.Sequence)
-
 		event := types.ReplyEvent{
 			EventType: types.BinaryReplyReady,
 			Event:     tag,
 		}
-
 		v.replyC <- event
 		return tag.BinarySet
 	}

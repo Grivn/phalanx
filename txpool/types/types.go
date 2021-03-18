@@ -1,24 +1,9 @@
 package types
 
-import (
-	"github.com/Grivn/phalanx/external"
-)
-
-type Config struct {
-	Author uint64
-
-	Size int
-
-	ReplyC chan ReplyEvent
-
-	Network external.Network
-	Logger  external.Logger
-}
-
 const (
 	RecvRecordTxEvent = iota
 	RecvRecordBatchEvent
-	RecvLoadBatchEvent
+	RecvExecuteBlock
 )
 
 type RecvEvent struct {
@@ -28,8 +13,6 @@ type RecvEvent struct {
 
 const (
 	ReplyGenerateBatchEvent = iota
-	ReplyLoadBatchEvent
-	ReplyMissingBatchEvent
 )
 
 type ReplyEvent struct {

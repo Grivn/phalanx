@@ -29,7 +29,6 @@ func newRecorder(author, id uint64, auth api.Authenticator, logger external.Logg
 }
 
 func (re *recorder) update(signed *commonProto.SignedMsg) *commonProto.OrderedMsg {
-	re.logger.Infof("[Record] replica %d receive a signed ordered log from replica %d", re.author, signed.Author)
 
 	err := re.auth.VerifyMessageAuthenTag(api.USIGAuthen, uint32(signed.Author-1), signed.Payload, signed.Signature)
 	if err != nil {
@@ -46,6 +45,7 @@ func (re *recorder) update(signed *commonProto.SignedMsg) *commonProto.OrderedMs
 	}
 
 	re.logs[msg.Sequence] = msg
+	re.logger.Infof("[Record] replica %d receive a signed ordered log from replica %d for sequence %d", re.author, msg.Author, msg.Sequence)
 	return msg
 }
 
