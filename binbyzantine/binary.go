@@ -49,12 +49,22 @@ func (binary *binary) compare(set []byte) bool {
 	for index, value := range set {
 		id := uint64(index+1)
 		if value == 1 && !binary.bits[id] {
-			binary.logger.Infof("replica %d turn on the bit of %d", binary.author, id)
+			binary.logger.Infof("replica %d turn on the bit of %d for sequence %d", binary.author, id, binary.sequence)
 			binary.bits[id] = true
 			changed = true
 		}
 	}
 	return changed
+}
+
+func (binary *binary) include(tag *commonProto.BinaryTag) bool {
+	for index, value := range tag.BinarySet {
+		id := uint64(index+1)
+		if value == 1 && !binary.bits[id] {
+			return false
+		}
+	}
+	return true
 }
 
 func (binary *binary) convert() *commonProto.BinaryTag {

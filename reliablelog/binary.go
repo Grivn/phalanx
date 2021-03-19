@@ -8,7 +8,7 @@ import (
 )
 
 type binary struct {
-	finished bool
+	active   bool
 	readyTag *commonProto.BinaryTag
 	n        int
 	f        int
@@ -21,7 +21,7 @@ type binary struct {
 
 func newBinary(n int, author uint64, sequence uint64, replyC chan types.ReplyEvent, logger external.Logger) *binary {
 	return &binary{
-		finished: false,
+		active:   false,
 		readyTag: nil,
 		n:        n,
 		f:        (n-1)/4,
@@ -33,13 +33,10 @@ func newBinary(n int, author uint64, sequence uint64, replyC chan types.ReplyEve
 	}
 }
 
+// we will continuously generate binary tag, even thought we have already reached quorum size before,
+// until current log sequence has been active
 func (binary *binary) update(msg *commonProto.OrderedMsg) {
 	binary.logger.Infof("replica %d receive log from replica %d, try to update binary set for sequence %d", binary.author, msg.Author, binary.sequence)
-
-	if binary.finished {
-		binary.logger.Debugf("replica %d has already locked sequence %d, just ignore it", binary.author, binary.sequence)
-		return
-	}
 
 	if msg.Sequence != binary.sequence {
 		binary.logger.Warningf("replica %d received mismatched sequence number expected %d recv %d", binary.author, binary.sequence, msg.Sequence)
@@ -59,8 +56,8 @@ func (binary *binary) update(msg *commonProto.OrderedMsg) {
 			EventType: types.LogReplyQuorumBinaryEvent,
 			Event:     tag,
 		}
-		binary.finished = true
-		binary.logger.Infof("replica %d reach quorum size for sequence %d, generate quorum binary tag, set %v", binary.author, binary.sequence, tag.BinarySet)
+		binary.active = true
+		binary.logger.Infof("replica %d reach quorum size, generate quorum binary tag %v for sequence %d", binary.author, binary.sequence, tag.BinarySet)
 		binary.replyC <- event
 	}
 }
@@ -92,4 +89,13 @@ func (binary *binary) getTag() *commonProto.BinaryTag {
 
 func (binary *binary) quorum() int {
 	return binary.n - binary.f
+}
+
+func (binary *binary) onActive() {
+	binary.logger.Infof("replica %d starts the binary processor for sequence %d", binary.author, binary.sequence)
+	binary.active = true
+}
+
+func (binary *binary) isActive() bool {
+	return binary.active
 }

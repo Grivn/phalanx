@@ -115,6 +115,7 @@ func (rl *reliableLogImpl) dispatchRecvEvent(event types.RecvEvent) {
 			rl.binary[msg.Sequence] = bin
 		}
 		bin.update(msg)
+		bin.onActive()
 		rl.recorder[msg.Author].logs[msg.Sequence] = msg
 
 		if tag := bin.getTag(); tag != nil {
@@ -137,6 +138,11 @@ func (rl *reliableLogImpl) dispatchRecvEvent(event types.RecvEvent) {
 		}
 		bin.update(msg)
 
+		if !bin.isActive() {
+			rl.logger.Warningf("replica %d binary processor for sequence %d has not started", rl.author, msg.Sequence)
+			return
+		}
+
 		if tag := bin.getTag(); tag != nil {
 			rl.processBinaryTag(tag)
 		}
@@ -147,14 +153,14 @@ func (rl *reliableLogImpl) dispatchRecvEvent(event types.RecvEvent) {
 		rl.logger.Infof("replica %d is ready on sequence %d, set %v", rl.author, bTag.Sequence, bTag.BinarySet)
 
 		bin, ok := rl.binary[bTag.Sequence]
-		if !ok || !bin.finished {
+		if !ok {
 			bin = newBinary(rl.n, rl.author, bTag.Sequence, rl.replyC, rl.logger)
 			rl.binary[bTag.Sequence] = bin
 		}
 		bin.ready(bTag)
 
-		if !bin.finished {
-			rl.logger.Warningf("replica %d cannot trigger ready for sequence %d", rl.author, bTag.Sequence)
+		if !bin.isActive() {
+			rl.logger.Warningf("replica %d binary processor for sequence %d has not started", rl.author, bTag.Sequence)
 			return
 		}
 

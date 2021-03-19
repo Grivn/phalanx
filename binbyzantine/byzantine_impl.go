@@ -78,10 +78,18 @@ func (bi *byzantineImpl) listener() {
 func (bi *byzantineImpl) dispatchEvent(event types.RecvEvent) {
 	switch event.EventType {
 	case types.BinaryRecvTag:
-		tag := event.Event.(*commonProto.BinaryTag)
+		tag, ok := event.Event.(*commonProto.BinaryTag)
+		if !ok {
+			bi.logger.Error("parsing error")
+			return
+		}
 		bi.verifier.processLocal(tag)
 	case types.BinaryRecvNotification:
-		ntf := event.Event.(*commonProto.BinaryNotification)
+		ntf, ok := event.Event.(*commonProto.BinaryNotification)
+		if !ok {
+			bi.logger.Error("parsing error")
+			return
+		}
 		bi.verifier.processRemote(ntf)
 	default:
 		bi.logger.Errorf("Invalid event type: code %d", event.EventType)

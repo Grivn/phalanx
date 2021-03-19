@@ -10,7 +10,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"os"
-	"strconv"
 	"sync"
 	"testing"
 )
@@ -32,14 +31,14 @@ func TestNewLogManager(t *testing.T) {
 		assert.Nil(t, err)
 		auths = append(auths, auth)
 
-		logger := mocks.NewRawLoggerFile("node"+strconv.Itoa(int(id)))
+		logger := mocks.NewRawLogger()
 
 		replyC := make(chan types.ReplyEvent)
 		replyCs = append(replyCs, replyC)
 
 		netChan := make(chan interface{})
 		netChans = append(netChans, netChan)
-		network := mocks.NewReplyNetwork(ch)
+		network := mocks.NewReplyNetwork(ch, true)
 
 		lm := NewReliableLog(5, id, replyC, auth, network, logger)
 		lms = append(lms, lm)
@@ -145,14 +144,26 @@ func TestNewLogManager(t *testing.T) {
 
 	for index, lm := range lms {
 		go func(lm api.ReliableLog, index int) {
+			tagMap := make(map[uint64]bool)
 			for {
 				select {
 				case ev := <-replyCs[index]:
-					if ev.EventType == types.LogReplyMissingEvent {
+					switch ev.EventType {
+					case types.LogReplyQuorumBinaryEvent:
+						continue
+					case types.LogReplyExecuteEvent:
+						exec := ev.Event.(types.ExecuteLogs)
+						if !tagMap[exec.Sequence] {
+							tagMap[exec.Sequence] = true
+							wg.Done()
+						}
+					case types.LogReplyMissingEvent:
 						// todo we need to start a timer for ready event when we use log manager, and stop it when we received the execute event
 						continue
+					default:
+						assert.Fail(t, "invalid type")
+						return
 					}
-					wg.Done()
 				}
 			}
 		}(lm, index)

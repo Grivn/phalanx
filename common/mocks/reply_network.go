@@ -8,23 +8,27 @@ import (
 )
 
 type replyNetwork struct {
-	replyC chan interface{}
-	logger external.Logger
+	replyC  chan interface{}
+	latency bool
+	logger  external.Logger
 }
 
-func NewReplyNetwork(replyC chan interface{}) external.Network {
+func NewReplyNetwork(replyC chan interface{}, latency bool) external.Network {
 	logger := NewRawLogger()
 	return &replyNetwork{
-		replyC: replyC,
-		logger: logger,
+		replyC:  replyC,
+		latency: latency,
+		logger:  logger,
 	}
 }
 
 func (network *replyNetwork) Broadcast(msg *commonProto.CommMsg) {
 	//network.logger.Debugf("broadcast message, type %d", msg.Type)
 	go func() {
-		salt := rand.Int()%5000
-		time.Sleep(time.Duration(salt)*time.Millisecond)
+		if network.latency {
+			salt := rand.Int()%5000
+			time.Sleep(time.Duration(salt)*time.Millisecond)
+		}
 		network.replyC <- msg
 	}()
 }

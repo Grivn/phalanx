@@ -116,6 +116,11 @@ message comm_msg {
 //             binary agreement message
 //======================================================
 
+enum binary_type {
+  TAG = 0;
+  QC = 1;
+}
+
 message binary_tag {
   uint64 sequence = 1;
   string binary_hash = 2;
@@ -124,5 +129,6 @@ message binary_tag {
 
 message binary_notification {
   uint64 author = 1;
-  binary_tag binary_tag = 2;
+  binary_type type = 2;
+  binary_tag binary_tag = 3;
 }

@@ -19,6 +19,8 @@ type verificationMgr struct {
 
 	certs map[uint64]*cert
 
+	qcCerts map[uint64]*qcCert
+
 	replyC chan types.ReplyEvent
 
 	sender *senderProxy
@@ -40,6 +42,8 @@ func newVerificationMgr(n int, author uint64, replyC chan types.ReplyEvent, netw
 
 		certs: make(map[uint64]*cert),
 
+		qcCerts: make(map[uint64]*qcCert),
+
 		replyC: replyC,
 
 		sender: newSenderProxy(author, network, logger),
@@ -49,7 +53,7 @@ func newVerificationMgr(n int, author uint64, replyC chan types.ReplyEvent, netw
 }
 
 func (v *verificationMgr) processLocal(tag *commonProto.BinaryTag) {
-	bin := v.initBinary(tag)
+	bin := v.getBinary(tag)
 
 	// update the certs of current sequence number
 	set := v.updateCert(v.author, tag)
@@ -65,20 +69,30 @@ func (v *verificationMgr) processLocal(tag *commonProto.BinaryTag) {
 }
 
 func (v *verificationMgr) processRemote(ntf *commonProto.BinaryNotification) {
-	set := v.updateCert(ntf.Author, ntf.BinaryTag)
+	v.dispatchNotification(ntf)
+}
 
-	bin := v.getBinary(ntf.BinaryTag.Sequence)
-	if bin == nil {
-		v.logger.Infof("replica %d hasn't init binary for sequence %d, ignore it", v.author, ntf.BinaryTag.Sequence)
-		return
-	}
-
-	if bin.compare(set) {
-		ntf := &commonProto.BinaryNotification{
-			Author:    v.author,
-			BinaryTag: bin.convert(),
+func (v *verificationMgr) dispatchNotification(ntf *commonProto.BinaryNotification) {
+	switch ntf.Type {
+	case commonProto.BinaryType_TAG:
+		set := v.updateCert(ntf.Author, ntf.BinaryTag)
+		bin := v.getBinary(ntf.BinaryTag)
+		if bin == nil {
+			v.logger.Infof("replica %d hasn't init binary for sequence %d, ignore it", v.author, ntf.BinaryTag.Sequence)
+			return
 		}
-		v.sender.broadcast(ntf)
+		if bin.compare(set) {
+			msg := &commonProto.BinaryNotification{
+				Author:    v.author,
+				Type:      commonProto.BinaryType_TAG,
+				BinaryTag: bin.convert(),
+			}
+			v.sender.broadcast(msg)
+		}
+	case commonProto.BinaryType_QC:
+		v.updateQCCert(ntf.Author, ntf.BinaryTag)
+	default:
+		return
 	}
 }
 
@@ -102,12 +116,18 @@ func (v *verificationMgr) updateCert(author uint64, tag *commonProto.BinaryTag) 
 	// we need to check if there are quorum replicas have agreed on current binary tag, if so, directly return tag
 	if len(c.counter[tag.BinaryHash]) >= v.quorum() {
 		c.finished = true
-		v.logger.Infof("replica %d find quorum set %v for sequence %d", v.author, tag.BinarySet, tag.Sequence)
-		event := types.ReplyEvent{
-			EventType: types.BinaryReplyReady,
-			Event:     tag,
+		v.logger.Infof("replica %d find quorum set %v for sequence %d, broadcast quorum cert event", v.author, tag.BinarySet, tag.Sequence)
+
+		ntf := &commonProto.BinaryNotification{
+			Author:    v.author,
+			Type:      commonProto.BinaryType_QC,
+			BinaryTag: tag,
 		}
-		v.replyC <- event
+		v.sender.broadcast(ntf)
+		v.updateQCCert(v.author, tag)
+
+		v.getQCCert(tag.Sequence).broadcast = true
+
 		return tag.BinarySet
 	}
 
@@ -130,6 +150,53 @@ func (v *verificationMgr) updateCert(author uint64, tag *commonProto.BinaryTag) 
 	return set
 }
 
+func (v *verificationMgr) updateQCCert(author uint64, tag *commonProto.BinaryTag) bool {
+	qc := v.getQCCert(tag.Sequence)
+
+	if qc.finished {
+		v.logger.Infof("replica %d reject quorum cert event for sequence %d", v.author, tag.Sequence)
+		return true
+	}
+
+	counter, ok := qc.counter[tag.BinaryHash]
+	if !ok {
+		counter = make(map[uint64]bool)
+		qc.counter[tag.BinaryHash] = counter
+	}
+	counter[author] = true
+
+	v.logger.Infof("replica %d received quorum set %v for sequence %d, count %d", v.author, tag.BinarySet, tag.Sequence, len(qc.counter[tag.BinaryHash]))
+
+	if len(qc.counter[tag.BinaryHash]) >= v.oneQuorum() {
+		v.getCert(tag.Sequence).finished = true
+		ntf := &commonProto.BinaryNotification{
+			Author:    v.author,
+			Type:      commonProto.BinaryType_QC,
+			BinaryTag: tag,
+		}
+		v.sender.broadcast(ntf)
+		qc.broadcast = true
+	}
+
+	// we need to check if there are quorum replicas have agreed on current binary tag, if so, directly return tag
+	if len(qc.counter[tag.BinaryHash]) >= v.quorum() && qc.broadcast {
+		qc.finished = true
+		v.logger.Infof("replica %d find quorum quorum-set %v for sequence %d, broadcast quorum cert event", v.author, tag.BinarySet, tag.Sequence)
+
+		event := types.ReplyEvent{
+			EventType: types.BinaryReplyReady,
+			Event:     tag,
+		}
+		v.replyC <- event
+		return true
+	}
+
+	// record the tag which hasn't reached quorum-set
+	qc.tags[tag.BinaryHash] = tag
+
+	return false
+}
+
 func (v *verificationMgr) getCert(sequence uint64) *cert {
 	c, ok := v.certs[sequence]
 	if !ok {
@@ -143,14 +210,31 @@ func (v *verificationMgr) getCert(sequence uint64) *cert {
 	return c
 }
 
+func (v *verificationMgr) getQCCert(sequence uint64) *qcCert {
+	c, ok := v.qcCerts[sequence]
+	if !ok {
+		c = &qcCert{
+			counter: make(map[string]map[uint64]bool),
+			tags:    make(map[string]*commonProto.BinaryTag),
+		}
+		v.qcCerts[sequence] = c
+	}
+	return c
+}
+
 func (v *verificationMgr) initBinary(tag *commonProto.BinaryTag) *binary {
 	bin := newBinary(v.n, v.author, tag, v.logger)
 	v.local[tag.Sequence] = bin
 	return bin
 }
 
-func (v *verificationMgr) getBinary(sequence uint64) *binary {
-	return v.local[sequence]
+func (v *verificationMgr) getBinary(tag *commonProto.BinaryTag) *binary {
+	bin, ok := v.local[tag.Sequence]
+	if !ok {
+		bin = newBinary(v.n, v.author, tag, v.logger)
+		v.local[tag.Sequence] = bin
+	}
+	return bin
 }
 
 func (v *verificationMgr) quorum() int {

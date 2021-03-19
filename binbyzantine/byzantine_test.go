@@ -33,7 +33,7 @@ func TestNewByzantine(t *testing.T) {
 
 		netChan := make(chan interface{})
 		netChans = append(netChans, netChan)
-		network := mocks.NewReplyNetwork(ch)
+		network := mocks.NewReplyNetwork(ch, true)
 
 		logger := mocks.NewRawLogger()
 
