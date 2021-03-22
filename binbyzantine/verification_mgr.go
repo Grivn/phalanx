@@ -15,6 +15,8 @@ type verificationMgr struct {
 
 	lastSeq uint64
 
+	store map[uint64]*binary
+
 	local map[uint64]*binary
 
 	certs map[uint64]*cert
@@ -32,11 +34,13 @@ func newVerificationMgr(n int, author uint64, replyC chan types.ReplyEvent, netw
 	return &verificationMgr{
 		n: n,
 
-		f: (n-1)/4,
+		f: (n-1)/3,
 
 		author: author,
 
 		lastSeq: uint64(0),
+
+		store: make(map[uint64]*binary),
 
 		local: make(map[uint64]*binary),
 
@@ -53,6 +57,11 @@ func newVerificationMgr(n int, author uint64, replyC chan types.ReplyEvent, netw
 }
 
 func (v *verificationMgr) processLocal(tag *commonProto.BinaryTag) {
+	if !v.binaryStore(tag) {
+		v.logger.Debugf("replica %d is processing current tag sequence %d", v.author, tag.Sequence)
+		return
+	}
+
 	bin := v.getBinary(tag)
 
 	// update the certs of current sequence number
@@ -77,10 +86,6 @@ func (v *verificationMgr) dispatchNotification(ntf *commonProto.BinaryNotificati
 	case commonProto.BinaryType_TAG:
 		set := v.updateCert(ntf.Author, ntf.BinaryTag)
 		bin := v.getBinary(ntf.BinaryTag)
-		if bin == nil {
-			v.logger.Infof("replica %d hasn't init binary for sequence %d, ignore it", v.author, ntf.BinaryTag.Sequence)
-			return
-		}
 		if bin.compare(set) {
 			msg := &commonProto.BinaryNotification{
 				Author:    v.author,
@@ -100,7 +105,7 @@ func (v *verificationMgr) updateCert(author uint64, tag *commonProto.BinaryTag) 
 	c := v.getCert(tag.Sequence)
 
 	if c.finished {
-		v.logger.Infof("replica %d reject tag for sequence %d", v.author, tag.Sequence)
+		v.logger.Infof("replica %d has finished tag-certificate for sequence %d", v.author, tag.Sequence)
 		return nil
 	}
 
@@ -222,10 +227,15 @@ func (v *verificationMgr) getQCCert(sequence uint64) *qcCert {
 	return c
 }
 
-func (v *verificationMgr) initBinary(tag *commonProto.BinaryTag) *binary {
-	bin := newBinary(v.n, v.author, tag, v.logger)
-	v.local[tag.Sequence] = bin
-	return bin
+func (v *verificationMgr) binaryStore(tag *commonProto.BinaryTag) bool {
+	bin, ok := v.store[tag.Sequence]
+	if !ok {
+		bin = newBinary(v.n, v.author, tag, v.logger)
+		v.store[tag.Sequence] = bin
+		// it is the first time current node process the tag
+		return true
+	}
+	return false
 }
 
 func (v *verificationMgr) getBinary(tag *commonProto.BinaryTag) *binary {

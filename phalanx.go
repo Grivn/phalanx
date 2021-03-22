@@ -10,4 +10,6 @@ type Phalanx interface {
 	PostTxs(txs []*commonProto.Transaction)
 
 	Propose(comm *commonProto.CommMsg)
+
+	IsNormal() bool
 }

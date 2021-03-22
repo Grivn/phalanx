@@ -36,4 +36,6 @@ func (tp *txPoolImpl) ExecuteBlock(block *commonTypes.Block) {
 	tp.executeBlock(block)
 }
 
-
+func (tp *txPoolImpl) IsPoolFull() bool {
+	return tp.isPoolFull()
+}

@@ -26,7 +26,7 @@ func (network *replyNetwork) Broadcast(msg *commonProto.CommMsg) {
 	//network.logger.Debugf("broadcast message, type %d", msg.Type)
 	go func() {
 		if network.latency {
-			salt := rand.Int()%5000
+			salt := rand.Int()%500
 			time.Sleep(time.Duration(salt)*time.Millisecond)
 		}
 		network.replyC <- msg

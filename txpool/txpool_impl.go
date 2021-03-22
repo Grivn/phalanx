@@ -2,16 +2,22 @@ package txpool
 
 import (
 	"container/list"
+	"sync/atomic"
 	"time"
 
+	"github.com/Grivn/phalanx/api"
 	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/timer"
+	timerTypes "github.com/Grivn/phalanx/timer/types"
 	"github.com/Grivn/phalanx/txpool/types"
 )
 
 type txPoolImpl struct {
 	author uint64
+
+	isFull uint32
 
 	size int // batch size
 
@@ -21,7 +27,7 @@ type txPoolImpl struct {
 
 	batches map[commonTypes.LogID]batchEntry
 
-	recvC chan types.RecvEvent
+	recvC chan interface{}
 
 	replyC chan types.ReplyEvent
 
@@ -32,6 +38,8 @@ type txPoolImpl struct {
 	pendingBlock *pendingBlock
 
 	executor external.Executor
+
+	timer api.Timer
 
 	logger external.Logger
 }
@@ -50,17 +58,20 @@ type pendingBlock struct {
 }
 
 func newTxPoolImpl(author uint64, size int, replyC chan types.ReplyEvent, executor external.Executor, network external.Network, logger external.Logger) *txPoolImpl {
+	recvC := make(chan interface{})
+
 	return &txPoolImpl{
 		author:     author,
 		size:       size,
 		blockList:  list.New(),
 		pendingTxs: newRecorder(),
 		batches:    make(map[commonTypes.LogID]batchEntry),
-		recvC:      make(chan types.RecvEvent),
+		recvC:      recvC,
 		replyC:     replyC,
 		close:      make(chan bool),
 		executor:   executor,
 		sender:     newSender(author, network),
+		timer:      timer.NewTimer(recvC, logger),
 		logger:     logger,
 	}
 }
@@ -71,6 +82,10 @@ func (tp *txPoolImpl) start() {
 
 func (tp *txPoolImpl) stop() {
 	close(tp.close)
+}
+
+func (tp *txPoolImpl) isPoolFull() bool {
+	return atomic.LoadUint32(&tp.isFull) == 1
 }
 
 func (tp *txPoolImpl) reset() {
@@ -106,7 +121,15 @@ func (tp *txPoolImpl) listener() {
 	for {
 		select {
 		case event := <-tp.recvC:
-			tp.processEvents(event)
+			switch ev := event.(type) {
+			case types.RecvEvent:
+				tp.processEvents(ev)
+			case bool:
+				tp.tryToGenerate()
+				if len(tp.pendingTxs.txList) > 0 {
+					tp.timer.StartTimer(timerTypes.TxPoolTimer, true)
+				}
+			}
 		case <-tp.close:
 			tp.logger.Notice("exist tx pool listener")
 			return
@@ -127,6 +150,11 @@ func (tp *txPoolImpl) processEvents(event types.RecvEvent) {
 			return
 		}
 		tp.processRecvTxEvent(tx)
+		tp.timer.StartTimer(timerTypes.TxPoolTimer, true)
+
+		if len(tp.batches)*tp.size+len(tp.pendingTxs.txList) > 50000 {
+			atomic.StoreUint32(&tp.isFull, 1)
+		}
 	case types.RecvRecordBatchEvent:
 		batch, ok := event.Event.(*commonProto.Batch)
 		if !ok {
@@ -134,6 +162,10 @@ func (tp *txPoolImpl) processEvents(event types.RecvEvent) {
 			return
 		}
 		tp.processRecvBatchEvent(batch)
+
+		if len(tp.batches)*tp.size+len(tp.pendingTxs.txList) > 50000 {
+			atomic.StoreUint32(&tp.isFull, 1)
+		}
 	case types.RecvExecuteBlock:
 		blk, ok := event.Event.(*commonTypes.Block)
 		if !ok {
@@ -141,6 +173,10 @@ func (tp *txPoolImpl) processEvents(event types.RecvEvent) {
 			return
 		}
 		tp.processExecuteBlock(blk)
+
+		if len(tp.batches)*tp.size+len(tp.pendingTxs.txList) < 50000 {
+			atomic.StoreUint32(&tp.isFull, 0)
+		}
 	default:
 		return
 	}
@@ -150,14 +186,18 @@ func (tp *txPoolImpl) processRecvTxEvent(tx *commonProto.Transaction) {
 	tp.pendingTxs.update(tx)
 
 	if tp.pendingTxs.len() == tp.size {
-		batch := tp.generateBatch()
-		if batch == nil {
-			tp.logger.Warningf("Replica %d generated a nil batch", tp.author)
-			return
-		}
-		tp.replyGenerateBatch(batch)
+		tp.tryToGenerate()
 	}
 	return
+}
+
+func (tp *txPoolImpl) tryToGenerate() {
+	batch := tp.generateBatch()
+	if batch == nil {
+		tp.logger.Warningf("Replica %d generated a nil batch", tp.author)
+		return
+	}
+	tp.replyGenerateBatch(batch)
 }
 
 func (tp *txPoolImpl) processRecvBatchEvent(batch *commonProto.Batch) {

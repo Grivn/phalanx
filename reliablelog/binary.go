@@ -24,7 +24,7 @@ func newBinary(n int, author uint64, sequence uint64, replyC chan types.ReplyEve
 		active:   false,
 		readyTag: nil,
 		n:        n,
-		f:        (n-1)/4,
+		f:        (n-1)/3,
 		author:   author,
 		sequence: sequence,
 		occurred: make(map[uint64]bool),

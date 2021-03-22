@@ -25,3 +25,7 @@ func (phi *phalanxImpl) PostTxs(txs []*commonProto.Transaction) {
 func (phi *phalanxImpl) Propose(comm *commonProto.CommMsg) {
 	phi.propose(comm)
 }
+
+func (phi *phalanxImpl) IsNormal() bool {
+	return !phi.txpool.IsPoolFull()
+}

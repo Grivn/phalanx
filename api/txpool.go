@@ -15,4 +15,6 @@ type TxPool interface {
 	PostBatch(batch *commonProto.Batch)
 
 	ExecuteBlock(block *commonTypes.Block)
+
+	IsPoolFull() bool
 }
