@@ -1,10 +1,10 @@
-package reliablelog
+package loggenerator
 
 import (
 	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/reliablelog/types"
+	"github.com/Grivn/phalanx/loggenerator/types"
 )
 
 type binary struct {

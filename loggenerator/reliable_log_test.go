@@ -1,22 +1,21 @@
-package reliablelog
+package loggenerator
 
 import (
-	"github.com/Grivn/phalanx/api"
-	authen "github.com/Grivn/phalanx/authentication"
-	"github.com/Grivn/phalanx/common/mocks"
-	types2 "github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/common/types/protos"
-	"github.com/Grivn/phalanx/reliablelog/types"
-	"github.com/gogo/protobuf/proto"
-	"github.com/stretchr/testify/assert"
-	"os"
 	"sync"
 	"testing"
+
+	"github.com/Grivn/phalanx/api"
+	"github.com/Grivn/phalanx/common/mocks"
+	commonTypes "github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/common/types/protos"
+	"github.com/Grivn/phalanx/loggenerator/types"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewLogManager(t *testing.T) {
-	var lms []api.ReliableLog
-	var auths []api.Authenticator
+	var lms []api.LogGenerator
 	var replyCs []chan types.ReplyEvent
 	var netChans []chan interface{}
 	ch := make(chan interface{})
@@ -24,12 +23,6 @@ func TestNewLogManager(t *testing.T) {
 	n := 5
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		usigEnclaveFile := "libusig.signed.so"
-		keysFile, err := os.Open("keys.yaml")
-		assert.Nil(t, err)
-		auth, err := authen.NewWithSGXUSIG([]api.AuthenticationRole{api.ReplicaAuthen, api.USIGAuthen}, uint32(id-1), keysFile, usigEnclaveFile)
-		assert.Nil(t, err)
-		auths = append(auths, auth)
 
 		logger := mocks.NewRawLogger()
 
@@ -38,9 +31,9 @@ func TestNewLogManager(t *testing.T) {
 
 		netChan := make(chan interface{})
 		netChans = append(netChans, netChan)
-		network := mocks.NewReplyNetwork(ch, true)
+		network := mocks.NewReplyNetwork(ch, false)
 
-		lm := NewReliableLog(5, id, replyC, auth, network, logger)
+		lm := NewReliableLog(5, id, replyC, network, logger)
 		lms = append(lms, lm)
 	}
 
@@ -81,14 +74,14 @@ func TestNewLogManager(t *testing.T) {
 
 	// start replicas' network event listener
 	for index, lm := range lms {
-		go func(lm api.ReliableLog, index int) {
+		go func(lm api.LogGenerator, index int) {
 			for {
 				select {
 				case ev := <-netChans[index]:
 					comm := ev.(*protos.CommMsg)
-					signed := &protos.SignedMsg{}
-					_ = proto.Unmarshal(comm.Payload, signed)
-					lm.Record(signed)
+					msg := &protos.OrderedMsg{}
+					_ = proto.Unmarshal(comm.Payload, msg)
+					lm.Record(msg)
 				}
 			}
 		}(lm, index)
@@ -96,7 +89,7 @@ func TestNewLogManager(t *testing.T) {
 
 	close1 := make(chan bool)
 	for index, lm := range lms {
-		go func(lm api.ReliableLog, index int) {
+		go func(lm api.LogGenerator, index int) {
 			for {
 				select {
 				case ev := <-replyCs[index]:
@@ -110,7 +103,7 @@ func TestNewLogManager(t *testing.T) {
 	}
 
 	for index, lm := range lms {
-		go func(lm api.ReliableLog, index int) {
+		go func(lm api.LogGenerator, index int) {
 			for _, bid := range bidsset[index] {
 				lm.Generate(bid)
 			}
@@ -125,7 +118,7 @@ func TestNewLogManager(t *testing.T) {
 	var tags []*protos.BinaryTag
 	for i:=0; i<count; i++ {
 		set := []byte{1, 1, 1, 1, 1}
-		hash := types2.CalculatePayloadHash(set, 0)
+		hash := commonTypes.CalculatePayloadHash(set, 0)
 		tag := &protos.BinaryTag{
 			Sequence:   uint64(i+1),
 			BinaryHash: hash,
@@ -135,7 +128,7 @@ func TestNewLogManager(t *testing.T) {
 	}
 
 	for index, lm := range lms {
-		go func(lm api.ReliableLog, index int) {
+		go func(lm api.LogGenerator, index int) {
 			for _, tag := range tags {
 				lm.Ready(tag)
 			}
@@ -143,7 +136,7 @@ func TestNewLogManager(t *testing.T) {
 	}
 
 	for index, lm := range lms {
-		go func(lm api.ReliableLog, index int) {
+		go func(lm api.LogGenerator, index int) {
 			tagMap := make(map[uint64]bool)
 			for {
 				select {

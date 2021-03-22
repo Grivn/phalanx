@@ -89,12 +89,6 @@ message ordered_msg {
   int64 timestamp = 5;
 }
 
-message signed_msg {
-  uint64 author = 1;
-  bytes payload = 2;
-  bytes signature = 3;
-}
-
 //======================================================
 //             communicate message
 //======================================================
@@ -102,8 +96,7 @@ message signed_msg {
 enum comm_type {
   BATCH = 0;
   ORDER = 1;
-  SIGNED = 2;
-  BBA = 3;
+  BBA = 2;
 }
 
 message comm_msg {

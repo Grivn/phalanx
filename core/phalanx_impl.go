@@ -9,8 +9,8 @@ import (
 	"github.com/Grivn/phalanx/executor"
 	ex "github.com/Grivn/phalanx/executor/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/reliablelog"
-	rl "github.com/Grivn/phalanx/reliablelog/types"
+	"github.com/Grivn/phalanx/loggenerator"
+	rl "github.com/Grivn/phalanx/loggenerator/types"
 	"github.com/Grivn/phalanx/requester"
 	re "github.com/Grivn/phalanx/requester/types"
 	"github.com/Grivn/phalanx/txpool"
@@ -21,11 +21,11 @@ import (
 type phalanxImpl struct {
 	author uint64
 
-	txpool      api.TxPool
-	requester   api.Requester
-	reliableLog api.ReliableLog
-	byzantine   api.BinaryByzantine
-	executor    api.Executor
+	txpool       api.TxPool
+	reqGenerator api.Requester
+	logGenerator api.LogGenerator
+	byzantine    api.BinaryByzantine
+	executor     api.Executor
 
 	recvC  chan *commonProto.CommMsg
 	txpC   chan tp.ReplyEvent
@@ -38,7 +38,7 @@ type phalanxImpl struct {
 	logger external.Logger
 }
 
-func newPhalanxImpl(n int, author uint64, auth api.Authenticator, exec external.Executor, network external.Network, logger external.Logger) *phalanxImpl {
+func newPhalanxImpl(n int, author uint64, exec external.Executor, network external.Network, logger external.Logger) *phalanxImpl {
 	logger.Noticef("[INIT] replica %d init phalanx consensus protocol", author)
 
 	txpC := make(chan tp.ReplyEvent)
@@ -47,19 +47,14 @@ func newPhalanxImpl(n int, author uint64, auth api.Authenticator, exec external.
 	bbyC := make(chan bb.ReplyEvent)
 	exeC := make(chan ex.ReplyEvent)
 
-	if auth == nil {
-		logger.Error("nil authentication")
-		return nil
-	}
-
 	return &phalanxImpl{
 		author: author,
 
-		txpool:      txpool.NewTxPool(author, 100, txpC, exec, network, logger),
-		requester:   requester.NewRequester(n, author, reqC, network, logger),
-		reliableLog: reliablelog.NewReliableLog(n, author, logC, auth, network, logger),
-		byzantine:   binbyzantine.NewByzantine(n, author, bbyC, network, logger),
-		executor:    executor.NewExecutor(n, author, exeC, logger),
+		txpool:       txpool.NewTxPool(author, 100, txpC, exec, network, logger),
+		reqGenerator: requester.NewRequester(n, author, reqC, network, logger),
+		logGenerator: loggenerator.NewReliableLog(n, author, logC, network, logger),
+		byzantine:    binbyzantine.NewByzantine(n, author, bbyC, network, logger),
+		executor:     executor.NewExecutor(n, author, exeC, logger),
 
 		recvC:  make(chan *commonProto.CommMsg),
 		txpC:   txpC,
@@ -75,8 +70,8 @@ func newPhalanxImpl(n int, author uint64, auth api.Authenticator, exec external.
 
 func (phi *phalanxImpl) start() {
 	phi.txpool.Start()
-	phi.requester.Start()
-	phi.reliableLog.Start()
+	phi.reqGenerator.Start()
+	phi.logGenerator.Start()
 	phi.byzantine.Start()
 	phi.executor.Start()
 
@@ -91,8 +86,8 @@ func (phi *phalanxImpl) start() {
 
 func (phi *phalanxImpl) stop() {
 	phi.txpool.Stop()
-	phi.requester.Stop()
-	phi.reliableLog.Stop()
+	phi.reqGenerator.Stop()
+	phi.logGenerator.Stop()
 	phi.byzantine.Stop()
 	phi.executor.Stop()
 
@@ -203,15 +198,15 @@ func (phi *phalanxImpl) dispatchCommMsg(comm *commonProto.CommMsg) {
 			phi.logger.Errorf("Unmarshal error: %s", err)
 			return
 		}
-		phi.requester.Record(msg)
-	case commonProto.CommType_SIGNED:
-		signed := &commonProto.SignedMsg{}
-		err := proto.Unmarshal(comm.Payload, signed)
-		if err != nil {
-			phi.logger.Errorf("Unmarshal error: %s", err)
+		switch msg.Type {
+		case commonProto.OrderType_REQ:
+			phi.reqGenerator.Record(msg)
+		case commonProto.OrderType_LOG:
+			phi.logGenerator.Record(msg)
+		default:
+			phi.logger.Errorf("Invalid order type: code %d", msg.Type)
 			return
 		}
-		phi.reliableLog.Record(signed)
 	case commonProto.CommType_BBA:
 		ntf := &commonProto.BinaryNotification{}
 		err := proto.Unmarshal(comm.Payload, ntf)
@@ -233,7 +228,7 @@ func (phi *phalanxImpl) dispatchTxPoolEvent(event tp.ReplyEvent) {
 			phi.logger.Error("parsing error")
 			return
 		}
-		phi.requester.Generate(batch.BatchId)
+		phi.reqGenerator.Generate(batch.BatchId)
 	default:
 		return
 	}
@@ -247,7 +242,7 @@ func (phi *phalanxImpl) dispatchRequestEvent(event re.ReplyEvent) {
 			phi.logger.Error("parsing error")
 			return
 		}
-		phi.reliableLog.Generate(bid)
+		phi.logGenerator.Generate(bid)
 	default:
 		return
 	}
@@ -282,7 +277,7 @@ func (phi *phalanxImpl) dispatchByzantineEvent(event bb.ReplyEvent) {
 			phi.logger.Error("parsing error")
 			return
 		}
-		phi.reliableLog.Ready(tag)
+		phi.logGenerator.Ready(tag)
 	default:
 		return
 	}

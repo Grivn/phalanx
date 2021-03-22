@@ -1,4 +1,4 @@
-package reliablelog
+package loggenerator
 
 import (
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
@@ -19,7 +19,7 @@ func newSenderProxy(author uint64, network external.Network) *senderProxy {
 	}
 }
 
-func (sp *senderProxy) broadcast(signed *commonProto.SignedMsg) {
+func (sp *senderProxy) broadcast(signed *commonProto.OrderedMsg) {
 	payload, err := proto.Marshal(signed)
 	if err != nil {
 		panic(err)
@@ -27,7 +27,7 @@ func (sp *senderProxy) broadcast(signed *commonProto.SignedMsg) {
 
 	comm := &commonProto.CommMsg{
 		Author:  sp.author,
-		Type:    commonProto.CommType_SIGNED,
+		Type:    commonProto.CommType_ORDER,
 		Payload: payload,
 	}
 	sp.network.Broadcast(comm)

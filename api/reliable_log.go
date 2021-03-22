@@ -2,12 +2,12 @@ package api
 
 import commonProto "github.com/Grivn/phalanx/common/types/protos"
 
-type ReliableLog interface {
+type LogGenerator interface {
 	Basic
 
 	Generate(bid *commonProto.BatchId)
 
-	Record(msg *commonProto.SignedMsg)
+	Record(msg *commonProto.OrderedMsg)
 
 	Ready(tag *commonProto.BinaryTag)
 }
