@@ -32,7 +32,7 @@ type reliableLogImpl struct {
 }
 
 func newReliableLogImpl(n int, author uint64, replyC chan types.ReplyEvent, auth api.Authenticator, network external.Network, logger external.Logger) *reliableLogImpl {
-	logger.Noticef("Init log manager for replica %d", author)
+	logger.Noticef("replica %d init log manager", author)
 	re := make(map[uint64]*recorder)
 
 	for i:=0; i<n; i++ {

@@ -119,7 +119,7 @@ func (v *verificationMgr) updateCert(author uint64, tag *commonProto.BinaryTag) 
 	v.logger.Infof("replica %d received set %v for sequence %d, count %d", v.author, tag.BinarySet, tag.Sequence, len(c.counter[tag.BinaryHash]))
 
 	// we need to check if there are quorum replicas have agreed on current binary tag, if so, directly return tag
-	if len(c.counter[tag.BinaryHash]) >= v.quorum() {
+	if len(c.counter[tag.BinaryHash]) >= v.quorum() && v.local[tag.Sequence].include(tag) {
 		c.finished = true
 		v.logger.Infof("replica %d find quorum set %v for sequence %d, broadcast quorum cert event", v.author, tag.BinarySet, tag.Sequence)
 

@@ -22,7 +22,7 @@ type requestPool struct {
 }
 
 func newRequestPool(author, id uint64, replyC chan types.ReplyEvent, logger external.Logger) *requestPool {
-	logger.Noticef("Init request pool for replica %d", id)
+	logger.Noticef("replica %d init request pool for replica %d", author, id)
 	return &requestPool{
 		author: author,
 

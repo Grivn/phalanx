@@ -2,6 +2,7 @@ package phalanx
 
 import (
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,7 +35,7 @@ func TestPhalanx(t *testing.T) {
 
 		netChan := make(chan interface{})
 		netChans = append(netChans, netChan)
-		network := mocks.NewReplyNetwork(ch, false)
+		network := mocks.NewReplyNetwork(ch, true)
 
 		exec := mocks.NewSimpleExecutor(id, logger)
 
@@ -92,7 +93,10 @@ func TestPhalanx(t *testing.T) {
 		}(ph)
 	}
 
-	time.Sleep(5*time.Second)
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	wg.Wait()
 	for _, ph := range phs {
 		ph.Stop()
 	}

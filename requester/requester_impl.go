@@ -23,7 +23,7 @@ type requesterImpl struct {
 }
 
 func newRequesterImpl(n int, author uint64, replyC chan types.ReplyEvent, network external.Network, logger external.Logger) *requesterImpl {
-	logger.Noticef("[INIT] replica %d init request manager, cluster amount %d", author, n)
+	logger.Noticef("replica %d init request manager, cluster amount %d", author, n)
 	rps := make(map[uint64]*requestPool)
 
 	for i:=0; i<n; i++ {

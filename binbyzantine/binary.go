@@ -58,6 +58,9 @@ func (binary *binary) compare(set []byte) bool {
 }
 
 func (binary *binary) include(tag *commonProto.BinaryTag) bool {
+	if len(tag.BinarySet) != len(binary.bits) {
+		return false
+	}
 	for index, value := range tag.BinarySet {
 		id := uint64(index+1)
 		if value == 1 && !binary.bits[id] {

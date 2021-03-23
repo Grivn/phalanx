@@ -16,3 +16,5 @@ tags
 /sample/lib/
 /core/testLogger/
 /reliablelog/testLogger/
+/keytool/keytool
+/keytool/keys.yaml
