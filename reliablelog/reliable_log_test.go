@@ -1,20 +1,25 @@
 package reliablelog
 
 import (
+	"sync"
+	"testing"
+
 	"github.com/Grivn/phalanx/api"
-	authen "github.com/Grivn/phalanx/authentication"
+	mockapi "github.com/Grivn/phalanx/api/mocks"
 	"github.com/Grivn/phalanx/common/mocks"
 	types2 "github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/reliablelog/types"
+
 	"github.com/gogo/protobuf/proto"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"sync"
-	"testing"
 )
 
 func TestNewLogManager(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	var lms []api.ReliableLog
 	var auths []api.Authenticator
 	var replyCs []chan types.ReplyEvent
@@ -24,11 +29,7 @@ func TestNewLogManager(t *testing.T) {
 	n := 5
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		usigEnclaveFile := "libusig.signed.so"
-		keysFile, err := os.Open("keys.yaml")
-		assert.Nil(t, err)
-		auth, err := authen.NewWithSGXUSIG([]api.AuthenticationRole{api.ReplicaAuthen, api.USIGAuthen}, uint32(id-1), keysFile, usigEnclaveFile)
-		assert.Nil(t, err)
+		auth := mockapi.NewAuthenticatorMinimal(ctrl)
 		auths = append(auths, auth)
 
 		logger := mocks.NewRawLogger()

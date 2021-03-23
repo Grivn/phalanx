@@ -1,20 +1,23 @@
 package phalanx
 
 import (
-	"os"
 	"strconv"
-	"sync"
 	"testing"
+	"time"
 
 	"github.com/Grivn/phalanx"
 	"github.com/Grivn/phalanx/api"
-	authen "github.com/Grivn/phalanx/authentication"
+	mockapi "github.com/Grivn/phalanx/api/mocks"
 	"github.com/Grivn/phalanx/common/mocks"
 	"github.com/Grivn/phalanx/common/types/protos"
-	"github.com/stretchr/testify/assert"
+
+	"github.com/golang/mock/gomock"
 )
 
 func TestPhalanx(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	var phs []phalanx.Phalanx
 	var auths []api.Authenticator
 	var netChans []chan interface{}
@@ -23,11 +26,8 @@ func TestPhalanx(t *testing.T) {
 	n := 5
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		usigEnclaveFile := "libusig.signed.so"
-		keysFile, err := os.Open("keys.yaml")
-		assert.Nil(t, err)
-		auth, err := authen.NewWithSGXUSIG([]api.AuthenticationRole{api.USIGAuthen}, uint32(id-1), keysFile, usigEnclaveFile)
-		assert.Nil(t, err)
+
+		auth := mockapi.NewAuthenticatorMinimal(ctrl)
 		auths = append(auths, auth)
 
 		logger := mocks.NewRawLoggerFile("node"+strconv.Itoa(int(id)))
@@ -77,9 +77,6 @@ func TestPhalanx(t *testing.T) {
 		}(ph, index)
 	}
 
-	var wg sync.WaitGroup
-
-	wg.Add(n+1)
 	for _, ph := range phs {
 		go func(ph phalanx.Phalanx) {
 			var txs []*protos.Transaction
@@ -92,8 +89,12 @@ func TestPhalanx(t *testing.T) {
 				}
 			}
 			ph.PostTxs(txs)
-			wg.Done()
 		}(ph)
 	}
-	wg.Wait()
+
+	time.Sleep(5*time.Second)
+	for _, ph := range phs {
+		ph.Stop()
+	}
+	time.Sleep(1*time.Second)
 }
