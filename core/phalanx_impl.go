@@ -2,8 +2,8 @@ package phalanx
 
 import (
 	"github.com/Grivn/phalanx/api"
-	"github.com/Grivn/phalanx/binbyzantine"
-	bb "github.com/Grivn/phalanx/binbyzantine/types"
+	"github.com/Grivn/phalanx/binsubset"
+	ss "github.com/Grivn/phalanx/binsubset/types"
 	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/executor"
@@ -31,7 +31,7 @@ type phalanxImpl struct {
 	txpC   chan tp.ReplyEvent
 	reqC   chan re.ReplyEvent
 	logC   chan rl.ReplyEvent
-	bbyC   chan bb.ReplyEvent
+	bbyC   chan ss.ReplyEvent
 	exeC   chan ex.ReplyEvent
 	closeC chan bool
 
@@ -44,7 +44,7 @@ func newPhalanxImpl(n int, author uint64, auth api.Authenticator, exec external.
 	txpC := make(chan tp.ReplyEvent)
 	reqC := make(chan re.ReplyEvent)
 	logC := make(chan rl.ReplyEvent)
-	bbyC := make(chan bb.ReplyEvent)
+	bbyC := make(chan ss.ReplyEvent)
 	exeC := make(chan ex.ReplyEvent)
 
 	if auth == nil {
@@ -58,7 +58,7 @@ func newPhalanxImpl(n int, author uint64, auth api.Authenticator, exec external.
 		txpool:      txpool.NewTxPool(author, 100, txpC, exec, network, logger),
 		requester:   requester.NewRequester(n, author, reqC, network, logger),
 		reliableLog: reliablelog.NewReliableLog(n, author, logC, auth, network, logger),
-		byzantine:   binbyzantine.NewByzantine(n, author, bbyC, network, logger),
+		byzantine:   binsubset.NewSubset(n, author, bbyC, network, logger),
 		executor:    executor.NewExecutor(n, author, exeC, logger),
 
 		recvC:  make(chan *commonProto.CommMsg),
@@ -274,9 +274,9 @@ func (phi *phalanxImpl) dispatchLogEvent(event rl.ReplyEvent) {
 	}
 }
 
-func (phi *phalanxImpl) dispatchByzantineEvent(event bb.ReplyEvent) {
+func (phi *phalanxImpl) dispatchByzantineEvent(event ss.ReplyEvent) {
 	switch event.EventType {
-	case bb.BinaryReplyReady:
+	case ss.BinaryReplyReady:
 		tag, ok := event.Event.(*commonProto.BinaryTag)
 		if !ok {
 			phi.logger.Error("parsing error")

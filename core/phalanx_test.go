@@ -47,7 +47,7 @@ func TestPhalanx(t *testing.T) {
 		ph.Start()
 	}
 
-	count := 20000
+	count := 10000
 
 	// start network dispatcher
 	go func() {

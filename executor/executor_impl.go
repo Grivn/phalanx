@@ -17,6 +17,8 @@ type executorImpl struct {
 
 	cachedLogs *cachedLogs
 
+	executedLogs map[commonTypes.LogID]bool
+
 	recvC chan types.ExecuteLogs
 
 	replyC chan types.ReplyEvent
@@ -35,6 +37,8 @@ func newExecuteImpl(n int, author uint64, replyC chan types.ReplyEvent, logger e
 		pendingLogs: newPendingLogs(n, author, logger),
 
 		cachedLogs: newCachedLogs(author, logger),
+
+		executedLogs: make(map[commonTypes.LogID]bool),
 
 		recvC: make(chan types.ExecuteLogs),
 
@@ -95,7 +99,11 @@ func (ei *executorImpl) processExecuteLogs(exec types.ExecuteLogs) {
 			if log == nil {
 				continue
 			}
-
+			if ei.executedLogs[log.ID] {
+				ei.logger.Debugf("replica %d find an executed log", ei.author)
+				continue
+			}
+			ei.executedLogs[log.ID] = true
 			heap.Push(lh, log)
 		}
 
@@ -105,6 +113,7 @@ func (ei *executorImpl) processExecuteLogs(exec types.ExecuteLogs) {
 
 			for _, log := range blk.Logs {
 				ei.pendingLogs.remove(log.ID)
+				ei.logger.Debugf("replica %d execute block sequence %d log id %v", ei.author, blk.Sequence, log.ID)
 			}
 
 			event := types.ReplyEvent{

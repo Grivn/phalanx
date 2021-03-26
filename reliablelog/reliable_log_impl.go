@@ -119,7 +119,10 @@ func (rl *reliableLogImpl) dispatchRecvEvent(event types.RecvEvent) {
 		rl.recorder[msg.Author].logs[msg.Sequence] = msg
 
 		if tag := bin.getTag(); tag != nil {
-			rl.processBinaryTag(tag)
+			success := rl.processBinaryTag(tag)
+			if success {
+				bin.readyTag = nil
+			}
 		}
 	case types.LogRecvRecord:
 		signed, ok := event.Event.(*commonProto.SignedMsg)
@@ -144,7 +147,10 @@ func (rl *reliableLogImpl) dispatchRecvEvent(event types.RecvEvent) {
 		}
 
 		if tag := bin.getTag(); tag != nil {
-			rl.processBinaryTag(tag)
+			success := rl.processBinaryTag(tag)
+			if success {
+				bin.readyTag = nil
+			}
 		}
 	case types.LogRecvReady:
 		// todo we need to request ready event until we get the sequence of execute logs
@@ -164,13 +170,16 @@ func (rl *reliableLogImpl) dispatchRecvEvent(event types.RecvEvent) {
 			return
 		}
 
-		rl.processBinaryTag(bTag)
+		success := rl.processBinaryTag(bTag)
+		if success {
+			bin.readyTag = nil
+		}
 	default:
 		return
 	}
 }
 
-func (rl *reliableLogImpl) processBinaryTag(tag *commonProto.BinaryTag) {
+func (rl *reliableLogImpl) processBinaryTag(tag *commonProto.BinaryTag) bool {
 	var logs []*commonProto.OrderedMsg
 	var missing []uint64
 
@@ -211,5 +220,7 @@ func (rl *reliableLogImpl) processBinaryTag(tag *commonProto.BinaryTag) {
 			Event:     exec,
 		}
 		rl.replyC <- event
+		return true
 	}
+	return false
 }

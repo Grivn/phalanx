@@ -119,6 +119,7 @@ message comm_msg {
 enum binary_type {
   TAG = 0;
   QC = 1;
+  READY = 2;
 }
 
 message binary_tag {
@@ -129,6 +130,7 @@ message binary_tag {
 
 message binary_notification {
   uint64 author = 1;
-  binary_type type = 2;
-  binary_tag binary_tag = 3;
+  uint64 gen = 2;
+  binary_type type = 3;
+  binary_tag binary_tag = 4;
 }

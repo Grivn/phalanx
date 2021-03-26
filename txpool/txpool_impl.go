@@ -2,7 +2,6 @@ package txpool
 
 import (
 	"container/list"
-	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -61,11 +60,9 @@ type pendingBlock struct {
 func newTxPoolImpl(author uint64, size int, replyC chan types.ReplyEvent, executor external.Executor, network external.Network, logger external.Logger) *txPoolImpl {
 	recvC := make(chan interface{})
 
-	fmt.Println(size)
-
 	return &txPoolImpl{
 		author:     author,
-		size:       1,
+		size:       size,
 		blockList:  list.New(),
 		pendingTxs: newRecorder(),
 		batches:    make(map[commonTypes.LogID]batchEntry),
@@ -128,7 +125,9 @@ func (tp *txPoolImpl) listener() {
 			case types.RecvEvent:
 				tp.processEvents(ev)
 			case bool:
-				tp.tryToGenerate()
+				if len(tp.pendingTxs.txList) > 0 {
+					tp.tryToGenerate()
+				}
 				if len(tp.pendingTxs.txList) > 0 {
 					tp.timer.StartTimer(timerTypes.TxPoolTimer, true)
 				}
@@ -254,7 +253,7 @@ func (tp *txPoolImpl) generateBatch() *commonProto.Batch {
 	}
 	tp.batches[id] = entry
 
-	tp.logger.Noticef("replica %d generate a batch %s", tp.author, batch.BatchId.BatchHash)
+	tp.logger.Noticef("replica %d generate a batch %s, len %d", tp.author, batch.BatchId.BatchHash, len(batch.TxList))
 	tp.sender.broadcast(batch)
 	return batch
 }
