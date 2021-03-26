@@ -24,7 +24,7 @@ func TestPhalanx(t *testing.T) {
 	var netChans []chan interface{}
 	ch := make(chan interface{})
 
-	n := 5
+	n := 4
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 
@@ -35,7 +35,7 @@ func TestPhalanx(t *testing.T) {
 
 		netChan := make(chan interface{})
 		netChans = append(netChans, netChan)
-		network := mocks.NewReplyNetwork(ch, true)
+		network := mocks.NewReplyNetwork(ch, false)
 
 		exec := mocks.NewSimpleExecutor(id, logger)
 
@@ -82,6 +82,7 @@ func TestPhalanx(t *testing.T) {
 		go func(ph phalanx.Phalanx) {
 			var txs []*protos.Transaction
 			for i:=0; i<count; i++ {
+				time.Sleep(10*time.Microsecond)
 				if ph.IsNormal() {
 					tx := mocks.NewTx()
 					txs = append(txs, tx)

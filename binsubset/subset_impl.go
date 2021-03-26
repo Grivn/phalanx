@@ -92,7 +92,10 @@ func (si *subsetImpl) listener() {
 		case <-si.closeC:
 			si.logger.Notice("exist binary byzantine listener")
 			return
-		case ev := <-si.recvC:
+		case ev, ok := <-si.recvC:
+			if !ok {
+				continue
+			}
 			si.dispatchEvent(ev)
 		}
 	}
@@ -156,9 +159,9 @@ func (si *subsetImpl) processNotificationTag(msg *commonProto.BinaryNotification
 	tag := msg.BinaryTag
 	qTag := si.getRecorder(tag.Sequence).record(msg.Author, tag)
 
-	if si.continueQuorumTag(tag.Sequence) {
-		return
-	}
+	//if si.continueQuorumTag(tag.Sequence) {
+	//	return
+	//}
 
 	if qTag != nil {
 		ntf := &commonProto.BinaryNotification{
@@ -174,16 +177,18 @@ func (si *subsetImpl) processNotificationTag(msg *commonProto.BinaryNotification
 func (si *subsetImpl) processQuorumTag(qTag *commonProto.BinaryTag) {
 	si.logger.Infof("replica %d received quorum event for sequence %d", si.author, qTag.Sequence)
 	si.quorumTag[qTag.Sequence] = qTag
-	ntf := si.tryToSendBinaryReady(qTag)
-
-	if ntf != nil {
-		delete(si.quorumTag, qTag.Sequence)
-		event := types.ReplyEvent{
-			EventType: types.BinaryReplyReady,
-			Event:     ntf.BinaryTag,
-		}
-		si.replyC <- event
+	//ntf := si.tryToSendBinaryReady(qTag)
+	//
+	//if ntf != nil {
+	delete(si.quorumTag, qTag.Sequence)
+	event := types.ReplyEvent{
+		EventType: types.BinaryReplyReady,
+		Event:     qTag,
 	}
+	go func() {
+		si.replyC <- event
+	}()
+	//}
 }
 
 func (si *subsetImpl) processBinaryReady(ready *commonProto.BinaryNotification) {

@@ -55,7 +55,7 @@ func newPhalanxImpl(n int, author uint64, auth api.Authenticator, exec external.
 	return &phalanxImpl{
 		author: author,
 
-		txpool:      txpool.NewTxPool(author, 100, txpC, exec, network, logger),
+		txpool:      txpool.NewTxPool(author, 1, txpC, exec, network, logger),
 		requester:   requester.NewRequester(n, author, reqC, network, logger),
 		reliableLog: reliablelog.NewReliableLog(n, author, logC, auth, network, logger),
 		byzantine:   binsubset.NewSubset(n, author, bbyC, network, logger),
@@ -120,7 +120,10 @@ func (phi *phalanxImpl) listenCommMsg() {
 		case <-phi.closeC:
 			phi.logger.Notice("exist communicate message listener for phalanx")
 			return
-		case comm := <-phi.recvC:
+		case comm, ok := <-phi.recvC:
+			if !ok {
+				continue
+			}
 			phi.dispatchCommMsg(comm)
 		}
 	}
@@ -132,7 +135,10 @@ func (phi *phalanxImpl) listenTxPool() {
 		case <-phi.closeC:
 			phi.logger.Notice("exist tx pool listener for phalanx")
 			return
-		case ev := <-phi.txpC:
+		case ev, ok := <-phi.txpC:
+			if !ok {
+				continue
+			}
 			phi.dispatchTxPoolEvent(ev)
 		}
 	}
@@ -144,7 +150,10 @@ func (phi *phalanxImpl) listenRequester() {
 		case <-phi.closeC:
 			phi.logger.Notice("exist request manager listener for phalanx")
 			return
-		case ev := <-phi.reqC:
+		case ev, ok := <-phi.reqC:
+			if !ok {
+				continue
+			}
 			phi.dispatchRequestEvent(ev)
 		}
 	}
@@ -156,7 +165,10 @@ func (phi *phalanxImpl) listenReliableLog() {
 		case <-phi.closeC:
 			phi.logger.Notice("exist log manager listener for phalanx")
 			return
-		case ev := <-phi.logC:
+		case ev, ok := <-phi.logC:
+			if !ok {
+				continue
+			}
 			phi.dispatchLogEvent(ev)
 		}
 	}
@@ -168,7 +180,10 @@ func (phi *phalanxImpl) listenByzantine() {
 		case <-phi.closeC:
 			phi.logger.Notice("exist log manager listener for phalanx")
 			return
-		case ev := <-phi.bbyC:
+		case ev, ok := <-phi.bbyC:
+			if !ok {
+				continue
+			}
 			phi.dispatchByzantineEvent(ev)
 		}
 	}
@@ -180,7 +195,10 @@ func (phi *phalanxImpl) listenExecutor() {
 		case <-phi.closeC:
 			phi.logger.Notice("exist executor listener for phalanx")
 			return
-		case ev := <-phi.exeC:
+		case ev, ok := <-phi.exeC:
+			if !ok {
+				continue
+			}
 			phi.dispatchExecutorEvent(ev)
 		}
 	}

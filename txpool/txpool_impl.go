@@ -135,6 +135,8 @@ func (tp *txPoolImpl) listener() {
 		case <-tp.close:
 			tp.logger.Notice("exist tx pool listener")
 			return
+		default:
+			continue
 		}
 	}
 }
@@ -199,7 +201,7 @@ func (tp *txPoolImpl) tryToGenerate() {
 		tp.logger.Warningf("Replica %d generated a nil batch", tp.author)
 		return
 	}
-	tp.replyGenerateBatch(batch)
+	go tp.replyGenerateBatch(batch)
 }
 
 func (tp *txPoolImpl) processRecvBatchEvent(batch *commonProto.Batch) {

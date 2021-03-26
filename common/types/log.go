@@ -52,7 +52,7 @@ func NewLog(n int,id LogID) *Log {
 	return &Log{
 		ID:   id,
 		N:    n,
-		F:    (n-1)/4,
+		F:    (n-1)/3,
 		Heap: NewTimestampHeap(),
 	}
 }

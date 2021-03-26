@@ -95,7 +95,10 @@ func (rl *reliableLogImpl) listener() {
 		case <-rl.closeC:
 			rl.logger.Notice("exist log manager listener")
 			return
-		case ev := <-rl.recvC:
+		case ev, ok := <-rl.recvC:
+			if !ok {
+				continue
+			}
 			rl.dispatchRecvEvent(ev)
 		}
 	}
@@ -204,7 +207,9 @@ func (rl *reliableLogImpl) processBinaryTag(tag *commonProto.BinaryTag) bool {
 			EventType: types.LogReplyMissingEvent,
 			Event:     mm,
 		}
-		rl.replyC <- event
+		go func() {
+			rl.replyC <- event
+		}()
 	} else {
 		for _, re := range rl.recorder {
 			re.upgrade(tag.Sequence)
@@ -219,7 +224,9 @@ func (rl *reliableLogImpl) processBinaryTag(tag *commonProto.BinaryTag) bool {
 			EventType: types.LogReplyExecuteEvent,
 			Event:     exec,
 		}
-		rl.replyC <- event
+		go func() {
+			rl.replyC <- event
+		}()
 		return true
 	}
 	return false

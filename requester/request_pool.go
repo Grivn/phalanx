@@ -61,7 +61,10 @@ func (rp *requestPool) listener() {
 		case <-rp.closeC:
 			rp.logger.Noticef("exist requestRecorderMgr listener for %d", rp.id)
 			return
-		case msg := <-rp.recvC:
+		case msg, ok := <-rp.recvC:
+			if !ok {
+				continue
+			}
 			rp.processOrderedMsg(msg)
 		}
 	}
@@ -89,7 +92,9 @@ func (rp *requestPool) processOrderedMsg(msg *commonProto.OrderedMsg) {
 			Event:     bid,
 		}
 
-		rp.replyC <- event
+		go func() {
+			rp.replyC <- event
+		}()
 		delete(rp.recorder, rp.sequence)
 	}
 }
