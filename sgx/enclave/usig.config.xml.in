@@ -1,7 +1,7 @@
 <EnclaveConfiguration>
     <ProdID>0</ProdID>
     <ISVSVN>0</ISVSVN>
-    <!-- TODO: Adjust stack and heap size -->
+    <!-- TODO: Adjust stack and heap batchSize -->
     <StackMaxSize>0x40000</StackMaxSize>
     <HeapMaxSize>0x100000</HeapMaxSize>
     <TCSNum>1</TCSNum>

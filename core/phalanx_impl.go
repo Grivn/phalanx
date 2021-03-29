@@ -38,7 +38,7 @@ type phalanxImpl struct {
 	logger external.Logger
 }
 
-func newPhalanxImpl(n int, author uint64, auth api.Authenticator, exec external.Executor, network external.Network, logger external.Logger) *phalanxImpl {
+func newPhalanxImpl(n int, author uint64, batchSize, poolSize int, auth api.Authenticator, exec external.Executor, network external.Network, logger external.Logger) *phalanxImpl {
 	logger.Noticef("[INIT] replica %d init phalanx consensus protocol", author)
 
 	txpC := make(chan tp.ReplyEvent)
@@ -55,7 +55,7 @@ func newPhalanxImpl(n int, author uint64, auth api.Authenticator, exec external.
 	return &phalanxImpl{
 		author: author,
 
-		txpool:      txpool.NewTxPool(author, 1, txpC, exec, network, logger),
+		txpool:      txpool.NewTxPool(author, batchSize, poolSize, txpC, exec, network, logger),
 		requester:   requester.NewRequester(n, author, reqC, network, logger),
 		reliableLog: reliablelog.NewReliableLog(n, author, logC, auth, network, logger),
 		byzantine:   binsubset.NewSubset(n, author, bbyC, network, logger),

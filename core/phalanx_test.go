@@ -11,14 +11,9 @@ import (
 	mockapi "github.com/Grivn/phalanx/api/mocks"
 	"github.com/Grivn/phalanx/common/mocks"
 	"github.com/Grivn/phalanx/common/types/protos"
-
-	"github.com/golang/mock/gomock"
 )
 
 func TestPhalanx(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
 	var phs []phalanx.Phalanx
 	var auths []api.Authenticator
 	var netChans []chan interface{}
@@ -28,7 +23,7 @@ func TestPhalanx(t *testing.T) {
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 
-		auth := mockapi.NewAuthenticatorMinimal(ctrl)
+		auth := mockapi.NewAuthMock()
 		auths = append(auths, auth)
 
 		logger := mocks.NewRawLoggerFile("node"+strconv.Itoa(int(id)))
@@ -39,7 +34,7 @@ func TestPhalanx(t *testing.T) {
 
 		exec := mocks.NewSimpleExecutor(id, logger)
 
-		ph := NewPhalanx(n, id, auth, exec, network, logger)
+		ph := NewPhalanx(n, id, 10, 50000, auth, exec, network, logger)
 		phs = append(phs, ph)
 	}
 

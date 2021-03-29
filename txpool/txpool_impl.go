@@ -19,7 +19,9 @@ type txPoolImpl struct {
 
 	isFull uint32
 
-	size int // batch size
+	batchSize int // batch batchSize
+
+	poolSize int
 
 	blockList *list.List
 
@@ -57,12 +59,13 @@ type pendingBlock struct {
 	localList []bool
 }
 
-func newTxPoolImpl(author uint64, size int, replyC chan types.ReplyEvent, executor external.Executor, network external.Network, logger external.Logger) *txPoolImpl {
+func newTxPoolImpl(author uint64, batchSize, poolSize int, replyC chan types.ReplyEvent, executor external.Executor, network external.Network, logger external.Logger) *txPoolImpl {
 	recvC := make(chan interface{})
 
 	return &txPoolImpl{
 		author:     author,
-		size:       size,
+		batchSize:  batchSize,
+		poolSize:   poolSize,
 		blockList:  list.New(),
 		pendingTxs: newRecorder(),
 		batches:    make(map[commonTypes.LogID]batchEntry),
@@ -156,7 +159,7 @@ func (tp *txPoolImpl) processEvents(event types.RecvEvent) {
 		tp.processRecvTxEvent(tx)
 		tp.timer.StartTimer(timerTypes.TxPoolTimer, true)
 
-		if len(tp.batches)*tp.size+len(tp.pendingTxs.txList) > 50000 {
+		if len(tp.batches)*tp.batchSize+len(tp.pendingTxs.txList) > tp.poolSize {
 			atomic.StoreUint32(&tp.isFull, 1)
 		}
 	case types.RecvRecordBatchEvent:
@@ -167,7 +170,7 @@ func (tp *txPoolImpl) processEvents(event types.RecvEvent) {
 		}
 		tp.processRecvBatchEvent(batch)
 
-		if len(tp.batches)*tp.size+len(tp.pendingTxs.txList) > 50000 {
+		if len(tp.batches)*tp.batchSize+len(tp.pendingTxs.txList) > tp.poolSize {
 			atomic.StoreUint32(&tp.isFull, 1)
 		}
 	case types.RecvExecuteBlock:
@@ -178,7 +181,7 @@ func (tp *txPoolImpl) processEvents(event types.RecvEvent) {
 		}
 		tp.processExecuteBlock(blk)
 
-		if len(tp.batches)*tp.size+len(tp.pendingTxs.txList) < 50000 {
+		if len(tp.batches)*tp.batchSize+len(tp.pendingTxs.txList) < tp.poolSize {
 			atomic.StoreUint32(&tp.isFull, 0)
 		}
 	default:
@@ -189,7 +192,7 @@ func (tp *txPoolImpl) processEvents(event types.RecvEvent) {
 func (tp *txPoolImpl) processRecvTxEvent(tx *commonProto.Transaction) {
 	tp.pendingTxs.update(tx)
 
-	if tp.pendingTxs.len() == tp.size {
+	if tp.pendingTxs.len() == tp.batchSize {
 		tp.tryToGenerate()
 	}
 	return

@@ -8,8 +8,8 @@ import (
 	"github.com/Grivn/phalanx/txpool/types"
 )
 
-func NewTxPool(author uint64, size int, replyC chan types.ReplyEvent, executor external.Executor, network external.Network, logger external.Logger) api.TxPool {
-	return newTxPoolImpl(author, size, replyC, executor, network, logger)
+func NewTxPool(author uint64, batchSize, poolSize int, replyC chan types.ReplyEvent, executor external.Executor, network external.Network, logger external.Logger) api.TxPool {
+	return newTxPoolImpl(author, batchSize, poolSize, replyC, executor, network, logger)
 }
 
 func (tp *txPoolImpl) Start() {

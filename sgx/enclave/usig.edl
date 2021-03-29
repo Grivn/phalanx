@@ -3,16 +3,16 @@ enclave {
 
     trusted {
         public sgx_status_t ecall_usig_init(
-            [in, size=sealed_data_size] void *sealed_data,
+            [in, batchSize=sealed_data_size] void *sealed_data,
             uint32_t sealed_data_size
         );
 
         public sgx_status_t ecall_usig_get_sealed_key_size(
-            [out] uint32_t *size
+            [out] uint32_t *batchSize
         );
 
         public sgx_status_t ecall_usig_seal_key(
-            [out, size=sealed_data_size] void *sealed_data,
+            [out, batchSize=sealed_data_size] void *sealed_data,
             uint32_t sealed_data_size
         );
 

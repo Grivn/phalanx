@@ -6,8 +6,8 @@ import (
 	"github.com/Grivn/phalanx/external"
 )
 
-func NewPhalanx(n int, author uint64, auth api.Authenticator, exec external.Executor, network external.Network, logger external.Logger) *phalanxImpl {
-	return newPhalanxImpl(n, author, auth, exec, network, logger)
+func NewPhalanx(n int, author uint64, batchSize, poolSize int, auth api.Authenticator, exec external.Executor, network external.Network, logger external.Logger) *phalanxImpl {
+	return newPhalanxImpl(n, author, batchSize, poolSize, auth, exec, network, logger)
 }
 
 func (phi *phalanxImpl) Start() {

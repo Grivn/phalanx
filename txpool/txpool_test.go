@@ -17,20 +17,21 @@ func TestNewTxPool(t *testing.T) {
 	network := mocks.NewFakeNetwork()
 	logger := mocks.NewRawLogger()
 	replyC := make(chan types.ReplyEvent)
-	txpool := newTxPoolImpl(uint64(1), 100, replyC, nil, network, logger)
-	assert.Equal(t, 100, txpool.size)
+	txpool := newTxPoolImpl(uint64(1), 100, 50000, replyC, nil, network, logger)
+	assert.Equal(t, 100, txpool.batchSize)
 }
 
 func TestTxPoolImpl_Basic(t *testing.T) {
-	size := 100
+	batchSize := 100
+	poolSize := 50000
 	network := mocks.NewFakeNetwork()
 	logger := mocks.NewRawLogger()
 
 	replyC1 := make(chan types.ReplyEvent)
-	txpool1 := NewTxPool(uint64(1), size, replyC1, nil, network, logger)
+	txpool1 := NewTxPool(uint64(1), batchSize, poolSize, replyC1, nil, network, logger)
 
 	replyC2 := make(chan types.ReplyEvent)
-	txpool2 := NewTxPool(uint64(1), size, replyC2, nil, network, logger)
+	txpool2 := NewTxPool(uint64(1), batchSize, poolSize, replyC2, nil, network, logger)
 
 	txpool1.Start()
 	txpool2.Start()
@@ -47,7 +48,7 @@ func TestTxPoolImpl_Basic(t *testing.T) {
 		wg1.Done()
 	}()
 	go func() {
-		for i:= 0; i< size; i++ {
+		for i:= 0; i< batchSize; i++ {
 			tx := mocks.NewTx()
 			txpool1.PostTx(tx)
 		}

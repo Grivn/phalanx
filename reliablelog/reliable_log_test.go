@@ -12,14 +12,10 @@ import (
 	"github.com/Grivn/phalanx/reliablelog/types"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewLogManager(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
 	var lms []api.ReliableLog
 	var auths []api.Authenticator
 	var replyCs []chan types.ReplyEvent
@@ -29,7 +25,7 @@ func TestNewLogManager(t *testing.T) {
 	n := 5
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		auth := mockapi.NewAuthenticatorMinimal(ctrl)
+		auth := mockapi.NewAuthMock()
 		auths = append(auths, auth)
 
 		logger := mocks.NewRawLogger()
