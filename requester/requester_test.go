@@ -1,25 +1,23 @@
 package requester
 
 import (
-	"github.com/Grivn/phalanx/requester/types"
-	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
 
-	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/common/mocks"
+	commonProto "github.com/Grivn/phalanx/common/types/protos"
 )
 
 func TestNewRequestPool(t *testing.T) {
 	logger := mocks.NewRawLogger()
 	network := mocks.NewFakeNetwork()
 
-	replyC := make(chan types.ReplyEvent)
+	bidC := make(chan *commonProto.BatchId)
 	closeC := make(chan bool)
 
 	n := 5
 	author := uint64(1)
-	rm := NewRequester(n, author, replyC, network, logger)
+	rm := NewRequester(n, author, bidC, network, logger)
 	rm.Start()
 
 	var reqs []*commonProto.OrderedMsg
@@ -36,8 +34,7 @@ func TestNewRequestPool(t *testing.T) {
 	go func() {
 		for {
 			select {
-			case event := <-replyC:
-				assert.Equal(t, types.ReqReplyBatchByOrder, event.EventType)
+			case <-bidC:
 				wg.Done()
 			case <-closeC:
 				return

@@ -12,7 +12,6 @@ import (
 	"github.com/Grivn/phalanx/reliablelog"
 	rl "github.com/Grivn/phalanx/reliablelog/types"
 	"github.com/Grivn/phalanx/requester"
-	re "github.com/Grivn/phalanx/requester/types"
 	"github.com/Grivn/phalanx/txpool"
 	"github.com/gogo/protobuf/proto"
 )
@@ -28,7 +27,7 @@ type phalanxImpl struct {
 
 	recvC  chan *commonProto.CommMsg
 	txpC   txPoolChan
-	reqC   chan re.ReplyEvent
+	reqC   requesterChan
 	logC   chan rl.ReplyEvent
 	bbyC   chan ss.ReplyEvent
 	exeC   chan ex.ReplyEvent
@@ -41,13 +40,19 @@ type txPoolChan struct {
 	batchedChan chan *commonProto.Batch
 }
 
+type requesterChan struct {
+	batchIdChan chan *commonProto.BatchId
+}
+
 func newPhalanxImpl(n int, author uint64, batchSize, poolSize int, auth api.Authenticator, exec external.Executor, network external.Network, logger external.Logger) *phalanxImpl {
 	logger.Noticef("[INIT] replica %d init phalanx consensus protocol", author)
 
 	txpC := txPoolChan{
 		batchedChan: make(chan *commonProto.Batch),
 	}
-	reqC := make(chan re.ReplyEvent)
+	reqC := requesterChan{
+		batchIdChan: make(chan *commonProto.BatchId),
+	}
 	logC := make(chan rl.ReplyEvent)
 	bbyC := make(chan ss.ReplyEvent)
 	exeC := make(chan ex.ReplyEvent)
@@ -61,7 +66,7 @@ func newPhalanxImpl(n int, author uint64, batchSize, poolSize int, auth api.Auth
 		author: author,
 
 		txpool:      txpool.NewTxPool(author, batchSize, poolSize, txpC.batchedChan, exec, network, logger),
-		requester:   requester.NewRequester(n, author, reqC, network, logger),
+		requester:   requester.NewRequester(n, author, reqC.batchIdChan, network, logger),
 		reliableLog: reliablelog.NewReliableLog(n, author, logC, auth, network, logger),
 		byzantine:   binsubset.NewSubset(n, author, bbyC, network, logger),
 		executor:    executor.NewExecutor(n, author, exeC, logger),
@@ -155,11 +160,11 @@ func (phi *phalanxImpl) listenRequester() {
 		case <-phi.closeC:
 			phi.logger.Notice("exist request manager listener for phalanx")
 			return
-		case ev, ok := <-phi.reqC:
+		case bid, ok := <-phi.reqC.batchIdChan:
 			if !ok {
 				continue
 			}
-			phi.dispatchRequestEvent(ev)
+			phi.reliableLog.Generate(bid)
 		}
 	}
 }
@@ -243,20 +248,6 @@ func (phi *phalanxImpl) dispatchCommMsg(comm *commonProto.CommMsg) {
 			return
 		}
 		phi.byzantine.Propose(ntf)
-	default:
-		return
-	}
-}
-
-func (phi *phalanxImpl) dispatchRequestEvent(event re.ReplyEvent) {
-	switch event.EventType {
-	case re.ReqReplyBatchByOrder:
-		bid, ok := event.Event.(*commonProto.BatchId)
-		if !ok {
-			phi.logger.Error("parsing error")
-			return
-		}
-		phi.reliableLog.Generate(bid)
 	default:
 		return
 	}

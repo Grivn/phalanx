@@ -15,7 +15,7 @@ import (
 
 // txPoolImpl is the implementation of txPool
 type txPoolImpl struct {
-	// author indicates the owner of txPool
+	// author is the current node's identifier
 	author uint64
 
 	// isFull indicates if the txPool full or not
@@ -45,7 +45,7 @@ type txPoolImpl struct {
 	// closeC is used to close the go-routine of txPool
 	closeC chan bool
 
-	// sender is used to send consensus message to network
+	// sender is used to send consensus message into cluster network
 	sender *sender
 
 	// blockList is used to track the blocks waiting for execution

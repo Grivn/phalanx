@@ -4,11 +4,10 @@ import (
 	"github.com/Grivn/phalanx/api"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/requester/types"
 )
 
-func NewRequester(n int, id uint64, replyC chan types.ReplyEvent, network external.Network, logger external.Logger) api.Requester {
-	return newRequesterImpl(n, id, replyC, network, logger)
+func NewRequester(n int, id uint64, bidC chan *commonProto.BatchId, network external.Network, logger external.Logger) api.Requester {
+	return newRequesterImpl(n, id, bidC, network, logger)
 }
 
 func (r *requesterImpl) Start() {

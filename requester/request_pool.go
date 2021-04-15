@@ -3,39 +3,54 @@ package requester
 import (
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/requester/types"
 )
 
 type requestPool struct {
+	// author is the local node's identifier
 	author uint64
 
+	// id indicates which node the current request-pool is maintained for
 	id uint64
 
+	// sequence is the preferred number for the next request
 	sequence uint64
+
+	// recorder is used to track the batch-info of node id
 	recorder map[uint64]*commonProto.BatchId
 
-	recvC  chan *commonProto.OrderedMsg
-	replyC chan types.ReplyEvent
+	// recvC is the channel group which is used to receive events from other modules
+	recvC recvChan
+
+	// sendC is the channel group which is used to send back information to other modules
+	sendC sendChan
+
+	// closeC is used to close the go-routine of request-pool
 	closeC chan bool
 
+	// logger is used to print logs
 	logger external.Logger
 }
 
-func newRequestPool(author, id uint64, replyC chan types.ReplyEvent, logger external.Logger) *requestPool {
+func newRequestPool(author, id uint64, bidC chan *commonProto.BatchId, logger external.Logger) *requestPool {
 	logger.Noticef("replica %d init request pool for replica %d", author, id)
+
+	recvC := recvChan{
+		orderedChan: make(chan *commonProto.OrderedMsg),
+	}
+
+	sendC := sendChan{
+		batchIdChan: bidC,
+	}
+
 	return &requestPool{
-		author: author,
-
-		id: id,
-
+		author:   author,
+		id:       id,
 		sequence: uint64(0),
 		recorder: make(map[uint64]*commonProto.BatchId),
-
-		recvC:  make(chan *commonProto.OrderedMsg),
-		replyC: replyC,
-		closeC: make(chan bool),
-
-		logger: logger,
+		recvC:    recvC,
+		sendC:    sendC,
+		closeC:   make(chan bool),
+		logger:   logger,
 	}
 }
 
@@ -52,7 +67,7 @@ func (rp *requestPool) stop() {
 }
 
 func (rp *requestPool) record(msg *commonProto.OrderedMsg) {
-	rp.recvC <- msg
+	rp.recvC.orderedChan <- msg
 }
 
 func (rp *requestPool) listener() {
@@ -61,7 +76,7 @@ func (rp *requestPool) listener() {
 		case <-rp.closeC:
 			rp.logger.Noticef("exist requestRecorderMgr listener for %d", rp.id)
 			return
-		case msg, ok := <-rp.recvC:
+		case msg, ok := <-rp.recvC.orderedChan:
 			if !ok {
 				continue
 			}
@@ -87,15 +102,11 @@ func (rp *requestPool) processOrderedMsg(msg *commonProto.OrderedMsg) {
 		rp.sequence++
 		rp.logger.Infof("replica %d propose batch id for replica %d sequence %d", rp.author, rp.id, rp.sequence)
 
-		event := types.ReplyEvent{
-			EventType: types.ReqReplyBatchByOrder,
-			Event:     bid,
-		}
-
-		go func() {
-			rp.replyC <- event
-		}()
+		go rp.sendSequentialBatch(bid)
 		delete(rp.recorder, rp.sequence)
 	}
 }
 
+func (rp *requestPool) sendSequentialBatch(bid *commonProto.BatchId) {
+	rp.sendC.batchIdChan <- bid
+}
