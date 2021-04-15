@@ -44,7 +44,6 @@ func (l *LogHeap) GetSlice() []*Log {
 type Block struct {
 	Sequence  uint64
 	Logs      []*Log
-	Pending   map[LogID]bool
 	Timestamp int64
 }
 
@@ -57,7 +56,6 @@ func NewBlock(sequence uint64, logs []*Log) *Block {
 	return &Block{
 		Sequence:  sequence,
 		Logs:      logs,
-		Pending:   assigned,
 		Timestamp: logs[0].TrustedTimestamp(),
 	}
 }

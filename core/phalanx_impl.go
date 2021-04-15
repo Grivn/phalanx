@@ -14,7 +14,6 @@ import (
 	"github.com/Grivn/phalanx/requester"
 	re "github.com/Grivn/phalanx/requester/types"
 	"github.com/Grivn/phalanx/txpool"
-	tp "github.com/Grivn/phalanx/txpool/types"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -28,7 +27,7 @@ type phalanxImpl struct {
 	executor    api.Executor
 
 	recvC  chan *commonProto.CommMsg
-	txpC   chan tp.ReplyEvent
+	txpC   txPoolChan
 	reqC   chan re.ReplyEvent
 	logC   chan rl.ReplyEvent
 	bbyC   chan ss.ReplyEvent
@@ -38,10 +37,16 @@ type phalanxImpl struct {
 	logger external.Logger
 }
 
+type txPoolChan struct {
+	batchedChan chan *commonProto.Batch
+}
+
 func newPhalanxImpl(n int, author uint64, batchSize, poolSize int, auth api.Authenticator, exec external.Executor, network external.Network, logger external.Logger) *phalanxImpl {
 	logger.Noticef("[INIT] replica %d init phalanx consensus protocol", author)
 
-	txpC := make(chan tp.ReplyEvent)
+	txpC := txPoolChan{
+		batchedChan: make(chan *commonProto.Batch),
+	}
 	reqC := make(chan re.ReplyEvent)
 	logC := make(chan rl.ReplyEvent)
 	bbyC := make(chan ss.ReplyEvent)
@@ -55,7 +60,7 @@ func newPhalanxImpl(n int, author uint64, batchSize, poolSize int, auth api.Auth
 	return &phalanxImpl{
 		author: author,
 
-		txpool:      txpool.NewTxPool(author, batchSize, poolSize, txpC, exec, network, logger),
+		txpool:      txpool.NewTxPool(author, batchSize, poolSize, txpC.batchedChan, exec, network, logger),
 		requester:   requester.NewRequester(n, author, reqC, network, logger),
 		reliableLog: reliablelog.NewReliableLog(n, author, logC, auth, network, logger),
 		byzantine:   binsubset.NewSubset(n, author, bbyC, network, logger),
@@ -135,11 +140,11 @@ func (phi *phalanxImpl) listenTxPool() {
 		case <-phi.closeC:
 			phi.logger.Notice("exist tx pool listener for phalanx")
 			return
-		case ev, ok := <-phi.txpC:
+		case batch, ok := <-phi.txpC.batchedChan:
 			if !ok {
 				continue
 			}
-			phi.dispatchTxPoolEvent(ev)
+			phi.requester.Generate(batch.BatchId)
 		}
 	}
 }
@@ -238,20 +243,6 @@ func (phi *phalanxImpl) dispatchCommMsg(comm *commonProto.CommMsg) {
 			return
 		}
 		phi.byzantine.Propose(ntf)
-	default:
-		return
-	}
-}
-
-func (phi *phalanxImpl) dispatchTxPoolEvent(event tp.ReplyEvent) {
-	switch event.EventType {
-	case tp.ReplyGenerateBatchEvent:
-		batch, ok := event.Event.(*commonProto.Batch)
-		if !ok {
-			phi.logger.Error("parsing error")
-			return
-		}
-		phi.requester.Generate(batch.BatchId)
 	default:
 		return
 	}
