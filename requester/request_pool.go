@@ -1,6 +1,7 @@
 package requester
 
 import (
+	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
 )
@@ -19,10 +20,10 @@ type requestPool struct {
 	recorder map[uint64]*commonProto.BatchId
 
 	// recvC is the channel group which is used to receive events from other modules
-	recvC recvChan
+	recvC commonTypes.RequesterRecvChan
 
 	// sendC is the channel group which is used to send back information to other modules
-	sendC sendChan
+	sendC commonTypes.RequesterSendChan
 
 	// closeC is used to close the go-routine of request-pool
 	closeC chan bool
@@ -31,15 +32,11 @@ type requestPool struct {
 	logger external.Logger
 }
 
-func newRequestPool(author, id uint64, bidC chan *commonProto.BatchId, logger external.Logger) *requestPool {
+func newRequestPool(author, id uint64, sendC commonTypes.RequesterSendChan, logger external.Logger) *requestPool {
 	logger.Noticef("replica %d init request pool for replica %d", author, id)
 
-	recvC := recvChan{
-		orderedChan: make(chan *commonProto.OrderedMsg),
-	}
-
-	sendC := sendChan{
-		batchIdChan: bidC,
+	recvC := commonTypes.RequesterRecvChan{
+		OrderedChan: make(chan *commonProto.OrderedReq),
 	}
 
 	return &requestPool{
@@ -66,8 +63,8 @@ func (rp *requestPool) stop() {
 	}
 }
 
-func (rp *requestPool) record(msg *commonProto.OrderedMsg) {
-	rp.recvC.orderedChan <- msg
+func (rp *requestPool) record(req *commonProto.OrderedReq) {
+	rp.recvC.OrderedChan <- req
 }
 
 func (rp *requestPool) listener() {
@@ -76,7 +73,7 @@ func (rp *requestPool) listener() {
 		case <-rp.closeC:
 			rp.logger.Noticef("exist requestRecorderMgr listener for %d", rp.id)
 			return
-		case msg, ok := <-rp.recvC.orderedChan:
+		case msg, ok := <-rp.recvC.OrderedChan:
 			if !ok {
 				continue
 			}
@@ -85,15 +82,15 @@ func (rp *requestPool) listener() {
 	}
 }
 
-func (rp *requestPool) processOrderedMsg(msg *commonProto.OrderedMsg) {
-	rp.logger.Infof("replica %d receive ordered request from replica %d, hash %s", rp.author, msg.Author, msg.BatchId.BatchHash)
+func (rp *requestPool) processOrderedMsg(req *commonProto.OrderedReq) {
+	rp.logger.Infof("replica %d receive ordered request from replica %d, hash %s", rp.author, req.Author, req.BatchId.BatchHash)
 
-	if _, ok := rp.recorder[msg.Sequence]; ok {
-		rp.logger.Warningf("already received batch for replica %d sequence %d", msg.Author, msg.Sequence)
+	if _, ok := rp.recorder[req.Sequence]; ok {
+		rp.logger.Warningf("already received batch for replica %d sequence %d", req.Author, req.Sequence)
 		return
 	}
 
-	rp.recorder[msg.Sequence] = msg.BatchId
+	rp.recorder[req.Sequence] = req.BatchId
 	for {
 		bid, ok := rp.recorder[rp.sequence+1]
 		if !ok {
@@ -108,5 +105,5 @@ func (rp *requestPool) processOrderedMsg(msg *commonProto.OrderedMsg) {
 }
 
 func (rp *requestPool) sendSequentialBatch(bid *commonProto.BatchId) {
-	rp.sendC.batchIdChan <- bid
+	rp.sendC.BatchIdChan <- bid
 }

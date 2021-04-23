@@ -2,13 +2,13 @@ package reliablelog
 
 import (
 	"github.com/Grivn/phalanx/api"
+	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/reliablelog/types"
 )
 
-func NewReliableLog(n int, author uint64, replyC chan types.ReplyEvent, auth api.Authenticator, network external.Network, logger external.Logger) api.ReliableLog {
-	return newReliableLogImpl(n, author, replyC, auth, network, logger)
+func NewReliableLog(n int, author uint64, sendC commonTypes.ReliableSendChan, network external.Network, logger external.Logger) api.ReliableLog {
+	return newReliableLogImpl(n, author, sendC, network, logger)
 }
 
 func (rl *reliableLogImpl) Start() {
@@ -23,10 +23,10 @@ func (rl *reliableLogImpl) Generate(bid *commonProto.BatchId) {
 	rl.generate(bid)
 }
 
-func (rl *reliableLogImpl) Record(msg *commonProto.SignedMsg) {
-	rl.record(msg)
+func (rl *reliableLogImpl) RecordLog(log *commonProto.OrderedLog) {
+	rl.recordLog(log)
 }
 
-func (rl *reliableLogImpl) Ready(tag *commonProto.BinaryTag) {
-	rl.ready(tag)
+func (rl *reliableLogImpl) RecordAck(ack *commonProto.OrderedAck) {
+	rl.recordAck(ack)
 }

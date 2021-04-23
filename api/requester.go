@@ -7,5 +7,5 @@ type Requester interface {
 
 	Generate(bid *commonProto.BatchId)
 
-	Record(msg *commonProto.OrderedMsg)
+	Record(msg *commonProto.OrderedReq)
 }

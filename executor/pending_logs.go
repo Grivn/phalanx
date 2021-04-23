@@ -11,7 +11,7 @@ type pendingLogs struct {
 
 	author uint64
 
-	logs map[commonTypes.LogID]*commonTypes.Log
+	logs map[commonTypes.LogID]*commonTypes.ExecuteLog
 
 	logger external.Logger
 }
@@ -22,31 +22,25 @@ func newPendingLogs(n int, author uint64, logger external.Logger) *pendingLogs {
 
 		author: author,
 
-		logs: make(map[commonTypes.LogID]*commonTypes.Log),
+		logs: make(map[commonTypes.LogID]*commonTypes.ExecuteLog),
 
 		logger: logger,
 	}
 }
 
-func (pending *pendingLogs) update(msg *commonProto.OrderedMsg) *commonTypes.Log {
+func (pending *pendingLogs) update(log *commonProto.OrderedLog) {
 	id := commonTypes.LogID{
-		Author: msg.BatchId.Author,
-		Hash:   msg.BatchId.BatchHash,
+		Author: log.BatchId.Author,
+		Hash:   log.BatchId.BatchHash,
 	}
 
-	log, ok := pending.logs[id]
+	execLog, ok := pending.logs[id]
 	if !ok {
-		log = commonTypes.NewLog(pending.n, id)
-		pending.logs[id] = log
+		execLog = commonTypes.NewLog(pending.n, id)
+		pending.logs[id] = execLog
 	}
 
-	log.Update(msg.Timestamp)
-
-	if log.IsQuorum() {
-		return log
-	}
-
-	return nil
+	execLog.Update(log.Timestamp)
 }
 
 func (pending *pendingLogs) remove(id commonTypes.LogID) {

@@ -1,78 +1,52 @@
 package types
 
 import (
-	"container/heap"
+	"github.com/gogo/protobuf/sortkeys"
 )
-
-type TimestampHeap []int64
-
-func NewTimestampHeap() TimestampHeapInterface {
-	return &TimestampHeap{}
-}
-
-type TimestampHeapInterface interface {
-	heap.Interface
-
-	GetValue(which int) int64
-}
-
-func (h TimestampHeap) Len() int           { return len(h) }
-func (h TimestampHeap) Less(i, j int) bool { return h[i] < h[j] }
-func (h TimestampHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-
-func (h *TimestampHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
-}
-
-func (h *TimestampHeap) Push(x interface{}) {
-	*h = append(*h, x.(int64))
-}
-
-func (h *TimestampHeap) GetValue(which int) int64 {
-	return (*h)[which-1]
-}
 
 type LogID struct {
 	Author uint64
 	Hash   string
 }
 
-type Log struct {
-	ID   LogID
-	N    int
-	F    int
-	Heap TimestampHeapInterface
+type ExecuteLog struct {
+	ID LogID
+	N  int
+	F  int
+	Timestamps []int64
+	TrustedTs int64
 }
 
-func NewLog(n int,id LogID) *Log {
-	return &Log{
-		ID:   id,
-		N:    n,
-		F:    (n-1)/3,
-		Heap: NewTimestampHeap(),
+func NewLog(n int,id LogID) *ExecuteLog {
+	return &ExecuteLog{
+		ID: id,
+		N:  n,
+		F:  (n-1)/3,
+		Timestamps: nil,
 	}
 }
 
-func (l *Log) Len() int {
-	return l.Heap.Len()
+func (l *ExecuteLog) Len() int {
+	return len(l.Timestamps)
 }
 
-func (l *Log) Quorum() int {
+func (l *ExecuteLog) Quorum() int {
 	return l.N - l.F
 }
 
-func (l *Log) Update(timestamp int64) {
-	heap.Push(l.Heap, timestamp)
+func (l *ExecuteLog) Update(timestamp int64) {
+	l.Timestamps = append(l.Timestamps, timestamp)
 }
 
-func (l *Log) IsQuorum() bool {
+func (l *ExecuteLog) IsQuorum() bool {
 	return l.Len() >= l.Quorum()
 }
 
-func (l *Log) TrustedTimestamp() int64 {
-	return l.Heap.GetValue(l.F+1)
+func (l *ExecuteLog) TrustedTimestamp() int64 {
+	if l.TrustedTs != 0 {
+		return l.TrustedTs
+	}
+	sortkeys.Int64s(l.Timestamps)
+	l.TrustedTs = l.Timestamps[l.F]
+	return l.TrustedTs
 }

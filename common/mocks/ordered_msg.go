@@ -7,8 +7,8 @@ import (
 	"github.com/Grivn/phalanx/common/types/protos"
 )
 
-func NewOrderedMessages(author, from, to uint64, typ protos.OrderType) []*protos.OrderedMsg {
-	var list []*protos.OrderedMsg
+func NewOrderedMessages(author, from, to uint64) []*protos.OrderedReq {
+	var list []*protos.OrderedReq
 	for index:= from; index<= to; index++ {
 		payload := make([]byte, 1024)
 		rand.Read(payload)
@@ -18,10 +18,9 @@ func NewOrderedMessages(author, from, to uint64, typ protos.OrderType) []*protos
 			BatchHash: types.CalculatePayloadHash(payload, 0),
 		}
 
-		msg := &protos.OrderedMsg{
-			Type:     typ,
+		msg := &protos.OrderedReq{
 			Author:   author,
-			Sequence: uint64(index),
+			Sequence: index,
 			BatchId:  bid,
 		}
 

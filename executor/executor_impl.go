@@ -1,14 +1,15 @@
 package executor
 
 import (
-	"container/heap"
 	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
-	"github.com/Grivn/phalanx/executor/types"
 	"github.com/Grivn/phalanx/external"
+	"sort"
 )
 
 type executorImpl struct {
+	n int
+
 	author uint64
 
 	last uint64
@@ -19,17 +20,23 @@ type executorImpl struct {
 
 	executedLogs map[commonTypes.LogID]bool
 
-	recvC chan types.ExecuteLogs
+	recvC commonTypes.ExecutorRecvChan
 
-	replyC chan types.ReplyEvent
+	sendC commonTypes.ExecutorSendChan
 
 	closeC chan bool
 
 	logger external.Logger
 }
 
-func newExecuteImpl(n int, author uint64, replyC chan types.ReplyEvent, logger external.Logger) *executorImpl {
+func newExecuteImpl(n int, author uint64, sendC commonTypes.ExecutorSendChan, logger external.Logger) *executorImpl {
+	recvC := commonTypes.ExecutorRecvChan{
+		ExecuteLogsChan: make(chan *commonProto.ExecuteLogs),
+	}
+
 	return &executorImpl{
+		n: n,
+
 		author: author,
 
 		last: uint64(0),
@@ -40,9 +47,9 @@ func newExecuteImpl(n int, author uint64, replyC chan types.ReplyEvent, logger e
 
 		executedLogs: make(map[commonTypes.LogID]bool),
 
-		recvC: make(chan types.ExecuteLogs),
+		recvC: recvC,
 
-		replyC: replyC,
+		sendC: sendC,
 
 		closeC: make(chan bool),
 
@@ -50,13 +57,8 @@ func newExecuteImpl(n int, author uint64, replyC chan types.ReplyEvent, logger e
 	}
 }
 
-func (ei *executorImpl) executeLogs(sequence uint64, logs []*commonProto.OrderedMsg) {
-	exec := types.ExecuteLogs{
-		Sequence: sequence,
-		Logs:     logs,
-	}
-
-	ei.recvC <- exec
+func (ei *executorImpl) executeLogs(exec *commonProto.ExecuteLogs) {
+	ei.recvC.ExecuteLogsChan <- exec
 }
 
 func (ei *executorImpl) start() {
@@ -77,13 +79,13 @@ func (ei *executorImpl) listener() {
 		case <-ei.closeC:
 			ei.logger.Notice("exist executor listener")
 			return
-		case exec := <-ei.recvC:
+		case exec := <-ei.recvC.ExecuteLogsChan:
 			ei.processExecuteLogs(exec)
 		}
 	}
 }
 
-func (ei *executorImpl) processExecuteLogs(exec types.ExecuteLogs) {
+func (ei *executorImpl) processExecuteLogs(exec *commonProto.ExecuteLogs) {
 	ei.cachedLogs.write(exec)
 
 	for {
@@ -93,34 +95,34 @@ func (ei *executorImpl) processExecuteLogs(exec types.ExecuteLogs) {
 			break
 		}
 
-		lh := commonTypes.NewLogHeap()
 		for _, orderedLog := range orderedLogs {
-			log := ei.pendingLogs.update(orderedLog)
-			if log == nil {
-				continue
-			}
-			if ei.executedLogs[log.ID] {
+			if ei.executedLogs[commonTypes.LogID{Author: orderedLog.BatchId.Author, Hash:orderedLog.BatchId.BatchHash}] {
 				ei.logger.Debugf("replica %d find an executed log", ei.author)
 				continue
 			}
-			ei.executedLogs[log.ID] = true
-			heap.Push(lh, log)
+			ei.pendingLogs.update(orderedLog)
 		}
 
-		if lh.Len() > 0 {
+		var eSlice []*commonTypes.ExecuteLog
+		for id, executeLog := range ei.pendingLogs.logs {
+			ei.logger.Infof("replica %d check the log, %v, len %d", ei.author, id, executeLog.Len())
+			if executeLog.IsQuorum() {
+				eSlice = append(eSlice, executeLog)
+				ei.pendingLogs.remove(id)
+				ei.executedLogs[id] = true
+			}
+		}
+
+		if len(eSlice) > 0 {
 			ei.last++
-			blk := commonTypes.NewBlock(ei.last, lh.GetSlice())
+			blk := commonTypes.NewBlock(ei.last, eSlice)
+			sort.Sort(blk)
+			blk.UpdateTimestamp()
 
 			for _, log := range blk.Logs {
-				ei.pendingLogs.remove(log.ID)
 				ei.logger.Debugf("replica %d execute block sequence %d log id %v", ei.author, blk.Sequence, log.ID)
 			}
-
-			event := types.ReplyEvent{
-				EventType: types.ExecReplyExecuteBlock,
-				Event:     blk,
-			}
-			ei.replyC <- event
+			ei.sendC.BlockChan <- blk
 		}
 	}
 }

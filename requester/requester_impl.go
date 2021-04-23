@@ -1,6 +1,7 @@
 package requester
 
 import (
+	commonTypes "github.com/Grivn/phalanx/common/types"
 	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
 )
@@ -19,19 +20,19 @@ type requesterImpl struct {
 	recorder map[uint64]*requestPool
 
 	// sender is used to send consensus message into cluster network
-	sender *senderProxy
+	sender external.Network
 
 	// logger is used to print logs
 	logger external.Logger
 }
 
-func newRequesterImpl(n int, author uint64, bidC chan *commonProto.BatchId, network external.Network, logger external.Logger) *requesterImpl {
+func newRequesterImpl(n int, author uint64, sendC commonTypes.RequesterSendChan, network external.Network, logger external.Logger) *requesterImpl {
 	logger.Noticef("replica %d init request manager, cluster amount %d", author, n)
 	rps := make(map[uint64]*requestPool)
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		rp := newRequestPool(author, id, bidC, logger)
+		rp := newRequestPool(author, id, sendC, logger)
 		rps[id] = rp
 	}
 
@@ -39,7 +40,7 @@ func newRequesterImpl(n int, author uint64, bidC chan *commonProto.BatchId, netw
 		n:        n,
 		author:   author,
 		recorder: rps,
-		sender:   newSenderProxy(author, network),
+		sender:   network,
 		logger:   logger,
 	}
 }
@@ -63,18 +64,17 @@ func (r *requesterImpl) generate(bid *commonProto.BatchId) {
 	}
 
 	r.sequence++
-	msg := &commonProto.OrderedMsg{
-		Type:     commonProto.OrderType_REQ,
+	req := &commonProto.OrderedReq{
 		Author:   r.author,
 		Sequence: r.sequence,
 		BatchId:  bid,
 	}
 
 	r.logger.Infof("[%d Generate] ordered req for seq %d batch %s", r.author, r.sequence, bid.BatchHash)
-	r.sender.broadcast(msg)
-	r.record(msg)
+	r.sender.BroadcastReq(req)
+	r.record(req)
 }
 
-func (r *requesterImpl) record(msg *commonProto.OrderedMsg) {
-	r.recorder[msg.Author].record(msg)
+func (r *requesterImpl) record(req *commonProto.OrderedReq) {
+	r.recorder[req.Author].record(req)
 }

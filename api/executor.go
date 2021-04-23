@@ -5,5 +5,5 @@ import commonProto "github.com/Grivn/phalanx/common/types/protos"
 type Executor interface {
 	Basic
 
-	ExecuteLogs(sequence uint64, logs []*commonProto.OrderedMsg)
+	ExecuteLogs(exec *commonProto.ExecuteLogs)
 }

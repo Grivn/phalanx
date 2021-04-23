@@ -7,9 +7,9 @@ type Phalanx interface {
 
 	Stop()
 
+	IsNormal() bool
+
 	PostTxs(txs []*commonProto.Transaction)
 
-	Propose(comm *commonProto.CommMsg)
-
-	IsNormal() bool
+	Execute(payload []byte)
 }

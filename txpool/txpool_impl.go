@@ -34,10 +34,10 @@ type txPoolImpl struct {
 	batchStore map[commonTypes.LogID]batchEntry
 
 	// recvC is the channel group which is used to receive events from other modules
-	recvC recvChan
+	recvC commonTypes.TxPoolRecvChan
 
 	// sendC is the channel group which is used to send back information to other modules
-	sendC sendChan
+	sendC commonTypes.TxPoolSendChan
 
 	// timeoutC is used to send the signals for timeout processor (timer)
 	timeoutC chan interface{}
@@ -46,7 +46,7 @@ type txPoolImpl struct {
 	closeC chan bool
 
 	// sender is used to send consensus message into cluster network
-	sender *sender
+	sender external.Network
 
 	// blockList is used to track the blocks waiting for execution
 	blockList *list.List
@@ -105,17 +105,13 @@ type pendingBlock struct {
 	localList []bool
 }
 
-func newTxPoolImpl(author uint64, batchSize, poolSize int, batchedC chan *commonProto.Batch, executor external.Executor, network external.Network, logger external.Logger) *txPoolImpl {
+func newTxPoolImpl(author uint64, batchSize, poolSize int, sendC commonTypes.TxPoolSendChan, executor external.Executor, network external.Network, logger external.Logger) *txPoolImpl {
 	timeoutC := make(chan interface{})
 
-	recvC := recvChan{
-		transactionChan: make(chan *commonProto.Transaction),
-		batchedChan:     make(chan *commonProto.Batch),
-		executeChan:     make(chan *commonTypes.Block),
-	}
-
-	sendC := sendChan{
-		batchedChan: batchedC,
+	recvC := commonTypes.TxPoolRecvChan{
+		TransactionChan: make(chan *commonProto.Transaction),
+		BatchedChan:     make(chan *commonProto.Batch),
+		ExecuteChan:     make(chan *commonTypes.Block),
 	}
 
 	return &txPoolImpl{
@@ -132,7 +128,7 @@ func newTxPoolImpl(author uint64, batchSize, poolSize int, batchedC chan *common
 		closeC:   make(chan bool),
 
 		executor:   executor,
-		sender:     newSender(author, network),
+		sender:     network,
 		timer:      timer.NewTimer(timeoutC, logger),
 		logger:     logger,
 	}
@@ -156,25 +152,25 @@ func (tp *txPoolImpl) reset() {
 }
 
 func (tp *txPoolImpl) postBatch(batch *commonProto.Batch) {
-	tp.recvC.batchedChan <- batch
+	tp.recvC.BatchedChan <- batch
 }
 
 func (tp *txPoolImpl) postTx(tx *commonProto.Transaction) {
-	tp.recvC.transactionChan <- tx
+	tp.recvC.TransactionChan <- tx
 }
 
 func (tp *txPoolImpl) executeBlock(blk *commonTypes.Block) {
-	tp.recvC.executeChan <- blk
+	tp.recvC.ExecuteChan <- blk
 }
 
 func (tp *txPoolImpl) listener() {
 	for {
 		select {
-		case tx := <-tp.recvC.transactionChan:
+		case tx := <-tp.recvC.TransactionChan:
 			tp.processRecvTxEvent(tx)
-		case batch := <-tp.recvC.batchedChan:
+		case batch := <-tp.recvC.BatchedChan:
 			tp.processRecvBatchEvent(batch)
-		case blk := <- tp.recvC.executeChan:
+		case blk := <- tp.recvC.ExecuteChan:
 			tp.processExecuteBlock(blk)
 
 		case <-tp.timeoutC:
@@ -259,7 +255,7 @@ func (tp *txPoolImpl) generateBatch() *commonProto.Batch {
 	}
 
 	tp.logger.Noticef("replica %d generate a batch %s, len %d", tp.author, batch.BatchId.BatchHash, len(batch.TxList))
-	tp.sender.broadcast(batch)
+	tp.sender.BroadcastBatch(batch)
 	return batch
 }
 
@@ -341,7 +337,7 @@ func (tp *txPoolImpl) processTimeoutEvent() {
 //       send back messages
 //===================================
 func (tp *txPoolImpl) sendGeneratedBatch(batch *commonProto.Batch) {
-	tp.sendC.batchedChan <- batch
+	tp.sendC.BatchedChan <- batch
 }
 
 //===================================

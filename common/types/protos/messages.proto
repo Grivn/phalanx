@@ -24,75 +24,25 @@ message batch {
 }
 
 //======================================================
-//             unique identifier message
-//======================================================
-
-// UI is a unique identifier assigned to a message by a USIG
-message UI {
-  // Unique, monotonic, and sequential counter
-  uint64 counter = 1;
-  // Certificate created by a tamper-proof component of the USIG
-  // that certifies the counter assigned to a particular message
-  bytes  cert = 2;
-}
-
-enum message_type {
-  RBC_REQUEST = 0;
-  RBC_ECHO = 1;
-  RBC_READY = 2;
-
-  ORDERED_LOG = 3;
-}
-
-message consensus_message {
-  message_type type = 1;
-  bytes payload = 2;
-}
-
-//======================================================
-//           reliable broadcast message
-//======================================================
-
-message request {
-  string hash = 1;
-  uint64 sequence = 2;
-  uint64 author = 3;
-  batch batch = 4;
-}
-
-message echo {
-  string hash = 1;
-  uint64 sequence = 2;
-  uint64 verifier = 3;
-}
-
-message ready {
-  string hash = 1;
-  uint64 sequence = 2;
-  uint64 verifier = 3;
-}
-
-//======================================================
 //                 ordered message
 //======================================================
-
-enum order_type {
-  REQ = 0;
-  LOG = 1;
-}
-
-message ordered_msg {
-  order_type type = 1;
-  uint64 author = 2;
-  uint64 sequence = 3;
-  batch_id batch_id = 4;
-  int64 timestamp = 5;
-}
-
-message signed_msg {
+message ordered_req {
   uint64 author = 1;
-  bytes payload = 2;
-  bytes signature = 3;
+  uint64 sequence = 2;
+  batch_id batch_id = 3;
+  int64 timestamp = 4;
+}
+
+message ordered_log {
+  uint64 author = 1;
+  uint64 sequence = 2;
+  batch_id batch_id = 3;
+  int64 timestamp = 4;
+}
+
+message ordered_ack {
+  uint64 author = 1;
+  ordered_log ordered_log = 2;
 }
 
 //======================================================
@@ -101,9 +51,9 @@ message signed_msg {
 
 enum comm_type {
   BATCH = 0;
-  ORDER = 1;
-  SIGNED = 2;
-  BBA = 3;
+  LOG = 1;
+  ACK = 2;
+  REQ = 3;
 }
 
 message comm_msg {
@@ -112,25 +62,8 @@ message comm_msg {
   bytes payload = 3;
 }
 
-//======================================================
-//             binary agreement message
-//======================================================
-
-enum binary_type {
-  TAG = 0;
-  QC = 1;
-  READY = 2;
-}
-
-message binary_tag {
+//
+message execute_logs {
   uint64 sequence = 1;
-  string binary_hash = 2;
-  bytes  binary_set = 3;
-}
-
-message binary_notification {
-  uint64 author = 1;
-  uint64 gen = 2;
-  binary_type type = 3;
-  binary_tag binary_tag = 4;
+  repeated ordered_log ordered_logs = 2;
 }

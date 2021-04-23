@@ -7,7 +7,7 @@ type ReliableLog interface {
 
 	Generate(bid *commonProto.BatchId)
 
-	Record(msg *commonProto.SignedMsg)
+	RecordLog(log *commonProto.OrderedLog)
 
-	Ready(tag *commonProto.BinaryTag)
+	RecordAck(ack *commonProto.OrderedAck)
 }

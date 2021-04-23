@@ -1,21 +1,26 @@
 package types
 
 import (
+	commonTypes "github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/api"
 )
 
 type Config struct {
+	N int
 
-}
+	Author uint64
 
-type ReqConfig struct {
-	Author  uint64
+	BatchSize int
+
+	PoolSize int
+
+	CommC commonTypes.CommChan
+
+	ReliableC commonTypes.ReliableSendChan
+
+	Executor external.Executor
+
 	Network external.Network
-	Auth    api.Authenticator
-	Logger  external.Logger
-}
 
-type ColConfig struct {
-
+	Logger external.Logger
 }

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func Shuffle(slice []*commonProto.OrderedMsg) {
+func Shuffle(slice []*commonProto.OrderedReq) {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	for len(slice) > 0 {
 		n := len(slice)
