@@ -1,7 +1,7 @@
 package executor
 
 import (
-	commonProto "github.com/Grivn/phalanx/common/types/protos"
+	commonProto "github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
 )
 

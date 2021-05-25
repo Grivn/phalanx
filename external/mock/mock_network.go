@@ -5,7 +5,7 @@
 package mocks
 
 import (
-	protos "github.com/Grivn/phalanx/common/types/protos"
+	protos "github.com/Grivn/phalanx/common/protos"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )

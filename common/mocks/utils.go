@@ -1,7 +1,7 @@
 package mocks
 
 import (
-	commonProto "github.com/Grivn/phalanx/common/types/protos"
+	commonProto "github.com/Grivn/phalanx/common/protos"
 	"math/rand"
 	"time"
 )

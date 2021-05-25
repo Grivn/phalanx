@@ -1,13 +1,13 @@
 package txpool
 
 import (
-	"github.com/Grivn/phalanx/api"
+	commonProto "github.com/Grivn/phalanx/common/protos"
 	commonTypes "github.com/Grivn/phalanx/common/types"
-	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 )
 
-func NewTxPool(author uint64, batchSize, poolSize int, sendC commonTypes.TxPoolSendChan, executor external.Executor, network external.Network, logger external.Logger) api.TxPool {
+func NewTxPool(author uint64, batchSize, poolSize int, sendC commonTypes.TxPoolSendChan, executor external.Executor, network external.Network, logger external.Logger) internal.TxPool {
 	return newTxPoolImpl(author, batchSize, poolSize, sendC, executor, network, logger)
 }
 

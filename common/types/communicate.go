@@ -1,6 +1,6 @@
 package types
 
-import commonProto "github.com/Grivn/phalanx/common/types/protos"
+import commonProto "github.com/Grivn/phalanx/common/protos"
 
 // CommChan is used to receive the communicate messages send from internet
 type CommChan struct {
@@ -15,7 +15,7 @@ type CommChan struct {
 
 // TxPoolRecvChan is the channel group which is used to receive events from other modules for txPool
 type TxPoolRecvChan struct {
-	// TransactionChan is used to receive transactions send from api
+	// TransactionChan is used to receive transactions send from internal
 	TransactionChan chan *commonProto.Transaction
 
 	// BatchedChan is used to receive batchStore send from other replicas

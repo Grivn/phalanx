@@ -12,7 +12,7 @@ import (
 
 	"github.com/Grivn/phalanx"
 	"github.com/Grivn/phalanx/common/mocks"
-	commonProto "github.com/Grivn/phalanx/common/types/protos"
+	commonProto "github.com/Grivn/phalanx/common/protos"
 )
 
 type data struct {

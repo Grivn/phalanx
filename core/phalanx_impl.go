@@ -1,12 +1,12 @@
 package phalanx
 
 import (
-	"github.com/Grivn/phalanx/api"
+	commonProto "github.com/Grivn/phalanx/common/protos"
 	commonTypes "github.com/Grivn/phalanx/common/types"
-	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/core/types"
 	"github.com/Grivn/phalanx/executor"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/reliablelog"
 	"github.com/Grivn/phalanx/requester"
 	"github.com/Grivn/phalanx/txpool"
@@ -18,10 +18,10 @@ type phalanxImpl struct {
 	f int
 	author uint64
 
-	txpool    api.TxPool
-	requester api.Requester
-	reliable  api.ReliableLog
-	executor  api.Executor
+	txpool    internal.TxPool
+	requester internal.Requester
+	reliable  internal.ReliableLog
+	executor  internal.Executor
 
 	commC  commonTypes.CommChan
 	txpC   commonTypes.TxPoolSendChan
@@ -95,7 +95,7 @@ func (phi *phalanxImpl) stop() {
 }
 
 func (phi *phalanxImpl) postTxs(txs []*commonProto.Transaction) {
-	phi.logger.Infof("Replica %d received transferred txs from api", phi.author)
+	phi.logger.Infof("Replica %d received transferred txs from internal", phi.author)
 	for _, tx := range txs {
 		phi.txpool.PostTx(tx)
 	}

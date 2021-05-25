@@ -1,8 +1,8 @@
 package txpool
 
 import (
+	commonProto "github.com/Grivn/phalanx/common/protos"
 	commonTypes "github.com/Grivn/phalanx/common/types"
-	commonProto "github.com/Grivn/phalanx/common/types/protos"
 )
 
 type recorder struct {

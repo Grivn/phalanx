@@ -1,6 +1,6 @@
 package requester
 
-import commonProto "github.com/Grivn/phalanx/common/types/protos"
+import commonProto "github.com/Grivn/phalanx/common/protos"
 
 type recvChan struct {
 	orderedChan chan *commonProto.OrderedReq

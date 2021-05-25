@@ -1,8 +1,8 @@
 package mocks
 
 import (
+	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
 )
 

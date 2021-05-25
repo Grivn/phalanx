@@ -24,6 +24,26 @@ message batch {
 }
 
 //======================================================
+//                 proposal message
+//======================================================
+
+message tx_batch {
+  string batch_hash = 1;
+  repeated transaction tx_list = 2;
+}
+
+message proposal {
+  uint64 author = 1;
+  uint64 sequence = 2;
+  tx_batch tx_batch = 3;
+  int64 timestamp = 4;
+}
+
+//======================================================
+//                 ordered message
+//======================================================
+
+//======================================================
 //                 ordered message
 //======================================================
 message ordered_req {

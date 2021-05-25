@@ -4,8 +4,8 @@ package reliablelog
 //	"sync"
 //	"testing"
 //
-//	"github.com/Grivn/phalanx/api"
-//	mockapi "github.com/Grivn/phalanx/api/mocks"
+//	"github.com/Grivn/phalanx/internal"
+//	mockapi "github.com/Grivn/phalanx/internal/mocks"
 //	"github.com/Grivn/phalanx/common/mocks"
 //	types2 "github.com/Grivn/phalanx/common/types"
 //	"github.com/Grivn/phalanx/common/types/protos"
@@ -16,8 +16,8 @@ package reliablelog
 //)
 //
 //func TestNewLogManager(t *testing.T) {
-//	var lms []api.ReliableLog
-//	var auths []api.Authenticator
+//	var lms []internal.ReliableLog
+//	var auths []internal.Authenticator
 //	var replyCs []chan types.ReplyEvent
 //	var netChans []chan interface{}
 //	ch := make(chan interface{})
@@ -78,7 +78,7 @@ package reliablelog
 //
 //	// start replicas' network event listener
 //	for index, lm := range lms {
-//		go func(lm api.ReliableLog, index int) {
+//		go func(lm internal.ReliableLog, index int) {
 //			for {
 //				select {
 //				case ev := <-netChans[index]:
@@ -93,7 +93,7 @@ package reliablelog
 //
 //	close1 := make(chan bool)
 //	for index, lm := range lms {
-//		go func(lm api.ReliableLog, index int) {
+//		go func(lm internal.ReliableLog, index int) {
 //			for {
 //				select {
 //				case ev := <-replyCs[index]:
@@ -107,7 +107,7 @@ package reliablelog
 //	}
 //
 //	for index, lm := range lms {
-//		go func(lm api.ReliableLog, index int) {
+//		go func(lm internal.ReliableLog, index int) {
 //			for _, bid := range bidsset[index] {
 //				lm.Generate(bid)
 //			}
@@ -132,7 +132,7 @@ package reliablelog
 //	}
 //
 //	for index, lm := range lms {
-//		go func(lm api.ReliableLog, index int) {
+//		go func(lm internal.ReliableLog, index int) {
 //			for _, tag := range tags {
 //				lm.Ready(tag)
 //			}
@@ -140,7 +140,7 @@ package reliablelog
 //	}
 //
 //	for index, lm := range lms {
-//		go func(lm api.ReliableLog, index int) {
+//		go func(lm internal.ReliableLog, index int) {
 //			tagMap := make(map[uint64]bool)
 //			for {
 //				select {

@@ -1,6 +1,6 @@
 package external
 
-import commonProto "github.com/Grivn/phalanx/common/types/protos"
+import commonProto "github.com/Grivn/phalanx/common/protos"
 
 type Network interface {
 	BroadcastBatch(batch *commonProto.Batch)

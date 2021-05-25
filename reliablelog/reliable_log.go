@@ -1,13 +1,13 @@
 package reliablelog
 
 import (
-	"github.com/Grivn/phalanx/api"
+	commonProto "github.com/Grivn/phalanx/common/protos"
 	commonTypes "github.com/Grivn/phalanx/common/types"
-	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 )
 
-func NewReliableLog(n int, author uint64, sendC commonTypes.ReliableSendChan, network external.Network, logger external.Logger) api.ReliableLog {
+func NewReliableLog(n int, author uint64, sendC commonTypes.ReliableSendChan, network external.Network, logger external.Logger) internal.ReliableLog {
 	return newReliableLogImpl(n, author, sendC, network, logger)
 }
 

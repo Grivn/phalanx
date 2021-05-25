@@ -3,8 +3,8 @@ package mocks
 import (
 	"math/rand"
 
+	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/common/types/protos"
 )
 
 func NewTx() *protos.Transaction {

@@ -224,6 +224,126 @@ func (m *Batch) GetTimestamp() int64 {
 	return 0
 }
 
+type TxBatch struct {
+	BatchHash string         `protobuf:"bytes,1,opt,name=batch_hash,json=batchHash,proto3" json:"batch_hash,omitempty"`
+	TxList    []*Transaction `protobuf:"bytes,2,rep,name=tx_list,json=txList,proto3" json:"tx_list,omitempty"`
+}
+
+func (m *TxBatch) Reset()         { *m = TxBatch{} }
+func (m *TxBatch) String() string { return proto.CompactTextString(m) }
+func (*TxBatch) ProtoMessage()    {}
+func (*TxBatch) Descriptor() ([]byte, []int) {
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{3}
+}
+func (m *TxBatch) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TxBatch) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TxBatch.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *TxBatch) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TxBatch.Merge(m, src)
+}
+func (m *TxBatch) XXX_Size() int {
+	return m.Size()
+}
+func (m *TxBatch) XXX_DiscardUnknown() {
+	xxx_messageInfo_TxBatch.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TxBatch proto.InternalMessageInfo
+
+func (m *TxBatch) GetBatchHash() string {
+	if m != nil {
+		return m.BatchHash
+	}
+	return ""
+}
+
+func (m *TxBatch) GetTxList() []*Transaction {
+	if m != nil {
+		return m.TxList
+	}
+	return nil
+}
+
+type Proposal struct {
+	Author    uint64   `protobuf:"varint,1,opt,name=author,proto3" json:"author,omitempty"`
+	Sequence  uint64   `protobuf:"varint,2,opt,name=sequence,proto3" json:"sequence,omitempty"`
+	TxBatch   *TxBatch `protobuf:"bytes,3,opt,name=tx_batch,json=txBatch,proto3" json:"tx_batch,omitempty"`
+	Timestamp int64    `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+}
+
+func (m *Proposal) Reset()         { *m = Proposal{} }
+func (m *Proposal) String() string { return proto.CompactTextString(m) }
+func (*Proposal) ProtoMessage()    {}
+func (*Proposal) Descriptor() ([]byte, []int) {
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{4}
+}
+func (m *Proposal) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Proposal) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Proposal.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Proposal) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Proposal.Merge(m, src)
+}
+func (m *Proposal) XXX_Size() int {
+	return m.Size()
+}
+func (m *Proposal) XXX_DiscardUnknown() {
+	xxx_messageInfo_Proposal.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Proposal proto.InternalMessageInfo
+
+func (m *Proposal) GetAuthor() uint64 {
+	if m != nil {
+		return m.Author
+	}
+	return 0
+}
+
+func (m *Proposal) GetSequence() uint64 {
+	if m != nil {
+		return m.Sequence
+	}
+	return 0
+}
+
+func (m *Proposal) GetTxBatch() *TxBatch {
+	if m != nil {
+		return m.TxBatch
+	}
+	return nil
+}
+
+func (m *Proposal) GetTimestamp() int64 {
+	if m != nil {
+		return m.Timestamp
+	}
+	return 0
+}
+
 //======================================================
 //                 ordered message
 //======================================================
@@ -238,7 +358,7 @@ func (m *OrderedReq) Reset()         { *m = OrderedReq{} }
 func (m *OrderedReq) String() string { return proto.CompactTextString(m) }
 func (*OrderedReq) ProtoMessage()    {}
 func (*OrderedReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_4dc296cbfe5ffcd5, []int{3}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{5}
 }
 func (m *OrderedReq) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -306,7 +426,7 @@ func (m *OrderedLog) Reset()         { *m = OrderedLog{} }
 func (m *OrderedLog) String() string { return proto.CompactTextString(m) }
 func (*OrderedLog) ProtoMessage()    {}
 func (*OrderedLog) Descriptor() ([]byte, []int) {
-	return fileDescriptor_4dc296cbfe5ffcd5, []int{4}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{6}
 }
 func (m *OrderedLog) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -372,7 +492,7 @@ func (m *OrderedAck) Reset()         { *m = OrderedAck{} }
 func (m *OrderedAck) String() string { return proto.CompactTextString(m) }
 func (*OrderedAck) ProtoMessage()    {}
 func (*OrderedAck) Descriptor() ([]byte, []int) {
-	return fileDescriptor_4dc296cbfe5ffcd5, []int{5}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{7}
 }
 func (m *OrderedAck) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -425,7 +545,7 @@ func (m *CommMsg) Reset()         { *m = CommMsg{} }
 func (m *CommMsg) String() string { return proto.CompactTextString(m) }
 func (*CommMsg) ProtoMessage()    {}
 func (*CommMsg) Descriptor() ([]byte, []int) {
-	return fileDescriptor_4dc296cbfe5ffcd5, []int{6}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{8}
 }
 func (m *CommMsg) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -485,7 +605,7 @@ func (m *ExecuteLogs) Reset()         { *m = ExecuteLogs{} }
 func (m *ExecuteLogs) String() string { return proto.CompactTextString(m) }
 func (*ExecuteLogs) ProtoMessage()    {}
 func (*ExecuteLogs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_4dc296cbfe5ffcd5, []int{7}
+	return fileDescriptor_4dc296cbfe5ffcd5, []int{9}
 }
 func (m *ExecuteLogs) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -533,6 +653,8 @@ func init() {
 	proto.RegisterType((*Transaction)(nil), "protos.transaction")
 	proto.RegisterType((*BatchId)(nil), "protos.batch_id")
 	proto.RegisterType((*Batch)(nil), "protos.batch")
+	proto.RegisterType((*TxBatch)(nil), "protos.tx_batch")
+	proto.RegisterType((*Proposal)(nil), "protos.proposal")
 	proto.RegisterType((*OrderedReq)(nil), "protos.ordered_req")
 	proto.RegisterType((*OrderedLog)(nil), "protos.ordered_log")
 	proto.RegisterType((*OrderedAck)(nil), "protos.ordered_ack")
@@ -543,35 +665,39 @@ func init() {
 func init() { proto.RegisterFile("messages.proto", fileDescriptor_4dc296cbfe5ffcd5) }
 
 var fileDescriptor_4dc296cbfe5ffcd5 = []byte{
-	// 447 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x93, 0x4f, 0x8b, 0xd3, 0x40,
-	0x18, 0xc6, 0x3b, 0x9d, 0x6c, 0xdb, 0xbc, 0x29, 0x4b, 0x1c, 0x41, 0x82, 0x7f, 0x42, 0x08, 0x08,
-	0x41, 0x65, 0xc1, 0x2a, 0x5e, 0x3c, 0x75, 0x17, 0x71, 0xc5, 0x82, 0x38, 0x78, 0xf3, 0x50, 0xa6,
-	0xc9, 0xd0, 0x04, 0x9b, 0x4e, 0x37, 0xef, 0x14, 0xba, 0xdf, 0xc1, 0x83, 0x5f, 0xc0, 0xef, 0xe3,
-	0x71, 0x8f, 0x1e, 0xa5, 0xfd, 0x22, 0x92, 0xc9, 0xb6, 0x4d, 0x84, 0xa0, 0x37, 0x4f, 0x79, 0x9f,
-	0xf7, 0x9d, 0x79, 0xf2, 0xfc, 0x26, 0x13, 0x38, 0xcd, 0x25, 0xa2, 0x98, 0x4b, 0x3c, 0x5b, 0x15,
-	0x4a, 0x2b, 0xd6, 0x33, 0x0f, 0x0c, 0x5f, 0x83, 0xa3, 0x0b, 0xb1, 0x44, 0x11, 0xeb, 0x4c, 0x2d,
-	0x19, 0x03, 0x2b, 0x15, 0x98, 0x7a, 0x24, 0x20, 0x91, 0xcd, 0x4d, 0xcd, 0x3c, 0xe8, 0xaf, 0xc4,
-	0xf5, 0x42, 0x89, 0xc4, 0xeb, 0x06, 0x24, 0x1a, 0xf2, 0xbd, 0x0c, 0xc7, 0x30, 0x98, 0x09, 0x1d,
-	0xa7, 0xd3, 0x2c, 0x61, 0xf7, 0xa0, 0x27, 0xd6, 0x3a, 0x55, 0x85, 0xd9, 0x6b, 0xf1, 0x5b, 0xc5,
-	0x1e, 0x01, 0x54, 0x6b, 0x8c, 0x6f, 0xd7, 0xf8, 0xda, 0xa6, 0x73, 0x29, 0x30, 0x0d, 0xbf, 0x13,
-	0x38, 0x31, 0x8a, 0x3d, 0x3d, 0x9a, 0x19, 0x0b, 0x67, 0xe4, 0x56, 0x59, 0xf1, 0x6c, 0xdf, 0xe7,
-	0x7d, 0x53, 0xbd, 0x4b, 0xd8, 0x03, 0xb0, 0x4b, 0xbf, 0xe9, 0x22, 0x43, 0xed, 0x75, 0x03, 0x1a,
-	0xd9, 0x7c, 0x50, 0x36, 0x26, 0x19, 0x6a, 0xf6, 0x0c, 0xfa, 0x7a, 0x53, 0x8d, 0x68, 0x40, 0x23,
-	0x67, 0x74, 0x77, 0x6f, 0x54, 0x43, 0xe5, 0x3d, 0xbd, 0x31, 0xab, 0x1f, 0x82, 0xad, 0xb3, 0x5c,
-	0xa2, 0x16, 0xf9, 0xca, 0xb3, 0x02, 0x12, 0x51, 0x7e, 0x6c, 0x84, 0x5f, 0x09, 0x38, 0xaa, 0x48,
-	0x64, 0x21, 0x93, 0x69, 0x21, 0xaf, 0x5a, 0x31, 0xef, 0xc3, 0x00, 0xe5, 0xd5, 0x5a, 0x2e, 0x63,
-	0x69, 0x20, 0x2d, 0x7e, 0xd0, 0x0d, 0x32, 0xfa, 0x37, 0xb2, 0x7f, 0x8f, 0xb3, 0x50, 0xf3, 0xff,
-	0x1d, 0xe7, 0xf3, 0x31, 0x8d, 0x88, 0xbf, 0xb4, 0xa6, 0x79, 0xd9, 0x08, 0x6d, 0x02, 0xd5, 0x3e,
-	0x4a, 0x6d, 0xc4, 0xe1, 0x56, 0x4c, 0xd4, 0x3c, 0x8c, 0x61, 0x10, 0xab, 0x3c, 0x9f, 0xe6, 0xd8,
-	0xce, 0xf9, 0x18, 0x2c, 0x7d, 0xbd, 0xaa, 0x18, 0x4f, 0x47, 0x77, 0xf6, 0x96, 0x66, 0x5f, 0x39,
-	0xe0, 0x66, 0x5c, 0xbf, 0xc2, 0xb4, 0x79, 0x85, 0x67, 0x30, 0x94, 0x1b, 0x19, 0xaf, 0xb5, 0x2c,
-	0xdf, 0x8f, 0x8d, 0x83, 0x23, 0x7f, 0x1c, 0xdc, 0x2b, 0x18, 0xd6, 0xb2, 0xa2, 0xb9, 0x77, 0x2d,
-	0x1c, 0xce, 0x91, 0x03, 0x9f, 0x3c, 0x07, 0xfb, 0x10, 0x88, 0xd9, 0x70, 0x72, 0x3e, 0xfe, 0x74,
-	0x71, 0xe9, 0x76, 0x58, 0x1f, 0xe8, 0xe4, 0xc3, 0x5b, 0x97, 0x94, 0xc5, 0xf8, 0xe2, 0xbd, 0xdb,
-	0x2d, 0x0b, 0xfe, 0xe6, 0xa3, 0x4b, 0xcf, 0xbd, 0x1f, 0x5b, 0x9f, 0xdc, 0x6c, 0x7d, 0xf2, 0x6b,
-	0xeb, 0x93, 0x6f, 0x3b, 0xbf, 0x73, 0xb3, 0xf3, 0x3b, 0x3f, 0x77, 0x7e, 0x67, 0x56, 0xfd, 0xb8,
-	0x2f, 0x7e, 0x07, 0x00, 0x00, 0xff, 0xff, 0xf1, 0x25, 0xef, 0xc9, 0xd1, 0x03, 0x00, 0x00,
+	// 497 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x94, 0x4d, 0x8b, 0xd3, 0x40,
+	0x18, 0xc7, 0x3b, 0x4d, 0x77, 0x93, 0x3c, 0x29, 0x4b, 0x1c, 0x41, 0x82, 0x2f, 0x21, 0x04, 0x84,
+	0xa0, 0xb2, 0x60, 0x15, 0x2f, 0x9e, 0xda, 0x45, 0x5c, 0xb1, 0x20, 0x0e, 0x82, 0x07, 0x0f, 0x61,
+	0x9a, 0x0c, 0x4d, 0xb0, 0xe9, 0x64, 0x33, 0x53, 0xc8, 0x7e, 0x04, 0xc1, 0x83, 0x5f, 0xc0, 0xef,
+	0xe3, 0x71, 0x8f, 0x1e, 0xa5, 0xfd, 0x22, 0x92, 0xc9, 0xa6, 0x4d, 0x0a, 0x75, 0xc5, 0x8b, 0xa7,
+	0x3e, 0x2f, 0x99, 0xff, 0xfc, 0xfe, 0xcf, 0xcc, 0x14, 0x4e, 0x32, 0x26, 0x04, 0x9d, 0x33, 0x71,
+	0x9a, 0x17, 0x5c, 0x72, 0x7c, 0xac, 0x7e, 0x84, 0xff, 0x12, 0x2c, 0x59, 0xd0, 0xa5, 0xa0, 0x91,
+	0x4c, 0xf9, 0x12, 0x63, 0x18, 0x24, 0x54, 0x24, 0x0e, 0xf2, 0x50, 0x60, 0x12, 0x15, 0x63, 0x07,
+	0xf4, 0x9c, 0x5e, 0x2e, 0x38, 0x8d, 0x9d, 0xbe, 0x87, 0x82, 0x21, 0x69, 0x52, 0x7f, 0x0c, 0xc6,
+	0x8c, 0xca, 0x28, 0x09, 0xd3, 0x18, 0xdf, 0x81, 0x63, 0xba, 0x92, 0x09, 0x2f, 0xd4, 0xda, 0x01,
+	0xb9, 0xce, 0xf0, 0x03, 0x80, 0xfa, 0x1b, 0xa5, 0xdb, 0x57, 0xba, 0xa6, 0xaa, 0x9c, 0x53, 0x91,
+	0xf8, 0xdf, 0x11, 0x1c, 0xa9, 0x0c, 0x3f, 0xde, 0x89, 0x29, 0x09, 0x6b, 0x64, 0xd7, 0xac, 0xe2,
+	0xb4, 0xa9, 0x13, 0x5d, 0x45, 0x6f, 0x62, 0x7c, 0x0f, 0xcc, 0x4a, 0x2f, 0x5c, 0xa4, 0x42, 0x3a,
+	0x7d, 0x4f, 0x0b, 0x4c, 0x62, 0x54, 0x85, 0x69, 0x2a, 0x24, 0x7e, 0x02, 0xba, 0x2c, 0xeb, 0x96,
+	0xe6, 0x69, 0x81, 0x35, 0xba, 0xdd, 0x08, 0xb5, 0xac, 0x92, 0x63, 0x59, 0xaa, 0xaf, 0xef, 0x83,
+	0x29, 0xd3, 0x8c, 0x09, 0x49, 0xb3, 0xdc, 0x19, 0x78, 0x28, 0xd0, 0xc8, 0xae, 0xe0, 0x7f, 0x04,
+	0x43, 0x96, 0x61, 0x4d, 0xd8, 0xb5, 0x82, 0xf6, 0xac, 0xb4, 0xb7, 0xed, 0xdf, 0xb8, 0xad, 0xff,
+	0x05, 0x81, 0x91, 0x17, 0x3c, 0xe7, 0x82, 0x2e, 0x0e, 0x0e, 0xef, 0x2e, 0x18, 0x82, 0x5d, 0xac,
+	0xd8, 0x32, 0x62, 0x6a, 0x74, 0x03, 0xb2, 0xcd, 0xab, 0x79, 0x35, 0x64, 0x8e, 0xd6, 0x9d, 0x57,
+	0x53, 0x27, 0xba, 0x2c, 0x27, 0x0a, 0xfd, 0xcf, 0x26, 0xbf, 0x22, 0xb0, 0x78, 0x11, 0xb3, 0x82,
+	0xc5, 0x61, 0xc1, 0x2e, 0xfe, 0x15, 0x67, 0x7b, 0x7c, 0xda, 0x4d, 0xc7, 0xf7, 0xf7, 0x38, 0x0b,
+	0x3e, 0xff, 0xdf, 0x38, 0x9f, 0x76, 0x34, 0x34, 0xfa, 0x7c, 0x90, 0xe6, 0x79, 0x07, 0x5a, 0x01,
+	0xb5, 0xae, 0x40, 0xab, 0x45, 0xe0, 0x3a, 0x99, 0xf2, 0xb9, 0x1f, 0x81, 0x11, 0xf1, 0x2c, 0x0b,
+	0x33, 0x71, 0xd8, 0xe7, 0x43, 0x18, 0xc8, 0xcb, 0xbc, 0xf6, 0x78, 0x32, 0xba, 0xd5, 0x48, 0xaa,
+	0x75, 0x55, 0x83, 0xa8, 0x76, 0xfb, 0x9d, 0x6a, 0xdd, 0x77, 0x3a, 0x83, 0x21, 0x2b, 0x59, 0xb4,
+	0x92, 0xac, 0xda, 0x5f, 0x74, 0x06, 0x87, 0xf6, 0x06, 0xf7, 0x02, 0x86, 0x2d, 0x56, 0xb1, 0x7f,
+	0x95, 0xdb, 0x3e, 0xac, 0x9d, 0x0f, 0xf1, 0xe8, 0x29, 0x98, 0x5b, 0x20, 0x6c, 0xc2, 0xd1, 0x64,
+	0xfc, 0xe1, 0xec, 0xdc, 0xee, 0x61, 0x1d, 0xb4, 0xe9, 0xbb, 0xd7, 0x36, 0xaa, 0x82, 0xf1, 0xd9,
+	0x5b, 0xbb, 0x5f, 0x05, 0xe4, 0xd5, 0x7b, 0x5b, 0x9b, 0x38, 0x3f, 0xd6, 0x2e, 0xba, 0x5a, 0xbb,
+	0xe8, 0xd7, 0xda, 0x45, 0xdf, 0x36, 0x6e, 0xef, 0x6a, 0xe3, 0xf6, 0x7e, 0x6e, 0xdc, 0xde, 0xac,
+	0xfe, 0x77, 0x7a, 0xf6, 0x3b, 0x00, 0x00, 0xff, 0xff, 0x31, 0x90, 0x6a, 0x75, 0xb6, 0x04, 0x00,
+	0x00,
 }
 
 func (m *Transaction) Marshal() (dAtA []byte, err error) {
@@ -693,6 +819,85 @@ func (m *Batch) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
+func (m *TxBatch) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TxBatch) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.BatchHash) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.BatchHash)))
+		i += copy(dAtA[i:], m.BatchHash)
+	}
+	if len(m.TxList) > 0 {
+		for _, msg := range m.TxList {
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintMessages(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *Proposal) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Proposal) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Author != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.Author))
+	}
+	if m.Sequence != 0 {
+		dAtA[i] = 0x10
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.Sequence))
+	}
+	if m.TxBatch != nil {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.TxBatch.Size()))
+		n2, err := m.TxBatch.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	if m.Timestamp != 0 {
+		dAtA[i] = 0x20
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.Timestamp))
+	}
+	return i, nil
+}
+
 func (m *OrderedReq) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -722,11 +927,11 @@ func (m *OrderedReq) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x1a
 		i++
 		i = encodeVarintMessages(dAtA, i, uint64(m.BatchId.Size()))
-		n2, err := m.BatchId.MarshalTo(dAtA[i:])
+		n3, err := m.BatchId.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n2
+		i += n3
 	}
 	if m.Timestamp != 0 {
 		dAtA[i] = 0x20
@@ -765,11 +970,11 @@ func (m *OrderedLog) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x1a
 		i++
 		i = encodeVarintMessages(dAtA, i, uint64(m.BatchId.Size()))
-		n3, err := m.BatchId.MarshalTo(dAtA[i:])
+		n4, err := m.BatchId.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n3
+		i += n4
 	}
 	if m.Timestamp != 0 {
 		dAtA[i] = 0x20
@@ -803,11 +1008,11 @@ func (m *OrderedAck) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x12
 		i++
 		i = encodeVarintMessages(dAtA, i, uint64(m.OrderedLog.Size()))
-		n4, err := m.OrderedLog.MarshalTo(dAtA[i:])
+		n5, err := m.OrderedLog.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n5
 	}
 	return i, nil
 }
@@ -944,6 +1149,47 @@ func (m *Batch) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovMessages(uint64(l))
 		}
+	}
+	if m.Timestamp != 0 {
+		n += 1 + sovMessages(uint64(m.Timestamp))
+	}
+	return n
+}
+
+func (m *TxBatch) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.BatchHash)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	if len(m.TxList) > 0 {
+		for _, e := range m.TxList {
+			l = e.Size()
+			n += 1 + l + sovMessages(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *Proposal) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Author != 0 {
+		n += 1 + sovMessages(uint64(m.Author))
+	}
+	if m.Sequence != 0 {
+		n += 1 + sovMessages(uint64(m.Sequence))
+	}
+	if m.TxBatch != nil {
+		l = m.TxBatch.Size()
+		n += 1 + l + sovMessages(uint64(l))
 	}
 	if m.Timestamp != 0 {
 		n += 1 + sovMessages(uint64(m.Timestamp))
@@ -1412,6 +1658,271 @@ func (m *Batch) Unmarshal(dAtA []byte) error {
 			}
 			m.TxList = append(m.TxList, &Transaction{})
 			if err := m.TxList[len(m.TxList)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
+			}
+			m.Timestamp = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Timestamp |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *TxBatch) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: tx_batch: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: tx_batch: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BatchHash", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BatchHash = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxList", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TxList = append(m.TxList, &Transaction{})
+			if err := m.TxList[len(m.TxList)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Proposal) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: proposal: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: proposal: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Author", wireType)
+			}
+			m.Author = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Author |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sequence", wireType)
+			}
+			m.Sequence = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Sequence |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxBatch", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.TxBatch == nil {
+				m.TxBatch = &TxBatch{}
+			}
+			if err := m.TxBatch.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

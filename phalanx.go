@@ -1,6 +1,6 @@
 package phalanx
 
-import commonProto "github.com/Grivn/phalanx/common/types/protos"
+import commonProto "github.com/Grivn/phalanx/common/protos"
 
 type Phalanx interface {
 	Start()

@@ -1,11 +1,11 @@
 package timer
 
 import (
-	"github.com/Grivn/phalanx/api"
+	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/external"
 )
 
-func NewTimer(eventC chan interface{}, logger external.Logger) api.Timer {
+func NewTimer(eventC chan interface{}, logger external.Logger) internal.Timer {
 	return newTimerImpl(eventC, logger)
 }
 

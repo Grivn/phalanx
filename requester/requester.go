@@ -1,13 +1,13 @@
 package requester
 
 import (
-	"github.com/Grivn/phalanx/api"
+	commonProto "github.com/Grivn/phalanx/common/protos"
 	commonTypes "github.com/Grivn/phalanx/common/types"
-	commonProto "github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 )
 
-func NewRequester(n int, id uint64, sendC commonTypes.RequesterSendChan, network external.Network, logger external.Logger) api.Requester {
+func NewRequester(n int, id uint64, sendC commonTypes.RequesterSendChan, network external.Network, logger external.Logger) internal.Requester {
 	return newRequesterImpl(n, id, sendC, network, logger)
 }
 
