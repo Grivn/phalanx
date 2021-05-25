@@ -27,7 +27,7 @@ func (tp *txPoolImpl) PostTx(tx *commonProto.Transaction) {
 	tp.postTx(tx)
 }
 
-func (tp *txPoolImpl) PostBatch(batch *commonProto.Batch) {
+func (tp *txPoolImpl) PostBatch(batch *commonProto.TxBatch) {
 	tp.postBatch(batch)
 }
 

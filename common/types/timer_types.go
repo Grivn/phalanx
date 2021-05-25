@@ -3,8 +3,8 @@ package types
 import "time"
 
 const (
-	BinaryTagTimer = "binary_tag_timer"
-	TxPoolTimer = "txpool_timer"
+	BinaryTagTimer = "binary tag timer"
+	TxPoolTimer = "transaction pool timer"
 )
 
 const (

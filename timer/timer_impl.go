@@ -1,7 +1,7 @@
 package timer
 
 import (
-	"github.com/Grivn/phalanx/timer/types"
+	types2 "github.com/Grivn/phalanx/common/types"
 	"strconv"
 	"sync"
 	"time"
@@ -57,8 +57,8 @@ func newTimerImpl(eventC chan interface{}, logger external.Logger) *timerImpl {
 		logger:    logger,
 	}
 
-	tm.newTimer(types.BinaryTagTimer, types.DefaultBinaryTagTimer)
-	tm.newTimer(types.TxPoolTimer, types.DefaultTxPoolTimer)
+	tm.newTimer(types2.BinaryTagTimer, types2.DefaultBinaryTagTimer)
+	tm.newTimer(types2.TxPoolTimer, types2.DefaultTxPoolTimer)
 
 	return tm
 }

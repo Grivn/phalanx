@@ -10,14 +10,14 @@ type LogID struct {
 }
 
 type ExecuteLog struct {
-	ID LogID
+	ID string
 	N  int
 	F  int
 	Timestamps []int64
 	TrustedTs int64
 }
 
-func NewLog(n int,id LogID) *ExecuteLog {
+func NewLog(n int,id string) *ExecuteLog {
 	return &ExecuteLog{
 		ID: id,
 		N:  n,

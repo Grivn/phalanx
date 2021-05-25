@@ -12,7 +12,7 @@ type TxPool interface {
 
 	PostTx(tx *commonProto.Transaction)
 
-	PostBatch(batch *commonProto.Batch)
+	PostBatch(batch *commonProto.TxBatch)
 
 	ExecuteBlock(block *commonTypes.Block)
 
