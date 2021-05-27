@@ -16,7 +16,6 @@ const (
 )
 
 type Signature [][]byte
-type AggSig []Signature
 
 //==================================== Hasher =============================================
 

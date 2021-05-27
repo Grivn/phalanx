@@ -1,6 +1,9 @@
 package crypto
 
-import "github.com/Grivn/phalanx/common/types"
+import (
+	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
+)
 
 // PrivateKey is an unspecified signature scheme private key
 type PrivateKey interface {
@@ -8,7 +11,7 @@ type PrivateKey interface {
 	Algorithm() string
 
 	// Sign generates a signature using the provided hasher.
-	Sign(hash types.Hash) (types.Signature, error)
+	Sign(types.Hash) (*protos.Certification, error)
 
 	// PublicKey returns the public key.
 	PublicKey() PublicKey
@@ -20,7 +23,7 @@ type PublicKey interface {
 	Algorithm() string
 
 	// Verify verifies a signature of an input message using the provided hasher.
-	Verify(types.Signature, types.Hash) (bool, error)
+	Verify(*protos.Certification, types.Hash) (bool, error)
 }
 
 // Hasher interface

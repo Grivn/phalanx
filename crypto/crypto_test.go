@@ -13,10 +13,11 @@ func TestCrypto(t *testing.T) {
 	id := MakeID(payload)
 	hash := IDToByte(id)
 
-	sig, err := PrivSign(hash, 1)
+	cert, err := PrivSign(hash, 1)
 	assert.Nil(t, err)
+	assert.Equal(t, 2, len(cert.Signatures))
 
-	flag, err := PubVerify(sig, hash, 1)
+	flag, err := PubVerify(cert, hash, 1)
 	assert.True(t, flag)
 	assert.Nil(t, err)
 }

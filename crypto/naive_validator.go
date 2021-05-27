@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"errors"
+	"github.com/Grivn/phalanx/common/protos"
 
 	"github.com/Grivn/phalanx/common/types"
 )
@@ -29,13 +30,13 @@ func SetKeys() error {
 }
 
 // PrivSign is used to generate signature with private key
-func PrivSign(hash types.Hash, nodeID int) (types.Signature, error) {
+func PrivSign(hash types.Hash, nodeID int) (*protos.Certification, error) {
 	return keys[nodeID-1].Sign(hash)
 }
 
 // PubVerify is used to verify the signature with the provided public key
-func PubVerify(sig types.Signature, hash types.Hash, nodeID int) (bool, error) {
-	return pubKeys[nodeID-1].Verify(sig, hash)
+func PubVerify(cert *protos.Certification, hash types.Hash, nodeID int) (bool, error) {
+	return pubKeys[nodeID-1].Verify(cert, hash)
 }
 
 //==================================== Helper =============================================
