@@ -122,10 +122,11 @@ func (phi *phalanxImpl) listenReq() {
 		case <-phi.closeC:
 			phi.logger.Notice("exist communicate message listener for phalanx")
 			return
-		case req, ok := <-phi.commC.ReqChan:
+		case proposal, ok := <-phi.commC.PropChan:
 			if !ok {
 				continue
 			}
+			phi.txpool.PostBatch(proposal.TxBatch)
 			phi.requester.Record(req)
 		}
 	}

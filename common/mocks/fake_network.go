@@ -46,6 +46,17 @@ func (network *network) BroadcastReq(req *commonProto.OrderedReq) {
 	}
 }
 
+func (network *network) BroadcastProposal(proposal *commonProto.Proposal) {
+	for id := range network.commC {
+		if id == network.author {
+			continue
+		}
+		go func(id uint64) {
+			network.commC[id].PropChan <- proposal
+		}(id)
+	}
+}
+
 func (network *network) BroadcastLog(log *commonProto.OrderedLog) {
 	for id := range network.commC {
 		if id == network.author {

@@ -6,6 +6,8 @@ import commonProto "github.com/Grivn/phalanx/common/protos"
 type CommChan struct {
 	BatchChan chan *commonProto.Batch
 
+	PropChan chan *commonProto.Proposal
+
 	ReqChan chan *commonProto.OrderedReq
 
 	LogChan chan *commonProto.OrderedLog
@@ -33,7 +35,7 @@ type TxPoolSendChan struct {
 
 // RequesterRecvChan is the channel group which is used to receive events from other modules for requester
 type RequesterRecvChan struct {
-	OrderedChan chan *commonProto.OrderedReq
+	ProposalChan chan *commonProto.Proposal
 }
 
 // RequesterSendChan is the channel group which is used to send back information to other modules for requester

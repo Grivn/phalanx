@@ -10,7 +10,7 @@ type TxPool interface {
 
 	Reset()
 
-	PostTx(tx *commonProto.Transaction)
+	PostTx(txs []*commonProto.Transaction)
 
 	PostBatch(batch *commonProto.TxBatch)
 

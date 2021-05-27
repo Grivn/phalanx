@@ -1,8 +1,13 @@
 package types
 
 type Block struct {
-	Sequence  uint64
-	Logs      []*ExecuteLog
+	// Sequence is the block sequential order
+	Sequence uint64
+
+	// Logs are the logs we would like to execute
+	Logs []*ExecuteLog
+
+	// Timestamp is the timestamp for block
 	Timestamp int64
 }
 

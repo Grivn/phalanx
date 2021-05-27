@@ -19,10 +19,10 @@ func (r *requesterImpl) Stop() {
 	r.stop()
 }
 
-func (r *requesterImpl) Generate(bid *commonProto.BatchId) {
-	r.generate(bid)
+func (r *requesterImpl) Generate(batch *commonProto.TxBatch) {
+	r.propose(batch)
 }
 
-func (r *requesterImpl) Record(msg *commonProto.OrderedReq) {
-	r.record(msg)
+func (r *requesterImpl) Record(proposal *commonProto.Proposal) {
+	r.receiveProposal(proposal)
 }

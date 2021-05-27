@@ -16,8 +16,8 @@ type requestPool struct {
 	// sequence is the preferred number for the next request
 	sequence uint64
 
-	// recorder is used to track the batch-info of node id
-	recorder map[uint64]*commonProto.BatchId
+	// recorder is used to track the batch digest according to node identifier
+	recorder map[uint64]string
 
 	// recvC is the channel group which is used to receive events from other modules
 	recvC commonTypes.RequesterRecvChan
@@ -36,14 +36,14 @@ func newRequestPool(author, id uint64, sendC commonTypes.RequesterSendChan, logg
 	logger.Noticef("replica %d init request pool for replica %d", author, id)
 
 	recvC := commonTypes.RequesterRecvChan{
-		OrderedChan: make(chan *commonProto.OrderedReq),
+		ProposalChan: make(chan *commonProto.Proposal),
 	}
 
 	return &requestPool{
 		author:   author,
 		id:       id,
 		sequence: uint64(0),
-		recorder: make(map[uint64]*commonProto.BatchId),
+		recorder: make(map[uint64]string),
 		recvC:    recvC,
 		sendC:    sendC,
 		closeC:   make(chan bool),
@@ -63,8 +63,8 @@ func (rp *requestPool) stop() {
 	}
 }
 
-func (rp *requestPool) record(req *commonProto.OrderedReq) {
-	rp.recvC.OrderedChan <- req
+func (rp *requestPool) record(proposal *commonProto.Proposal) {
+	rp.recvC.ProposalChan <- proposal
 }
 
 func (rp *requestPool) listener() {
@@ -73,24 +73,24 @@ func (rp *requestPool) listener() {
 		case <-rp.closeC:
 			rp.logger.Noticef("exist requestRecorderMgr listener for %d", rp.id)
 			return
-		case msg, ok := <-rp.recvC.OrderedChan:
+		case proposal, ok := <-rp.recvC.ProposalChan:
 			if !ok {
 				continue
 			}
-			rp.processOrderedMsg(msg)
+			rp.processProposal(proposal)
 		}
 	}
 }
 
-func (rp *requestPool) processOrderedMsg(req *commonProto.OrderedReq) {
-	rp.logger.Infof("replica %d receive ordered request from replica %d, hash %s", rp.author, req.Author, req.BatchId.BatchHash)
+func (rp *requestPool) processProposal(proposal *commonProto.Proposal) {
+	rp.logger.Infof("replica %d receive proposal %s", rp.author, proposal.Format())
 
-	if _, ok := rp.recorder[req.Sequence]; ok {
-		rp.logger.Warningf("already received batch for replica %d sequence %d", req.Author, req.Sequence)
+	if _, ok := rp.recorder[proposal.Sequence]; ok {
+		rp.logger.Warningf("replica %d has already received batch for replica %d sequence %d", rp.author, proposal.Author, proposal.Sequence)
 		return
 	}
 
-	rp.recorder[req.Sequence] = req.BatchId
+	rp.recorder[proposal.Sequence] = proposal.TxBatch.Digest
 	for {
 		bid, ok := rp.recorder[rp.sequence+1]
 		if !ok {

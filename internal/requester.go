@@ -5,7 +5,7 @@ import commonProto "github.com/Grivn/phalanx/common/protos"
 type Requester interface {
 	Basic
 
-	Generate(bid *commonProto.BatchId)
+	Generate(bid *commonProto.TxBatch)
 
-	Record(msg *commonProto.OrderedReq)
+	Record(msg *commonProto.Proposal)
 }

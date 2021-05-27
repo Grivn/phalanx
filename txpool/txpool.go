@@ -8,7 +8,7 @@ import (
 )
 
 func NewTxPool(author uint64, batchSize, poolSize int, sendC commonTypes.TxPoolSendChan, executor external.Executor, network external.Network, logger external.Logger) internal.TxPool {
-	return newTxPoolImpl(author, batchSize, poolSize, sendC, executor, network, logger)
+	return newTxPoolImpl(author, batchSize, poolSize, sendC, executor, logger)
 }
 
 func (tp *txPoolImpl) Start() {
@@ -23,16 +23,16 @@ func (tp *txPoolImpl) Reset() {
 	tp.reset()
 }
 
-func (tp *txPoolImpl) PostTx(tx *commonProto.Transaction) {
-	tp.postTx(tx)
+func (tp *txPoolImpl) PostTx(txs []*commonProto.Transaction) {
+	tp.receiveTransactions(txs)
 }
 
 func (tp *txPoolImpl) PostBatch(batch *commonProto.TxBatch) {
-	tp.postBatch(batch)
+	tp.receiveTxBatch(batch)
 }
 
 func (tp *txPoolImpl) ExecuteBlock(block *commonTypes.Block) {
-	tp.executeBlock(block)
+	tp.tryingBlockExecution(block)
 }
 
 func (tp *txPoolImpl) IsPoolFull() bool {

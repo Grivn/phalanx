@@ -57,24 +57,25 @@ func (r *requesterImpl) stop() {
 	}
 }
 
-func (r *requesterImpl) generate(bid *commonProto.BatchId) {
-	if bid == nil {
+// propose is used to generate a proposal with the tx-batch send from tx-pool
+func (r *requesterImpl) propose(batch *commonProto.TxBatch) {
+	if batch == nil {
 		r.logger.Warningf("[%d Warning] received a nil batch id", r.author)
 		return
 	}
 
 	r.sequence++
-	req := &commonProto.OrderedReq{
+	proposal := &commonProto.Proposal{
 		Author:   r.author,
 		Sequence: r.sequence,
-		BatchId:  bid,
+		TxBatch:  batch,
 	}
 
-	r.logger.Infof("[%d Generate] ordered req for seq %d batch %s", r.author, r.sequence, bid.BatchHash)
-	r.sender.BroadcastReq(req)
-	r.record(req)
+	r.logger.Infof("[%d Generate] ordered req for seq %d batch %s", r.author, r.sequence, batch.Digest)
+	r.sender.BroadcastProposal(proposal)
+	r.receiveProposal(proposal)
 }
 
-func (r *requesterImpl) record(req *commonProto.OrderedReq) {
-	r.recorder[req.Author].record(req)
+func (r *requesterImpl) receiveProposal(proposal *commonProto.Proposal) {
+	r.recorder[proposal.Author].record(proposal)
 }
