@@ -4,6 +4,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/mock v1.4.4
+	github.com/google/btree v1.0.1
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/ultramesh/fancylogger v0.1.2
