@@ -35,7 +35,7 @@ func PrivSign(hash types.Hash, nodeID int) (*protos.Certification, error) {
 }
 
 // PubVerify is used to verify the signature with the provided public key
-func PubVerify(cert *protos.Certification, hash types.Hash, nodeID int) (bool, error) {
+func PubVerify(cert *protos.Certification, hash types.Hash, nodeID int) error {
 	return pubKeys[nodeID-1].Verify(cert, hash)
 }
 

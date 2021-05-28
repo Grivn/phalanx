@@ -3,6 +3,7 @@ package crypto
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"errors"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"math/big"
@@ -58,10 +59,12 @@ func (pub *ecdsaP256PublicKey) Algorithm() string {
 }
 
 // Verify verifies a signature of an input message using the provided hasher.
-func (pub *ecdsaP256PublicKey) Verify(cert *protos.Certification, hash types.Hash) (bool, error) {
+func (pub *ecdsaP256PublicKey) Verify(cert *protos.Certification, hash types.Hash) error {
 	ecdsaSig := signatureToECDSA(cert)
-	isVerified := ecdsa.Verify(&pub.PublicKey, hash, ecdsaSig.r, ecdsaSig.s)
-	return isVerified, nil
+	if pass := ecdsa.Verify(&pub.PublicKey, hash, ecdsaSig.r, ecdsaSig.s); pass {
+		return nil
+	}
+	return errors.New("invalid signature")
 }
 
 func signatureToECDSA(cert *protos.Certification) ecdsaSignature {

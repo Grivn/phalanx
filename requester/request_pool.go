@@ -17,7 +17,7 @@ type requestPool struct {
 	sequence uint64
 
 	// recorder is used to track the batch digest according to node identifier
-	recorder map[uint64]string
+	recorder map[uint64]*commonProto.TxBatch
 
 	// recvC is the channel group which is used to receive events from other modules
 	recvC commonTypes.RequesterRecvChan
@@ -43,7 +43,7 @@ func newRequestPool(author, id uint64, sendC commonTypes.RequesterSendChan, logg
 		author:   author,
 		id:       id,
 		sequence: uint64(0),
-		recorder: make(map[uint64]string),
+		recorder: make(map[uint64]*commonProto.TxBatch),
 		recvC:    recvC,
 		sendC:    sendC,
 		closeC:   make(chan bool),
@@ -90,20 +90,20 @@ func (rp *requestPool) processProposal(proposal *commonProto.Proposal) {
 		return
 	}
 
-	rp.recorder[proposal.Sequence] = proposal.TxBatch.Digest
+	rp.recorder[proposal.Sequence] = proposal.TxBatch
 	for {
-		bid, ok := rp.recorder[rp.sequence+1]
+		batch, ok := rp.recorder[rp.sequence+1]
 		if !ok {
 			break
 		}
 		rp.sequence++
 		rp.logger.Infof("replica %d propose batch id for replica %d sequence %d", rp.author, rp.id, rp.sequence)
 
-		go rp.sendSequentialBatch(bid)
+		go rp.sendSequentialBatch(batch)
 		delete(rp.recorder, rp.sequence)
 	}
 }
 
-func (rp *requestPool) sendSequentialBatch(bid *commonProto.BatchId) {
-	rp.sendC.BatchIdChan <- bid
+func (rp *requestPool) sendSequentialBatch(batch *commonProto.TxBatch) {
+	rp.sendC.BatchChan <- batch
 }

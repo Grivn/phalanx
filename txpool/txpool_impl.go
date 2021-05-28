@@ -170,7 +170,7 @@ func (tp *txPoolImpl) receiveTransactions(txs []*commonProto.Transaction) {
 	tp.checkSpace()
 }
 
-func (tp *txPoolImpl) receiveTxBatch(batch *commonProto.TxBatch) {
+func (tp *txPoolImpl) receiveTxBatch(batch *commonProto.TxBatch) error {
 	tp.mutex.Lock()
 	defer tp.mutex.Unlock()
 
@@ -178,13 +178,14 @@ func (tp *txPoolImpl) receiveTxBatch(batch *commonProto.TxBatch) {
 
 	// verify the correctness of batch
 	if err := tp.verifyBatch(batch); err != nil {
-		tp.logger.Errorf("replica %d received illegal batch: %s", tp.author, err)
-		return
+		return fmt.Errorf("replica %d received illegal batch: %s", tp.author, err)
 	}
 
 	// record the batch with a false local target
 	tp.batchStore[batch.Digest] = batchEntry{batch: batch, local: false}
 	tp.checkSpace()
+
+	return nil
 }
 
 func (tp *txPoolImpl) tryingBlockExecution(blk *commonTypes.Block) {

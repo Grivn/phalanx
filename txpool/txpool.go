@@ -27,8 +27,8 @@ func (tp *txPoolImpl) PostTx(txs []*commonProto.Transaction) {
 	tp.receiveTransactions(txs)
 }
 
-func (tp *txPoolImpl) PostBatch(batch *commonProto.TxBatch) {
-	tp.receiveTxBatch(batch)
+func (tp *txPoolImpl) PostBatch(batch *commonProto.TxBatch) error {
+	return tp.receiveTxBatch(batch)
 }
 
 func (tp *txPoolImpl) ExecuteBlock(block *commonTypes.Block) {

@@ -7,6 +7,12 @@ type Network interface {
 
 	BroadcastProposal(proposal *commonProto.Proposal)
 
+	BroadcastPreOrder(pre *commonProto.PreOrder)
+
+	SendVote(vote *commonProto.Vote)
+
+	BroadcastOrder(order *commonProto.Order)
+
 	BroadcastReq(req *commonProto.OrderedReq)
 
 	BroadcastLog(log *commonProto.OrderedLog)

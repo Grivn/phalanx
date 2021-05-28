@@ -23,7 +23,7 @@ type PublicKey interface {
 	Algorithm() string
 
 	// Verify verifies a signature of an input message using the provided hasher.
-	Verify(*protos.Certification, types.Hash) (bool, error)
+	Verify(*protos.Certification, types.Hash) error
 }
 
 // Hasher interface

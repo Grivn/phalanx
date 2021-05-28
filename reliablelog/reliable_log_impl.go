@@ -21,7 +21,7 @@ type reliableLogImpl struct {
 	// closeC is used to close the go-routine of reliableLog
 	closeC chan bool
 
-	generator *generator
+	generator *orderMgr
 
 	logger external.Logger
 }
@@ -30,9 +30,10 @@ func newReliableLogImpl(n int, author uint64, sendC commonTypes.ReliableSendChan
 	logger.Noticef("replica %d init log manager", author)
 
 	recvC := commonTypes.ReliableRecvChan{
-		BatchIdChan: make(chan *commonProto.BatchId),
-		LogChan:     make(chan *commonProto.OrderedLog),
-		AckChan:     make(chan *commonProto.OrderedAck),
+		BatchChan:   make(chan *commonProto.TxBatch),
+		PreOrdering: make(chan *commonProto.PreOrdering),
+		Vote:        make(chan *commonProto.Vote),
+		Ordering:    make(chan *commonProto.Ordering),
 	}
 
 	return &reliableLogImpl{
@@ -41,13 +42,13 @@ func newReliableLogImpl(n int, author uint64, sendC commonTypes.ReliableSendChan
 		recvC:     recvC,
 		sendC:     sendC,
 		closeC:    make(chan bool),
-		generator: newGenerator(author, network, logger),
+		generator: newOrderMgr(author, logger),
 		logger:    logger,
 	}
 }
 
-func (rl *reliableLogImpl) generate(bid *commonProto.BatchId) {
-	rl.recvC.BatchIdChan <- bid
+func (rl *reliableLogImpl) generate(batch *commonProto.TxBatch) {
+
 }
 
 func (rl *reliableLogImpl) recordLog(log *commonProto.OrderedLog) {
