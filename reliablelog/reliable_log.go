@@ -19,14 +19,29 @@ func (rl *reliableLogImpl) Stop() {
 	rl.stop()
 }
 
-func (rl *reliableLogImpl) Generate(bid *commonProto.BatchId) {
-	rl.generate(bid)
+func (rl *reliableLogImpl) ProcessCommand(command *commonProto.Command) {
+	pre, err := rl.generator.generatePreOrder(command)
+	if err != nil {
+		rl.logger.Errorf("%s", err)
+		return
+	}
+
+
 }
 
-func (rl *reliableLogImpl) RecordLog(log *commonProto.OrderedLog) {
-	rl.recordLog(log)
+func (rl *reliableLogImpl) ProcessPreOrder(pre *commonProto.PreOrder) {
+	err := rl.subInstances[pre.Author].ProcessPreOrder(pre)
+	if err != nil {
+		rl.logger.Errorf("%s", err)
+	}
 }
 
-func (rl *reliableLogImpl) RecordAck(ack *commonProto.OrderedAck) {
-	rl.recordAck(ack)
-}
+func (rl *reliableLogImpl) ProcessVote(vote *commonProto.Vote) {}
+
+func (rl *reliableLogImpl) ProcessOrder(order *commonProto.Order) {}
+
+func (rl *reliableLogImpl) Generate(bid *commonProto.BatchId) {}
+
+func (rl *reliableLogImpl) RecordLog(log *commonProto.OrderedLog) {}
+
+func (rl *reliableLogImpl) RecordAck(ack *commonProto.OrderedAck) {}

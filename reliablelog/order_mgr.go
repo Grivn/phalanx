@@ -29,13 +29,14 @@ func newOrderMgr(author uint64, logger external.Logger) *orderMgr {
 	}
 }
 
-func (om *orderMgr) generatePreOrder(batch *commonProto.TxBatch) (*commonProto.PreOrder, error) {
+// generatePreOrder is used to generate pre-order for one command
+func (om *orderMgr) generatePreOrder(command *commonProto.Command) (*commonProto.PreOrder, error) {
 	om.sequence++
 
 	pre := &commonProto.PreOrder{
 		Author:      om.author,
 		Sequence:    om.sequence,
-		BatchDigest: batch.Digest,
+		BatchDigest: command.Digest,
 		Timestamp:   time.Now().UnixNano(),
 	}
 

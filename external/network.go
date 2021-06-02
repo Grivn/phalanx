@@ -9,7 +9,7 @@ type Network interface {
 
 	BroadcastPreOrder(pre *commonProto.PreOrder)
 
-	SendVote(vote *commonProto.Vote)
+	SendVote(vote *commonProto.Vote, to uint64)
 
 	BroadcastOrder(order *commonProto.Order)
 
