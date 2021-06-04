@@ -11,7 +11,7 @@ type Network interface {
 
 	SendVote(vote *commonProto.Vote, to uint64)
 
-	BroadcastOrder(order *commonProto.Order)
+	BroadcastQC(qc *commonProto.QuorumCert)
 
 	BroadcastReq(req *commonProto.OrderedReq)
 

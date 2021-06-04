@@ -12,9 +12,9 @@ type SubInstance interface {
 	// vote message for it if it's legal for us.
 	ProcessPreOrder(pre *protos.PreOrder) error
 
-	// ProcessOrder is used to process order messages.
-	// A valid order message, which has a series of valid signature which has reached quorum size,
+	// ProcessQC is used to process quorum-cert messages.
+	// A valid quorum-cert message, which has a series of valid signature which has reached quorum size,
 	// could advance the sequence counter. We should record the advanced counter and put the info of
 	// order message into the sequential-pool.
-	ProcessOrder(order *protos.Order) error
+	ProcessQC(order *protos.QuorumCert) error
 }

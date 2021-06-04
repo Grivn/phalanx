@@ -7,7 +7,7 @@ import (
 	"github.com/Grivn/phalanx/executor"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
-	"github.com/Grivn/phalanx/reliablelog"
+	"github.com/Grivn/phalanx/remotelog"
 	"github.com/Grivn/phalanx/requester"
 	"github.com/Grivn/phalanx/txpool"
 	"github.com/gogo/protobuf/proto"

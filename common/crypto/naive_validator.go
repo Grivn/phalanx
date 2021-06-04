@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"errors"
 	"github.com/Grivn/phalanx/common/protos"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/Grivn/phalanx/common/types"
 )
@@ -37,6 +38,34 @@ func PrivSign(hash types.Hash, nodeID int) (*protos.Certification, error) {
 // PubVerify is used to verify the signature with the provided public key
 func PubVerify(cert *protos.Certification, hash types.Hash, nodeID int) error {
 	return pubKeys[nodeID-1].Verify(cert, hash)
+}
+
+// VerifyProofCerts is used to verify the validation of proof-certs
+func VerifyProofCerts(digest types.Hash, pc *protos.ProofCerts, quorum int) error {
+	if pc == nil {
+		return errors.New("nil proof-certs")
+	}
+	if len(pc.Certs) < quorum {
+		return errors.New("not enough signatures")
+	}
+	for id, cert := range pc.Certs {
+		if err := PubVerify(cert, digest, int(id)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CheckDigest is used to check the correctness of digest
+func CheckDigest(pre *protos.PreOrder) error {
+	payload, err := proto.Marshal(&protos.PreOrder{Author: pre.Author, Sequence: pre.Sequence, BatchDigest: pre.BatchDigest, Timestamp: pre.Timestamp})
+	if err != nil {
+		return err
+	}
+	if types.CalculatePayloadHash(payload, 0) != pre.Digest {
+		return errors.New("digest is not equal")
+	}
+	return nil
 }
 
 //==================================== Helper =============================================

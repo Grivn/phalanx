@@ -4,12 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Grivn/phalanx/common/crypto"
-	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/internal"
-
 	"github.com/Grivn/phalanx/common/event"
 	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 
 	"github.com/google/btree"
 )
@@ -39,7 +38,7 @@ type subInstance struct {
 	logger external.Logger
 }
 
-func newSubInstance(author, id uint64, preC chan *protos.PreOrder, sender external.Network, logger external.Logger) *subInstance {
+func NewSubInstance(author, id uint64, sender external.Network, logger external.Logger) *subInstance {
 	logger.Noticef("replica %d init the sub instance of order for replica %d", author, id)
 	return &subInstance{
 		author:   author,
@@ -66,7 +65,7 @@ func (si *subInstance) ProcessPreOrder(pre *protos.PreOrder) error {
 		return si.processBTree()
 	}
 
-	if err := pre.CheckDigest(); err != nil {
+	if err := crypto.CheckDigest(pre); err != nil {
 		return fmt.Errorf("invalid digest: %s", err)
 	}
 
@@ -75,14 +74,14 @@ func (si *subInstance) ProcessPreOrder(pre *protos.PreOrder) error {
 	return si.processBTree()
 }
 
-func (si *subInstance) ProcessOrder(order *protos.Order) error {
+func (si *subInstance) ProcessQC(qc *protos.QuorumCert) error {
 	si.logger.Infof("replica %d received a order message", si.author)
 
-	if err := order.Verify(si.quorum); err != nil {
+	if err := crypto.VerifyProofCerts(types.StringToBytes(qc.Digest()), qc.ProofCerts, si.quorum); err != nil {
 		return fmt.Errorf("invalid order: %s", err)
 	}
 
-	ev := &event.BtreeEvent{EventType: event.BTreeEventOrder, Seq: order.PreOrder.Sequence, Digest: order.PreOrder.Digest, Event: order}
+	ev := &event.BtreeEvent{EventType: event.BTreeEventOrder, Seq: qc.PreOrder.Sequence, Digest: qc.PreOrder.Digest, Event: qc}
 	si.recorder.ReplaceOrInsert(ev)
 
 	return si.processBTree()
@@ -107,9 +106,9 @@ func (si *subInstance) processBTree() error {
 		si.sender.SendVote(vote, pre.Author)
 
 	case event.BTreeEventOrder:
-		order := ev.Event.(*protos.Order)
+		qc := ev.Event.(*protos.QuorumCert)
 
-		si.sequential.InsertQuorumCert(&protos.QuorumCert{Order: order})
+		si.sequential.InsertQuorumCert(qc)
 	default:
 		return errors.New("invalid event type")
 	}

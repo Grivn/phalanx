@@ -1,41 +1,52 @@
 package protos
 
 import (
-	"errors"
 	"fmt"
+	"time"
 
-	"github.com/Grivn/phalanx/common/crypto"
-	"github.com/Grivn/phalanx/common/types"
-	"github.com/gogo/protobuf/proto"
+	"github.com/google/btree"
 )
 
 func (m *Proposal) Format() string {
 	return fmt.Sprintf("[Proposal, Author %d, Sequence %d, Batch %s]", m.Author, m.Sequence, m.TxBatch.Digest)
 }
 
-func (m *PreOrder) CheckDigest() error {
-	payload, err := proto.Marshal(&PreOrder{Author: m.Author, Sequence: m.Sequence, BatchDigest: m.BatchDigest, Timestamp: m.Timestamp})
-	if err != nil {
-		return err
-	}
-	if types.CalculatePayloadHash(payload, 0) != m.Digest {
-		return errors.New("digest is not equal")
-	}
-	return nil
+//=============================== Quorum Cert ===============================================
+
+func (m *QuorumCert) Less(item btree.Item) bool {
+	return m.PreOrder.Sequence < (item.(*QuorumCert)).PreOrder.Sequence
 }
 
-func (m *Order) Digest() string {
+func (m *QuorumCert) Author() uint64 {
+	return m.PreOrder.Author
+}
+
+func (m *QuorumCert) Digest() string {
 	return m.PreOrder.Digest
 }
 
-func (m *Order) Verify(quorum int) error {
-	if len(m.ProofCerts) < quorum {
-		return errors.New("not enough signatures")
-	}
-	for id, cert := range m.ProofCerts {
-		if err := crypto.PubVerify(cert, types.StringToBytes(m.Digest()), int(id)); err != nil {
-			return err
-		}
-	}
-	return nil
+func (m *QuorumCert) Sequence() uint64 {
+	return m.PreOrder.Sequence
+}
+
+//=================================== Generate Messages ============================================
+
+func NewProofCerts() *ProofCerts {
+	return &ProofCerts{Certs: make(map[uint64]*Certification)}
+}
+
+func NewQuorumCert(pre *PreOrder) *QuorumCert {
+	return &QuorumCert{PreOrder: pre, ProofCerts: NewProofCerts()}
+}
+
+func NewPreOrder(author uint64, sequence uint64, command *Command) *PreOrder {
+	return &PreOrder{Author: author, Sequence: sequence, BatchDigest: command.Digest, Timestamp: time.Now().UnixNano()}
+}
+
+func NewQCFilter() *QCFilter {
+	return &QCFilter{QCs: nil}
+}
+
+func NewQCBatch() *QCBatch {
+	return &QCBatch{Commands: make(map[string]*Command)}
 }
