@@ -23,6 +23,7 @@ func NewReliableLog(n int, author uint64, logger external.Logger) *remoteLog {
 	}
 }
 
+// ProcessPreOrder is used as a proxy for remote-log module to process pre-order messages.
 func (rl *remoteLog) ProcessPreOrder(pre *commonProto.PreOrder) {
 	err := rl.subInstances[pre.Author].ProcessPreOrder(pre)
 	if err != nil {
@@ -30,6 +31,7 @@ func (rl *remoteLog) ProcessPreOrder(pre *commonProto.PreOrder) {
 	}
 }
 
+// ProcessQC is used as a proxy for remote-log module to process QC messages.
 func (rl *remoteLog) ProcessQC(qc *commonProto.QuorumCert) {
 	err := rl.subInstances[qc.Author()].ProcessQC(qc)
 	if err != nil {

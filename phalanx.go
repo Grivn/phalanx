@@ -1,15 +1,17 @@
 package phalanx
 
-import commonProto "github.com/Grivn/phalanx/common/protos"
+import (
+	"github.com/Grivn/phalanx/external"
+)
 
-type Phalanx interface {
-	Start()
+type phalanx struct {
+	n int
+	f int
+	author uint64
 
-	Stop()
+	logger external.Logger
+}
 
-	IsNormal() bool
-
-	PostTxs(txs []*commonProto.Transaction)
-
-	Execute(payload []byte)
+func newPhalanxImpl() *phalanx {
+	return nil
 }
