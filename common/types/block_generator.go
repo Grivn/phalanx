@@ -15,7 +15,7 @@ type PendingCommand struct {
 }
 
 type Block struct {
-	TxList    []*protos.Entry
+	TxList    []*protos.Transaction
 	HashList  []string
 	Timestamp int64
 }

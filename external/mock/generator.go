@@ -2,5 +2,4 @@
 
 //go:generate mockgen -destination mock_logger.go -package mocks -source ../logger.go
 
-
 package mocks

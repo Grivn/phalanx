@@ -9,9 +9,10 @@ type phalanx struct {
 	f int
 	author uint64
 
+	// logger is used to print logs
 	logger external.Logger
 }
 
-func newPhalanxImpl() *phalanx {
+func NewPhalanx() *phalanx {
 	return nil
 }

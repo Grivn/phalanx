@@ -4,10 +4,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"errors"
-	"github.com/Grivn/phalanx/common/protos"
-	"github.com/gogo/protobuf/proto"
 
+	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
+
+	"github.com/gogo/protobuf/proto"
 )
 
 //==================================== Naive Validator =============================================

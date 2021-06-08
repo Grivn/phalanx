@@ -4,9 +4,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"errors"
+	"math/big"
+
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
-	"math/big"
 )
 
 // ================================= ECDSA ====================================

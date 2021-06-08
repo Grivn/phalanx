@@ -1,10 +1,10 @@
 package locallog
 
 import (
-	"github.com/Grivn/phalanx/common/crypto"
 	"strconv"
 	"testing"
 
+	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/mocks"
 	"github.com/Grivn/phalanx/common/protos"
 
