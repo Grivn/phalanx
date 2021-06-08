@@ -5,7 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/Grivn/phalanx/common/types/protos"
+	"github.com/Grivn/phalanx/common/protos"
 )
 
 func GenerateTransaction(payload []byte) *protos.Transaction {
@@ -35,6 +35,18 @@ func CalculateListHash(list []string, timestamp int64) string {
 		h.Write(b)
 	}
 	return BytesToString(h.Sum(nil))
+}
+
+func CalculateMD5Hash(payload []byte, timestamp int64) []byte {
+	h := md5.New()
+	h.Write(payload)
+
+	if timestamp > 0 {
+		b := make([]byte, 8)
+		binary.LittleEndian.PutUint64(b, uint64(timestamp))
+		h.Write(b)
+	}
+	return h.Sum(nil)
 }
 
 func CalculatePayloadHash(payload []byte, timestamp int64) string {

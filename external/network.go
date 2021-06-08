@@ -1,13 +1,11 @@
 package external
 
-import commonProto "github.com/Grivn/phalanx/common/types/protos"
+import commonProto "github.com/Grivn/phalanx/common/protos"
 
 type Network interface {
-	BroadcastBatch(batch *commonProto.Batch)
+	BroadcastPreOrder(pre *commonProto.PreOrder)
 
-	BroadcastReq(req *commonProto.OrderedReq)
+	SendVote(vote *commonProto.Vote, to uint64)
 
-	BroadcastLog(log *commonProto.OrderedLog)
-
-	BroadcastAck(ack *commonProto.OrderedAck)
+	BroadcastQC(qc *commonProto.QuorumCert)
 }

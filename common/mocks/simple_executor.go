@@ -1,8 +1,8 @@
 package mocks
 
 import (
+	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/common/types/protos"
 	"github.com/Grivn/phalanx/external"
 )
 
@@ -23,7 +23,7 @@ func NewSimpleExecutor(author uint64, logger external.Logger) external.Executor 
 	}
 }
 
-func (exe *executor) Execute(txs []*protos.Transaction, localList []bool, seqNo uint64, timestamp int64) {
+func (exe *executor) Execute(txs []*protos.Transaction, seqNo uint64, timestamp int64) {
 	var list []string
 
 	list = append(list, exe.hash)

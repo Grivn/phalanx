@@ -1,24 +1,45 @@
 package executor
 
 import (
-	"github.com/Grivn/phalanx/api"
-	commonTypes "github.com/Grivn/phalanx/common/types"
-	commonProto "github.com/Grivn/phalanx/common/types/protos"
+	"fmt"
+
+	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/executor/blockgenerator"
 	"github.com/Grivn/phalanx/external"
+
+	"github.com/gogo/protobuf/proto"
 )
 
-func NewExecutor(n int, author uint64, sendC commonTypes.ExecutorSendChan, logger external.Logger) api.Executor {
-	return newExecuteImpl(n, author, sendC, logger)
+type executorImpl struct {
+	seq uint64
+
+	bg BlockGenerator
+
+	// exec is used to execute the block.
+	exec external.Executor
 }
 
-func (ei *executorImpl) Start() {
-	ei.start()
+// NewExecutor is used to generator an executor for phalanx.
+func NewExecutor(n int, exec external.Executor) *executorImpl {
+	return &executorImpl{bg: blockgenerator.NewBlockGenerator(n), exec: exec}
 }
 
-func (ei *executorImpl) Stop() {
-	ei.stop()
-}
+// CommitQCs is used to commit the QCs.
+func (ei *executorImpl) CommitQCs(payload []byte) error {
+	qcb := &protos.QCBatch{}
+	if err := proto.Unmarshal(payload, qcb); err != nil {
+		return fmt.Errorf("invalid QC-batch: %s", err)
+	}
 
-func (ei *executorImpl) ExecuteLogs(exec *commonProto.ExecuteLogs){
-	ei.executeLogs(exec)
+	sub, err := ei.bg.InsertQCBatch(qcb)
+	if err != nil {
+		return fmt.Errorf("invalid QC-batch: %s", err)
+	}
+
+	for _, blk := range sub {
+		ei.seq++
+		ei.exec.Execute(blk.TxList, ei.seq, blk.Timestamp)
+	}
+
+	return nil
 }
