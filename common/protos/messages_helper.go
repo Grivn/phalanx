@@ -29,6 +29,10 @@ func (m *QuorumCert) Sequence() uint64 {
 	return m.PreOrder.Sequence
 }
 
+func (m *QuorumCert) Timestamp() int64 {
+	return m.PreOrder.Timestamp
+}
+
 //=================================== Generate Messages ============================================
 
 func NewProofCerts() *ProofCerts {

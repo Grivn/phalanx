@@ -1,128 +1,44 @@
 package executor
 
 import (
-	commonProto "github.com/Grivn/phalanx/common/protos"
-	commonTypes "github.com/Grivn/phalanx/common/types"
+	"fmt"
+
+	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/executor/blockgenerator"
 	"github.com/Grivn/phalanx/external"
-	"sort"
+
+	"github.com/gogo/protobuf/proto"
 )
 
 type executorImpl struct {
-	n int
+	seq uint64
 
-	author uint64
+	bg BlockGenerator
 
-	last uint64
-
-	pendingLogs *pendingLogs
-
-	cachedLogs *cachedLogs
-
-	executedLogs map[commonTypes.LogID]bool
-
-	recvC commonTypes.ExecutorRecvChan
-
-	sendC commonTypes.ExecutorSendChan
-
-	closeC chan bool
-
-	logger external.Logger
+	exec external.Executor
 }
 
-func newExecuteImpl(n int, author uint64, sendC commonTypes.ExecutorSendChan, logger external.Logger) *executorImpl {
-	recvC := commonTypes.ExecutorRecvChan{
-		ExecuteLogsChan: make(chan *commonProto.ExecuteLogs),
+// NewExecutor is used to generator an executor for phalanx.
+func NewExecutor(n int, exec external.Executor) *executorImpl {
+	return &executorImpl{bg: blockgenerator.NewBlockGenerator(n), exec: exec}
+}
+
+// CommitQCs is used to commit the QCs.
+func (ei *executorImpl) CommitQCs(payload []byte) error {
+	qcb := &protos.QCBatch{}
+	if err := proto.Unmarshal(payload, qcb); err != nil {
+		return fmt.Errorf("invalid QC-batch: %s", err)
 	}
 
-	return &executorImpl{
-		n: n,
-
-		author: author,
-
-		last: uint64(0),
-
-		pendingLogs: newPendingLogs(n, author, logger),
-
-		cachedLogs: newCachedLogs(author, logger),
-
-		executedLogs: make(map[commonTypes.LogID]bool),
-
-		recvC: recvC,
-
-		sendC: sendC,
-
-		closeC: make(chan bool),
-
-		logger: logger,
+	sub, err := ei.bg.InsertQCBatch(qcb)
+	if err != nil {
+		return fmt.Errorf("invalid QC-batch: %s", err)
 	}
-}
 
-func (ei *executorImpl) executeLogs(exec *commonProto.ExecuteLogs) {
-	ei.recvC.ExecuteLogsChan <- exec
-}
-
-func (ei *executorImpl) start() {
-	go ei.listener()
-}
-
-func (ei *executorImpl) stop() {
-	select {
-	case <-ei.closeC:
-	default:
-		close(ei.closeC)
+	for _, blk := range sub {
+		ei.seq++
+		ei.exec.Execute(blk.TxList, ei.seq, blk.Timestamp)
 	}
-}
 
-func (ei *executorImpl) listener() {
-	for {
-		select {
-		case <-ei.closeC:
-			ei.logger.Notice("exist executor listener")
-			return
-		case exec := <-ei.recvC.ExecuteLogsChan:
-			ei.processExecuteLogs(exec)
-		}
-	}
-}
-
-func (ei *executorImpl) processExecuteLogs(exec *commonProto.ExecuteLogs) {
-	ei.cachedLogs.write(exec)
-
-	for {
-		orderedLogs := ei.cachedLogs.read()
-		if orderedLogs == nil {
-			ei.logger.Debugf("replica %d cannot find any ordered-logs on next sequence number", ei.author)
-			break
-		}
-
-		for _, orderedLog := range orderedLogs {
-			if ei.executedLogs[commonTypes.LogID{Author: orderedLog.BatchId.Author, Hash:orderedLog.BatchId.BatchHash}] {
-				ei.logger.Debugf("replica %d find an executed log", ei.author)
-				continue
-			}
-			ei.pendingLogs.update(orderedLog)
-		}
-
-		var eSlice []*commonTypes.ExecuteLog
-		for id, executeLog := range ei.pendingLogs.logs {
-			ei.logger.Infof("replica %d check the log, %v, len %d", ei.author, id, executeLog.Len())
-			if executeLog.IsQuorum() {
-				eSlice = append(eSlice, executeLog)
-				ei.pendingLogs.remove(id)
-				ei.executedLogs[id] = true
-			}
-		}
-
-		if len(eSlice) > 0 {
-			ei.last++
-			blk := commonTypes.NewBlock(ei.last, eSlice)
-			sort.Sort(blk)
-			blk.UpdateTimestamp()
-
-			for _, log := range blk.Logs {
-				ei.logger.Debugf("replica %d execute block sequence %d log id %v", ei.author, blk.Sequence, log.ID)
-			}
-			ei.sendC.BlockChan <- blk
-		}
-	}
+	return nil
 }
