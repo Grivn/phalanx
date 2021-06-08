@@ -15,6 +15,7 @@ type executorImpl struct {
 
 	bg BlockGenerator
 
+	// exec is used to execute the block.
 	exec external.Executor
 }
 
