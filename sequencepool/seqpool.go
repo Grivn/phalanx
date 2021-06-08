@@ -3,6 +3,7 @@ package sequencepool
 import (
 	"errors"
 	"fmt"
+	"github.com/Grivn/phalanx/sequencepool/synctree"
 	"github.com/gogo/protobuf/proto"
 	"sync"
 
@@ -23,6 +24,18 @@ type sequencePool struct {
 
 	// commands would store the command we received.
 	commands sync.Map
+}
+
+func NewSequencePool(n int) *sequencePool {
+	sts := make(map[uint64]SyncTree)
+	locks := make(map[uint64]SyncTree)
+
+	for i:=0; i<n; i++ {
+		sts[uint64(i+1)] = synctree.NewSyncTree(uint64(i+1))
+		locks[uint64(i+1)] = synctree.NewSyncTree(uint64(i+1))
+	}
+
+	return &sequencePool{quorum: types.CalculateQuorum(n), sts: sts, lockedQCs: locks}
 }
 
 // InsertQuorumCert could insert the quorum-cert into sync-tree for specific node.
