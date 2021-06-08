@@ -5,6 +5,7 @@
     <option name="excludedDirectories">
       <list>
         <option value="$PROJECT_DIR$/core/testLogger" />
+        <option value="$PROJECT_DIR$/node_modules" />
       </list>
     </option>
   </component>
