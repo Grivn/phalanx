@@ -7,5 +7,3 @@ func CalculateFault(n int) int {
 func CalculateQuorum(n int) int {
 	return n-CalculateFault(n)
 }
-
-

@@ -1,4 +1,4 @@
-package sequencepool
+package internal
 
 import "github.com/Grivn/phalanx/common/protos"
 

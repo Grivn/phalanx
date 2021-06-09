@@ -3,12 +3,19 @@ package internal
 import "github.com/Grivn/phalanx/common/protos"
 
 type SequencePool interface {
+	InsertManager
+	QCsManager
+}
+
+type InsertManager interface {
 	// InsertQuorumCert could insert the quorum-cert into sync-tree for specific node.
 	InsertQuorumCert(qc *protos.QuorumCert)
 
 	// InsertCommand could insert command into the sync-map.
 	InsertCommand(command *protos.Command)
+}
 
+type QCsManager interface {
 	// VerifyQCs is used to verify the QCs in qc-batch.
 	// 1) we should have quorum QCs in such a batch.
 	// 2) the qc should contain the specific command for it.

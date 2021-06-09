@@ -25,6 +25,23 @@ message Command {
 }
 
 //======================================================
+//                 consensus message
+//======================================================
+
+enum MessageType {
+  PRE_ORDER = 0;
+  VOTE = 1;
+  QUORUM_CERT = 2;
+}
+
+message ConsensusMessage {
+  MessageType Type = 1;
+  uint64 From = 2;
+  uint64 To = 3;
+  bytes Payload = 4;
+}
+
+//======================================================
 //                 order phase
 //======================================================
 
