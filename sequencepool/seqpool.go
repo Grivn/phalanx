@@ -3,13 +3,15 @@ package sequencepool
 import (
 	"errors"
 	"fmt"
-	"github.com/Grivn/phalanx/sequencepool/synctree"
-	"github.com/gogo/protobuf/proto"
 	"sync"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/internal"
+	"github.com/Grivn/phalanx/synctree"
+
+	"github.com/gogo/protobuf/proto"
 )
 
 type sequencePool struct {
@@ -17,18 +19,18 @@ type sequencePool struct {
 	quorum int
 
 	// sts would store the proof for each node.
-	sts map[uint64]SyncTree
+	sts map[uint64]internal.SyncTree
 
 	// lockedQCs would store the stable-QCs which have been proposed.
-	lockedQCs map[uint64]SyncTree
+	lockedQCs map[uint64]internal.SyncTree
 
 	// commands would store the command we received.
 	commands sync.Map
 }
 
 func NewSequencePool(n int) *sequencePool {
-	sts := make(map[uint64]SyncTree)
-	locks := make(map[uint64]SyncTree)
+	sts := make(map[uint64]internal.SyncTree)
+	locks := make(map[uint64]internal.SyncTree)
 
 	for i:=0; i<n; i++ {
 		sts[uint64(i+1)] = synctree.NewSyncTree(uint64(i+1))
@@ -76,6 +78,13 @@ func (sp *sequencePool) VerifyQCs(payload []byte) error {
 			if err := crypto.VerifyProofCerts(types.StringToBytes(qc.Digest()), qc.ProofCerts, sp.quorum); err != nil {
 				return fmt.Errorf("verify quourm cert failed: %s", err)
 			}
+		}
+	}
+
+	// todo temporary locker for QCs
+	for _, filter := range qcb.Filters {
+		for _, qc := range filter.QCs {
+			sp.sts[qc.Author()].Delete(qc)
 		}
 	}
 
@@ -140,7 +149,7 @@ func (sp *sequencePool) PullQCs() ([]byte, error) {
 
 	if len(qcs) < sp.quorum {
 		// there are not enough QCs for current QC
-		return nil, errors.New("")
+		return nil, errors.New("not enough QCs")
 	}
 
 	qcb.Filters = append(qcb.Filters, &protos.QCFilter{QCs: qcs})

@@ -17,7 +17,6 @@ func TestCrypto(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(cert.Signatures))
 
-	flag, err := PubVerify(cert, hash, 1)
-	assert.True(t, flag)
+	err = PubVerify(cert, hash, 1)
 	assert.Nil(t, err)
 }

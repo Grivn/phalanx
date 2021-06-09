@@ -4,9 +4,8 @@ import "github.com/golang/mock/gomock"
 
 func NewMockMinimalNetwork(ctrl *gomock.Controller) *MockNetwork {
 	mock := NewMockNetwork(ctrl)
-	mock.EXPECT().BroadcastPreOrder(gomock.Any()).AnyTimes()
-	mock.EXPECT().SendVote(gomock.Any(), gomock.Any()).AnyTimes()
-	mock.EXPECT().BroadcastQC(gomock.Any()).AnyTimes()
+	mock.EXPECT().Broadcast(gomock.Any()).AnyTimes()
+	mock.EXPECT().Unicast(gomock.Any()).AnyTimes()
 	return mock
 }
 

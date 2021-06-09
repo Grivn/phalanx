@@ -32,32 +32,22 @@ func (_m *MockNetwork) EXPECT() *MockNetworkMockRecorder {
 	return _m.recorder
 }
 
-// BroadcastPreOrder mocks base method
-func (_m *MockNetwork) BroadcastPreOrder(pre *protos.PreOrder) {
-	_m.ctrl.Call(_m, "BroadcastPreOrder", pre)
+// Broadcast mocks base method
+func (_m *MockNetwork) Broadcast(message *protos.ConsensusMessage) {
+	_m.ctrl.Call(_m, "Broadcast", message)
 }
 
-// BroadcastPreOrder indicates an expected call of BroadcastPreOrder
-func (_mr *MockNetworkMockRecorder) BroadcastPreOrder(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "BroadcastPreOrder", reflect.TypeOf((*MockNetwork)(nil).BroadcastPreOrder), arg0)
+// Broadcast indicates an expected call of Broadcast
+func (_mr *MockNetworkMockRecorder) Broadcast(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Broadcast", reflect.TypeOf((*MockNetwork)(nil).Broadcast), arg0)
 }
 
-// SendVote mocks base method
-func (_m *MockNetwork) SendVote(vote *protos.Vote, to uint64) {
-	_m.ctrl.Call(_m, "SendVote", vote, to)
+// Unicast mocks base method
+func (_m *MockNetwork) Unicast(message *protos.ConsensusMessage) {
+	_m.ctrl.Call(_m, "Unicast", message)
 }
 
-// SendVote indicates an expected call of SendVote
-func (_mr *MockNetworkMockRecorder) SendVote(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "SendVote", reflect.TypeOf((*MockNetwork)(nil).SendVote), arg0, arg1)
-}
-
-// BroadcastQC mocks base method
-func (_m *MockNetwork) BroadcastQC(qc *protos.QuorumCert) {
-	_m.ctrl.Call(_m, "BroadcastQC", qc)
-}
-
-// BroadcastQC indicates an expected call of BroadcastQC
-func (_mr *MockNetworkMockRecorder) BroadcastQC(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "BroadcastQC", reflect.TypeOf((*MockNetwork)(nil).BroadcastQC), arg0)
+// Unicast indicates an expected call of Unicast
+func (_mr *MockNetworkMockRecorder) Unicast(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Unicast", reflect.TypeOf((*MockNetwork)(nil).Unicast), arg0)
 }

@@ -1,4 +1,4 @@
-package subinstance
+package logmanager
 
 import (
 	"errors"
@@ -33,31 +33,29 @@ type subInstance struct {
 	// sender is used to send votes to others
 	sender external.Network
 
-	sequential internal.SequencePool
+	// sp is the seq-pool module for phalanx
+	sp internal.SequencePool
 
 	// logger is used to print logs
 	logger external.Logger
 }
 
-func NewSubInstance(author, id uint64, sender external.Network, logger external.Logger) *subInstance {
+func newSubInstance(author, id uint64, sp internal.SequencePool, sender external.Network, logger external.Logger) *subInstance {
 	logger.Noticef("replica %d init the sub instance of order for replica %d", author, id)
 	return &subInstance{
 		author:   author,
 		id:       id,
-		sequence: uint64(0),
+		sequence: uint64(1),
 
 		recorder: btree.New(2),
 
+		sp:     sp,
 		sender: sender,
 		logger: logger,
 	}
 }
 
-func (si *subInstance) SubID() uint64 {
-	return si.id
-}
-
-func (si *subInstance) ProcessPreOrder(pre *protos.PreOrder) error {
+func (si *subInstance) processPreOrder(pre *protos.PreOrder) error {
 	si.logger.Infof("replica %d received a pre-order message from replica %d, hash %s", si.author, pre.Author, pre.Digest)
 
 	ev := &event.BtreeEvent{EventType: event.BTreeEventPreOrder, Seq: pre.Sequence, Digest: pre.Digest, Event: pre}
@@ -75,8 +73,8 @@ func (si *subInstance) ProcessPreOrder(pre *protos.PreOrder) error {
 	return si.processBTree()
 }
 
-func (si *subInstance) ProcessQC(qc *protos.QuorumCert) error {
-	si.logger.Infof("replica %d received a order message", si.author)
+func (si *subInstance) processQC(qc *protos.QuorumCert) error {
+	si.logger.Infof("replica %d received a QC message", si.author)
 
 	if err := crypto.VerifyProofCerts(types.StringToBytes(qc.Digest()), qc.ProofCerts, si.quorum); err != nil {
 		return fmt.Errorf("invalid order: %s", err)
@@ -89,10 +87,19 @@ func (si *subInstance) ProcessQC(qc *protos.QuorumCert) error {
 }
 
 func (si *subInstance) processBTree() error {
-	ev := si.recorder.Min().(*event.BtreeEvent)
+	item := si.recorder.Min()
+	if item == nil {
+		return nil
+	}
+	ev := item.(*event.BtreeEvent)
 
 	switch ev.EventType {
 	case event.BTreeEventPreOrder:
+		if ev.Seq != si.sequence {
+			si.logger.Debugf("replica %d needs sequence %d for replica %d", si.author, si.sequence, si.id)
+			return nil
+		}
+
 		// parsing the event info
 		pre := ev.Event.(*protos.PreOrder)
 
@@ -104,15 +111,30 @@ func (si *subInstance) processBTree() error {
 
 		// generate and send vote to the pre-order author
 		vote := &protos.Vote{Author: si.author, Digest: pre.Digest, Certification: sig}
-		si.sender.SendVote(vote, pre.Author)
+		si.logger.Infof("replica %d has voted on sequence %d for replica %d, hash %s", si.author, si.sequence, si.id, vote.Digest)
+
+		cm, err := protos.PackVote(vote, pre.Author)
+		if err != nil {
+			return fmt.Errorf("generate consensus message error: %s", err)
+		}
+		si.sender.Unicast(cm)
+
+		si.sequence++
+		return nil
 
 	case event.BTreeEventOrder:
 		qc := ev.Event.(*protos.QuorumCert)
 
-		si.sequential.InsertQuorumCert(qc)
+		si.sp.InsertQuorumCert(qc)
+
+		si.recorder.Delete(ev)
+
+		if err := si.processBTree(); err != nil {
+			return err
+		}
+		return nil
+
 	default:
 		return errors.New("invalid event type")
 	}
-
-	return nil
 }

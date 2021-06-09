@@ -29,4 +29,3 @@ func (s SubBlock) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func NewPendingCommand(command *protos.Command) *PendingCommand {
 	return &PendingCommand{Replicas: make(map[uint64]bool), Command: command, Timestamps: nil}
 }
-
