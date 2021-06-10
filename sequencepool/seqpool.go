@@ -67,16 +67,18 @@ func (sp *sequencePool) VerifyQCs(payload []byte) error {
 		}
 
 		for _, qc := range filter.QCs {
-			if _, ok := qcb.Commands[qc.Digest()]; !ok {
+			if _, ok := qcb.Commands[qc.CommandDigest()]; !ok {
 				return errors.New("nil command")
-			}
-
-			if sp.sts[qc.Author()].Min().Sequence() != qc.Sequence() {
-				return errors.New("invalid sequence number")
 			}
 
 			if err := crypto.VerifyProofCerts(types.StringToBytes(qc.Digest()), qc.ProofCerts, sp.quorum); err != nil {
 				return fmt.Errorf("verify quourm cert failed: %s", err)
+			}
+
+			sp.sts[qc.Author()].Insert(qc)
+
+			if sp.sts[qc.Author()].Min().Sequence() != qc.Sequence() {
+				return errors.New("invalid sequence number")
 			}
 		}
 	}
@@ -112,7 +114,7 @@ func (sp *sequencePool) PullQCs() ([]byte, error) {
 	var qcs []*protos.QuorumCert
 
 	for _, st := range sp.sts {
-		qc := st.PullMin()
+		qc := st.Min()
 
 		// blank:
 		// cannot find QC info, continue for next replica log.
@@ -128,11 +130,12 @@ func (sp *sequencePool) PullQCs() ([]byte, error) {
 
 		// command:
 		// we should find the command the QC refers to.
-		if _, ok := qcb.Commands[qc.Digest()]; !ok {
-			if command := sp.getCommand(qc.Digest()); command == nil {
+		if _, ok := qcb.Commands[qc.CommandDigest()]; !ok {
+			if command := sp.getCommand(qc.CommandDigest()); command == nil {
+				//fmt.Printf("don't have %s\n", qc.Digest())
 				continue
 			} else {
-				qcb.Commands[qc.Digest()] = command
+				qcb.Commands[qc.CommandDigest()] = command
 			}
 		}
 
@@ -141,15 +144,13 @@ func (sp *sequencePool) PullQCs() ([]byte, error) {
 		qcs = append(qcs, qc)
 	}
 
-	for _, filter := range qcb.Filters {
-		for _, qc := range filter.QCs {
-			sp.sts[qc.Author()].Insert(qc)
-		}
-	}
+	//for _, qc := range qcs {
+	//	sp.sts[qc.Author()].Insert(qc)
+	//}
 
 	if len(qcs) < sp.quorum {
 		// there are not enough QCs for current QC
-		return nil, errors.New("not enough QCs")
+		return nil, fmt.Errorf("not enough QCs, need %d, has %d", sp.quorum, len(qcs))
 	}
 
 	qcb.Filters = append(qcb.Filters, &protos.QCFilter{QCs: qcs})

@@ -16,6 +16,8 @@ type blockGenerator struct {
 
 	quorum int
 
+	committedCommands map[string]bool
+
 	pending map[string]*types.PendingCommand
 }
 
@@ -25,6 +27,8 @@ func NewBlockGenerator(n int) *blockGenerator {
 		fault:   types.CalculateFault(n),
 		quorum:  types.CalculateQuorum(n),
 		pending: make(map[string]*types.PendingCommand),
+
+		committedCommands: make(map[string]bool),
 	}
 }
 
@@ -43,7 +47,7 @@ func (bg *blockGenerator) InsertQCBatch(qcb *protos.QCBatch) (types.SubBlock, er
 	// collect the QCs for block generation.
 	for _, filter := range qcb.Filters {
 		for _, qc := range filter.QCs {
-			pc, ok := bg.pending[qc.Digest()]
+			pc, ok := bg.pending[qc.CommandDigest()]
 			if !ok {
 				return nil, errors.New("invalid QC")
 			}
@@ -54,7 +58,7 @@ func (bg *blockGenerator) InsertQCBatch(qcb *protos.QCBatch) (types.SubBlock, er
 	}
 
 	var sub types.SubBlock
-	for _, pCommand := range bg.pending {
+	for digest, pCommand := range bg.pending {
 		// select the commands which have reached the quorum size for block generation.
 		if len(pCommand.Replicas) < bg.quorum {
 			continue
@@ -69,6 +73,7 @@ func (bg *blockGenerator) InsertQCBatch(qcb *protos.QCBatch) (types.SubBlock, er
 		}
 
 		sub = append(sub, blk)
+		delete(bg.pending, digest)
 	}
 
 	// sort the block according to timestamps

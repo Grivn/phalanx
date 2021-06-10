@@ -31,7 +31,7 @@ type subInstance struct {
 	recorder *btree.BTree
 
 	// sender is used to send votes to others
-	sender external.Network
+	sender external.NetworkService
 
 	// sp is the seq-pool module for phalanx
 	sp internal.SequencePool
@@ -40,7 +40,7 @@ type subInstance struct {
 	logger external.Logger
 }
 
-func newSubInstance(author, id uint64, sp internal.SequencePool, sender external.Network, logger external.Logger) *subInstance {
+func newSubInstance(author, id uint64, sp internal.SequencePool, sender external.NetworkService, logger external.Logger) *subInstance {
 	logger.Noticef("replica %d init the sub instance of order for replica %d", author, id)
 	return &subInstance{
 		author:   author,
@@ -123,6 +123,8 @@ func (si *subInstance) processBTree() error {
 		return nil
 
 	case event.BTreeEventOrder:
+		si.logger.Infof("replica %d process QC event", si.author)
+
 		qc := ev.Event.(*protos.QuorumCert)
 
 		si.sp.InsertQuorumCert(qc)

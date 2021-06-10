@@ -50,6 +50,10 @@ func (m *QuorumCert) Digest() string {
 	return m.PreOrder.Digest
 }
 
+func (m *QuorumCert) CommandDigest() string {
+	return m.PreOrder.BatchDigest
+}
+
 func (m *QuorumCert) Sequence() uint64 {
 	return m.PreOrder.Sequence
 }

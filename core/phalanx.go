@@ -11,13 +11,13 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
-type phalanxProvider struct {
-	mgr internal.LogManager
-	exe internal.Executor
-	seq internal.SequencePool
+type phalanxImpl struct {
+	logManager   internal.LogManager
+	executor     internal.Executor
+	sequencePool internal.SequencePool
 }
 
-func NewPhalanxProvider(n int, author uint64, exec external.Executor, network external.Network, logger external.Logger) *phalanxProvider {
+func NewPhalanxProvider(n int, author uint64, exec external.ExecutorService, network external.NetworkService, logger external.Logger) *phalanxImpl {
 
 	seq := sequencepool.NewSequencePool(n)
 
@@ -25,27 +25,28 @@ func NewPhalanxProvider(n int, author uint64, exec external.Executor, network ex
 
 	mgr := logmanager.NewLogManager(n, author, seq, network, logger)
 
-	return &phalanxProvider{
-		mgr: mgr,
-		seq: seq,
-		exe: exe,
+	return &phalanxImpl{
+		logManager:   mgr,
+		sequencePool: seq,
+		executor:     exe,
 	}
 }
 
-func (phx *phalanxProvider) ProcessCommand(command *protos.Command) {
-	if err := phx.mgr.ProcessCommand(command); err != nil {
+func (phi *phalanxImpl) ProcessCommand(command *protos.Command) {
+	phi.sequencePool.InsertCommand(command)
+	if err := phi.logManager.ProcessCommand(command); err != nil {
 		panic(err)
 	}
 }
 
-func (phx *phalanxProvider) ProcessConsensusMessage(message *protos.ConsensusMessage) {
+func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.ConsensusMessage) {
 	switch message.Type {
 	case protos.MessageType_PRE_ORDER:
 		pre := &protos.PreOrder{}
 		if err := proto.Unmarshal(message.Payload, pre); err != nil {
 			panic(err)
 		}
-		if err := phx.mgr.ProcessPreOrder(pre); err != nil {
+		if err := phi.logManager.ProcessPreOrder(pre); err != nil {
 			panic(err)
 		}
 	case protos.MessageType_QUORUM_CERT:
@@ -53,7 +54,7 @@ func (phx *phalanxProvider) ProcessConsensusMessage(message *protos.ConsensusMes
 		if err := proto.Unmarshal(message.Payload, qc); err != nil {
 			panic(err)
 		}
-		if err := phx.mgr.ProcessQC(qc); err != nil {
+		if err := phi.logManager.ProcessQC(qc); err != nil {
 			panic(err)
 		}
 	case protos.MessageType_VOTE:
@@ -61,25 +62,25 @@ func (phx *phalanxProvider) ProcessConsensusMessage(message *protos.ConsensusMes
 		if err := proto.Unmarshal(message.Payload, vote); err != nil {
 			panic(err)
 		}
-		if err := phx.mgr.ProcessVote(vote); err != nil {
+		if err := phi.logManager.ProcessVote(vote); err != nil {
 			panic(err)
 		}
 	}
 }
 
-func (phx *phalanxProvider) MakePayload() ([]byte, error) {
-	return phx.seq.PullQCs()
+func (phi *phalanxImpl) MakePayload() ([]byte, error) {
+	return phi.sequencePool.PullQCs()
 }
 
-func (phx *phalanxProvider) VerifyPayload(payload []byte) error {
-	if err := phx.seq.VerifyQCs(payload); err != nil {
+func (phi *phalanxImpl) VerifyPayload(payload []byte) error {
+	if err := phi.sequencePool.VerifyQCs(payload); err != nil {
 		return fmt.Errorf("phalanx verify failed: %s", err)
 	}
 	return nil
 }
 
-func (phx *phalanxProvider) CommitPayload(payload []byte) error {
-	if err := phx.exe.CommitQCs(payload); err != nil {
+func (phi *phalanxImpl) CommitPayload(payload []byte) error {
+	if err := phi.executor.CommitQCs(payload); err != nil {
 		return fmt.Errorf("phalanx execution failed: %s", err)
 	}
 	return nil

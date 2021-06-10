@@ -16,11 +16,11 @@ type executorImpl struct {
 	bg BlockGenerator
 
 	// exec is used to execute the block.
-	exec external.Executor
+	exec external.ExecutorService
 }
 
 // NewExecutor is used to generator an executor for phalanx.
-func NewExecutor(n int, exec external.Executor) *executorImpl {
+func NewExecutor(n int, exec external.ExecutorService) *executorImpl {
 	return &executorImpl{bg: blockgenerator.NewBlockGenerator(n), exec: exec}
 }
 
