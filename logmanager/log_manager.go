@@ -3,6 +3,7 @@ package logmanager
 import (
 	"fmt"
 	"github.com/Grivn/phalanx/internal"
+	"sync"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
@@ -13,6 +14,8 @@ import (
 )
 
 type logManager struct {
+	mutex sync.Mutex
+
 	// author is the identifier for current node.
 	author uint64
 
@@ -29,13 +32,13 @@ type logManager struct {
 	subs map[uint64]*subInstance
 
 	// sender is used to send consensus message into network.
-	sender external.Network
+	sender external.NetworkService
 
 	// logger is used to print logs.
 	logger external.Logger
 }
 
-func NewLogManager(n int, author uint64, sp internal.SequencePool, sender external.Network, logger external.Logger) *logManager {
+func NewLogManager(n int, author uint64, sp internal.SequencePool, sender external.NetworkService, logger external.Logger) *logManager {
 	subs := make(map[uint64]*subInstance)
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
@@ -56,6 +59,9 @@ func NewLogManager(n int, author uint64, sp internal.SequencePool, sender extern
 // ProcessCommand is used to process command received from clients.
 // We would like to assign a sequence number for such a command and generate a pre-order message.
 func (mgr *logManager) ProcessCommand(command *protos.Command) error {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
 	mgr.sequence++
 
 	pre := protos.NewPreOrder(mgr.author, mgr.sequence, command)
@@ -89,6 +95,9 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 // ProcessVote is used to process the vote message from others.
 // It could aggregate a agg-signature for one pre-order and generate an order message for one command.
 func (mgr *logManager) ProcessVote(vote *protos.Vote) error {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
 	mgr.logger.Debugf("replica %d received votes for %s from replica %d", mgr.author, vote.Digest, vote.Author)
 
 	// check the existence of order message
@@ -132,6 +141,9 @@ func (mgr *logManager) ProcessVote(vote *protos.Vote) error {
 // whose sequence number is the same as it yet, and we would like to generate a
 // vote message for it if it's legal for us.
 func (mgr *logManager) ProcessPreOrder(pre *protos.PreOrder) error {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
 	return mgr.subs[pre.Author].processPreOrder(pre)
 }
 
@@ -140,5 +152,8 @@ func (mgr *logManager) ProcessPreOrder(pre *protos.PreOrder) error {
 // could advance the sequence counter. We should record the advanced counter and put the info of
 // order message into the sequential-pool.
 func (mgr *logManager) ProcessQC(qc *protos.QuorumCert) error {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
 	return mgr.subs[qc.Author()].processQC(qc)
 }

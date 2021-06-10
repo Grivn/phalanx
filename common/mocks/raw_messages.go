@@ -1,11 +1,12 @@
 package mocks
 
 import (
-	"github.com/gogo/protobuf/proto"
 	"math/rand"
 
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
+
+	"github.com/gogo/protobuf/proto"
 )
 
 func NewTransaction() *protos.Transaction {

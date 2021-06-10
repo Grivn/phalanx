@@ -11,15 +11,13 @@ type executor struct {
 	hash   string
 	count  int
 	logger external.Logger
-	loggerLocal external.Logger
 }
 
-func NewSimpleExecutor(author uint64, logger external.Logger) external.Executor {
+func NewSimpleExecutor(author uint64, logger external.Logger) external.ExecutorService {
 	return &executor{
 		author: author,
 		hash:   "initial",
 		logger: logger,
-		loggerLocal: NewRawLogger(),
 	}
 }
 
@@ -34,5 +32,4 @@ func (exe *executor) Execute(txs []*protos.Transaction, seqNo uint64, timestamp 
 	exe.count += len(txs)
 	exe.hash = types.CalculateListHash(list, timestamp)
 	exe.logger.Infof("Author %d, Block Number %d, total len %d, Hash: %s", exe.author, seqNo, exe.count, exe.hash)
-	exe.loggerLocal.Infof("Author %d, Block Number %d, total len %d, Hash: %s", exe.author, seqNo, exe.count, exe.hash)
 }

@@ -2,10 +2,16 @@ package mocks
 
 import "github.com/golang/mock/gomock"
 
-func NewMockMinimalNetwork(ctrl *gomock.Controller) *MockNetwork {
-	mock := NewMockNetwork(ctrl)
+func NewMockMinimalNetworkService(ctrl *gomock.Controller) *MockNetworkService {
+	mock := NewMockNetworkService(ctrl)
 	mock.EXPECT().Broadcast(gomock.Any()).AnyTimes()
 	mock.EXPECT().Unicast(gomock.Any()).AnyTimes()
+	return mock
+}
+
+func NewMockMinimalExecutorService(ctrl *gomock.Controller) *MockExecutorService {
+	mock := NewMockExecutorService(ctrl)
+	mock.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	return mock
 }
 
