@@ -11,11 +11,9 @@ import (
 	"github.com/Grivn/phalanx/core"
 )
 
-func init() {
-	_ = crypto.SetKeys()
-}
-
 func TestPhalanx(t *testing.T) {
+	_ = crypto.SetKeys()
+
 	n := 4
 
 	nc := make(map[uint64]chan *protos.ConsensusMessage)

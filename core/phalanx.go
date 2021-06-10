@@ -2,12 +2,14 @@ package phalanx
 
 import (
 	"fmt"
+
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/executor"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/logmanager"
 	"github.com/Grivn/phalanx/sequencepool"
+
 	"github.com/gogo/protobuf/proto"
 )
 

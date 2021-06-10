@@ -2,13 +2,13 @@ package logmanager
 
 import (
 	"fmt"
-	"github.com/Grivn/phalanx/internal"
 	"sync"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 
 	"github.com/gogo/protobuf/proto"
 )
