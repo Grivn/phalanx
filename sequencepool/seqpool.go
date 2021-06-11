@@ -15,34 +15,38 @@ import (
 )
 
 type sequencePool struct {
+	// mutex is used to deal with the concurrent problems of sequence-pool.
+	mutex sync.Mutex
+
 	// quorum indicates the legal size for stable-state.
 	quorum int
 
-	// sts would store the proof for each node.
-	sts map[uint64]internal.SyncTree
+	// reminders would store the proof for each node.
+	reminders map[uint64]*qcReminder
 
-	// lockedQCs would store the stable-QCs which have been proposed.
-	lockedQCs map[uint64]internal.SyncTree
+	// stableS indicates the stable-sequence for each participate.
+	stableS map[uint64]uint64
 
 	// commands would store the command we received.
 	commands sync.Map
 }
 
 func NewSequencePool(n int) *sequencePool {
-	sts := make(map[uint64]internal.SyncTree)
-	locks := make(map[uint64]internal.SyncTree)
+	reminders := make(map[uint64]*qcReminder)
 
 	for i:=0; i<n; i++ {
-		sts[uint64(i+1)] = synctree.NewSyncTree(uint64(i+1))
-		locks[uint64(i+1)] = synctree.NewSyncTree(uint64(i+1))
+		reminders[uint64(i+1)] = newQCReminder(n, uint64(i+1))
 	}
 
-	return &sequencePool{quorum: types.CalculateQuorum(n), sts: sts, lockedQCs: locks}
+	return &sequencePool{quorum: types.CalculateQuorum(n), reminders: reminders}
 }
 
 // InsertQuorumCert could insert the quorum-cert into sync-tree for specific node.
-func (sp *sequencePool) InsertQuorumCert(qc *protos.QuorumCert) {
-	sp.sts[qc.Author()].Insert(qc)
+func (sp *sequencePool) InsertQuorumCert(qc *protos.QuorumCert) error {
+	sp.mutex.Lock()
+	defer sp.mutex.Unlock()
+
+	return sp.reminders[qc.Author()].insert(qc)
 }
 
 // InsertCommand could insert command into the sync-map.
@@ -56,6 +60,9 @@ func (sp *sequencePool) InsertCommand(command *protos.Command) {
 // 3) the sequence number for qc should be matched with the local record for logs of replicas.
 // 4) the proof-certs should be valid.
 func (sp *sequencePool) VerifyQCs(payload []byte) error {
+	sp.mutex.Lock()
+	defer sp.mutex.Unlock()
+
 	qcb := &protos.QCBatch{}
 	if err := proto.Unmarshal(payload, qcb); err != nil {
 		return fmt.Errorf("invalid QC-batch: %s", err)
@@ -71,15 +78,11 @@ func (sp *sequencePool) VerifyQCs(payload []byte) error {
 				return errors.New("nil command")
 			}
 
-			if err := crypto.VerifyProofCerts(types.StringToBytes(qc.Digest()), qc.ProofCerts, sp.quorum); err != nil {
-				return fmt.Errorf("verify quourm cert failed: %s", err)
+			if err := sp.reminders[qc.Author()].verify(qc); err != nil {
+				return fmt.Errorf("verify QC failed: %s", err)
 			}
 
-			sp.sts[qc.Author()].Insert(qc)
-
-			if sp.sts[qc.Author()].Min().Sequence() != qc.Sequence() {
-				return errors.New("invalid sequence number")
-			}
+			sp.reminders[qc.Author()].pureCache(qc)
 		}
 	}
 
@@ -93,23 +96,11 @@ func (sp *sequencePool) VerifyQCs(payload []byte) error {
 	return nil
 }
 
-// LockQCs is used to delete the stable-QCs which have been proposed by other nodes.
-func (sp *sequencePool) LockQCs(payload []byte) error {
-	qcb := &protos.QCBatch{}
-	if err := proto.Unmarshal(payload, qcb); err != nil {
-		return fmt.Errorf("invalid QC-batch: %s", err)
-	}
-
-	for _, filter := range qcb.Filters {
-		for _, qc := range filter.QCs {
-			sp.sts[qc.Author()].Delete(qc)
-		}
-	}
-	return nil
-}
-
 // PullQCs is used to pull the QCs from sync-tree to generate consensus proposal.
 func (sp *sequencePool) PullQCs() ([]byte, error) {
+	sp.mutex.Lock()
+	defer sp.mutex.Unlock()
+
 	qcb := protos.NewQCBatch()
 	var qcs []*protos.QuorumCert
 
