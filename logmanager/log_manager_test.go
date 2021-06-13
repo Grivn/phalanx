@@ -29,7 +29,7 @@ func TestLogManager(t *testing.T) {
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		sp := sequencepool.NewSequencePool(n)
+		sp := sequencepool.NewSequencePool(id, n)
 		lms[id] = NewLogManager(n, id, sp, net, mocks.NewRawLogger())
 	}
 

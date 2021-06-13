@@ -7,5 +7,6 @@ type Provider interface {
 	ProcessConsensusMessage(message *protos.ConsensusMessage)
 	MakePayload() ([]byte, error)
 	VerifyPayload(payload []byte) error
+	StablePayload(payload []byte) error
 	CommitPayload(payload []byte) error
 }
