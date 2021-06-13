@@ -55,7 +55,7 @@ func TestPhalanx(t *testing.T) {
 		go commandSender(phx)
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(4 * time.Second)
 }
 
 func phalanxListener(phx phalanx.Provider, net chan *protos.ConsensusMessage, closeC chan bool) {

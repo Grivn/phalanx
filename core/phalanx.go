@@ -21,7 +21,7 @@ type phalanxImpl struct {
 
 func NewPhalanxProvider(n int, author uint64, exec external.ExecutorService, network external.NetworkService, logger external.Logger) *phalanxImpl {
 
-	seq := sequencepool.NewSequencePool(n)
+	seq := sequencepool.NewSequencePool(author, n)
 
 	exe := executor.NewExecutor(n, exec)
 
@@ -79,6 +79,10 @@ func (phi *phalanxImpl) VerifyPayload(payload []byte) error {
 		return fmt.Errorf("phalanx verify failed: %s", err)
 	}
 	return nil
+}
+
+func (phi *phalanxImpl) StablePayload(payload []byte) error {
+	return phi.sequencePool.StableQCs(payload)
 }
 
 func (phi *phalanxImpl) CommitPayload(payload []byte) error {

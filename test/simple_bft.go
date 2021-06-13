@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/core"
 	"github.com/Grivn/phalanx/external"
@@ -107,6 +108,7 @@ func (replica *replica) runningProposal() {
 			if prop != nil {
 				replica.logger.Infof("[%d] generate proposal sequence %d, hash %s", replica.author, prop.sequence, prop.digest)
 				replica.sendC <- prop
+				return
 			}
 		}
 	}
@@ -150,7 +152,11 @@ func (replica *replica) processProposal(message *bftMessage) *bftMessage {
 
 	replica.logger.Infof("[%d] process proposal sequence %d, hash %s", replica.author, message.sequence, message.digest)
 
-	if m, ok := replica.cache[message.sequence-1]; ok {
+	if m, ok := replica.cache[message.sequence-1]; ok && replica.author != uint64(1) {
+		err := replica.phalanx.StablePayload(m.payload)
+		if err != nil {
+			panic(err)
+		}
 		replica.execute(m)
 	}
 
@@ -166,6 +172,7 @@ func (replica *replica) processProposal(message *bftMessage) *bftMessage {
 	}
 
 	if err := replica.phalanx.VerifyPayload(message.payload); err != nil {
+		panic(fmt.Errorf("replica %d, error %s", replica.author, err))
 		return nil
 	}
 
@@ -195,6 +202,18 @@ func (replica *replica) processVote(message *bftMessage) {
 
 	replica.aggMap[message.sequence]++
 	replica.logger.Infof("[%d] process vote for sequence %d, has %d need %d", replica.author, message.sequence, replica.aggMap[message.sequence], replica.quorum)
+
+	if replica.aggMap[message.sequence] == replica.quorum {
+		m := replica.cache[message.sequence]
+
+		err := replica.phalanx.StablePayload(m.payload)
+		if err != nil {
+			panic(err)
+		}
+		replica.execute(m)
+
+		go replica.runningProposal()
+	}
 }
 
 func (replica *replica) execute(message *bftMessage) {

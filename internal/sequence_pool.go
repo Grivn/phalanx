@@ -16,6 +16,9 @@ type InsertManager interface {
 }
 
 type QCsManager interface {
+	// PullQCs is used to pull the QCs from sync-tree to generate consensus proposal.
+	PullQCs() ([]byte, error)
+
 	// VerifyQCs is used to verify the QCs in qc-batch.
 	// 1) we should have quorum QCs in such a batch.
 	// 2) the qc should contain the specific command for it.
@@ -23,6 +26,5 @@ type QCsManager interface {
 	// 4) the proof-certs should be valid.
 	VerifyQCs(payload []byte) error
 
-	// PullQCs is used to pull the QCs from sync-tree to generate consensus proposal.
-	PullQCs() ([]byte, error)
+	StableQCs(payload []byte) error
 }

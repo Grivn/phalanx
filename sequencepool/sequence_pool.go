@@ -5,11 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/internal"
-	"github.com/Grivn/phalanx/synctree"
 
 	"github.com/gogo/protobuf/proto"
 )
@@ -28,30 +25,33 @@ type sequencePool struct {
 	stableS map[uint64]uint64
 
 	// commands would store the command we received.
-	commands sync.Map
+	commands map[string]*protos.Command
 }
 
-func NewSequencePool(n int) *sequencePool {
+func NewSequencePool(author uint64, n int) *sequencePool {
 	reminders := make(map[uint64]*qcReminder)
 
 	for i:=0; i<n; i++ {
-		reminders[uint64(i+1)] = newQCReminder(n, uint64(i+1))
+		reminders[uint64(i+1)] = newQCReminder(author, n, uint64(i+1))
 	}
 
-	return &sequencePool{quorum: types.CalculateQuorum(n), reminders: reminders}
+	return &sequencePool{quorum: types.CalculateQuorum(n), reminders: reminders, commands: make(map[string]*protos.Command)}
 }
 
-// InsertQuorumCert could insert the quorum-cert into sync-tree for specific node.
+// InsertQuorumCert could insertQC the quorum-cert into sync-tree for specific node.
 func (sp *sequencePool) InsertQuorumCert(qc *protos.QuorumCert) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
-	return sp.reminders[qc.Author()].insert(qc)
+	return sp.reminders[qc.Author()].insertQC(qc)
 }
 
-// InsertCommand could insert command into the sync-map.
+// InsertCommand could insertQC command into the sync-map.
 func (sp *sequencePool) InsertCommand(command *protos.Command) {
-	sp.commands.Store(command.Digest, command)
+	sp.mutex.Lock()
+	defer sp.mutex.Unlock()
+
+	sp.commands[command.Digest] = command
 }
 
 // VerifyQCs is used to verify the QCs in qc-batch.
@@ -68,6 +68,11 @@ func (sp *sequencePool) VerifyQCs(payload []byte) error {
 		return fmt.Errorf("invalid QC-batch: %s", err)
 	}
 
+	// init the reminder for each participate before the verification for QCs
+	for _, reminder := range sp.reminders {
+		reminder.preprocess()
+	}
+
 	for _, filter := range qcb.Filters {
 		if len(filter.QCs) < sp.quorum {
 			return errors.New("not enough qc")
@@ -82,14 +87,27 @@ func (sp *sequencePool) VerifyQCs(payload []byte) error {
 				return fmt.Errorf("verify QC failed: %s", err)
 			}
 
-			sp.reminders[qc.Author()].pureCache(qc)
+			sp.reminders[qc.Author()].lockQC(qc)
 		}
 	}
 
-	// todo temporary locker for QCs
+	return nil
+}
+
+func (sp *sequencePool) StableQCs(payload []byte) error {
+	sp.mutex.Lock()
+	defer sp.mutex.Unlock()
+
+	qcb := &protos.QCBatch{}
+	if err := proto.Unmarshal(payload, qcb); err != nil {
+		return fmt.Errorf("invalid QC-batch: %s", err)
+	}
+
 	for _, filter := range qcb.Filters {
 		for _, qc := range filter.QCs {
-			sp.sts[qc.Author()].Delete(qc)
+			if err := sp.reminders[qc.Author()].stableQC(qc); err != nil {
+				return fmt.Errorf("stable QC failed: %s", err)
+			}
 		}
 	}
 
@@ -104,18 +122,12 @@ func (sp *sequencePool) PullQCs() ([]byte, error) {
 	qcb := protos.NewQCBatch()
 	var qcs []*protos.QuorumCert
 
-	for _, st := range sp.sts {
-		qc := st.Min()
+	for _, reminder := range sp.reminders {
+		qc := reminder.pullQC()
 
 		// blank:
 		// cannot find QC info, continue for next replica log.
 		if qc == nil {
-			continue
-		}
-
-		// state-QC:
-		// current QC has been proposed by others and it has reached stable state.
-		if sp.lockedQCs[qc.Author()].Has(qc) {
 			continue
 		}
 
@@ -135,10 +147,6 @@ func (sp *sequencePool) PullQCs() ([]byte, error) {
 		qcs = append(qcs, qc)
 	}
 
-	//for _, qc := range qcs {
-	//	sp.sts[qc.Author()].Insert(qc)
-	//}
-
 	if len(qcs) < sp.quorum {
 		// there are not enough QCs for current QC
 		return nil, fmt.Errorf("not enough QCs, need %d, has %d", sp.quorum, len(qcs))
@@ -154,9 +162,9 @@ func (sp *sequencePool) PullQCs() ([]byte, error) {
 }
 
 func (sp *sequencePool) getCommand(digest string) *protos.Command {
-	command, ok := sp.commands.Load(digest)
+	command, ok := sp.commands[digest]
 	if !ok {
 		return nil
 	}
-	return command.(*protos.Command)
+	return command
 }
