@@ -39,8 +39,8 @@ func newQCReminder(author uint64, n int, id uint64) *qcReminder {
 	return &qcReminder{author: author, id: id, quorum: types.CalculateQuorum(n), cachedQCs: btree.New(2), proposedQCs: btree.New(2)}
 }
 
-// preprocess is an initialization for QC-reminder to process QCs.
-func (qr *qcReminder) preprocess() {
+// restoreQCs is used to restore the QCs from proposed-QCs and remove these seqNo from proposed-Nos.
+func (qr *qcReminder) restoreQCs() {
 	// restore the QCs from proposedQCs.
 	for {
 		minQC := qr.lockedDeleteMin()

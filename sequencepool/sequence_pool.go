@@ -54,11 +54,11 @@ func (sp *sequencePool) InsertCommand(command *protos.Command) {
 	sp.commands[command.Digest] = command
 }
 
-// PrepareQCManager is used to prepare the status of validator of QCs.
-func (sp *sequencePool) PrepareQCManager() {
+// RestoreQCs is used to prepare the status of validator of QCs.
+func (sp *sequencePool) RestoreQCs() {
 	// init the reminder for each participate before the verification for QCs
 	for _, reminder := range sp.reminders {
-		reminder.preprocess()
+		reminder.restoreQCs()
 	}
 }
 

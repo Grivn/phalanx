@@ -153,7 +153,7 @@ func (replica *replica) processProposal(message *bftMessage) *bftMessage {
 	replica.logger.Infof("[%d] process proposal sequence %d, hash %s", replica.author, message.sequence, message.digest)
 
 	if m, ok := replica.cache[message.sequence-1]; ok && replica.author != uint64(1) {
-		err := replica.phalanx.StablePayload(m.payload)
+		err := replica.phalanx.SetStable(m.payload)
 		if err != nil {
 			panic(err)
 		}
@@ -171,7 +171,7 @@ func (replica *replica) processProposal(message *bftMessage) *bftMessage {
 		return nil
 	}
 
-	if err := replica.phalanx.VerifyPayload(message.payload); err != nil {
+	if err := replica.phalanx.Verify(message.payload); err != nil {
 		panic(fmt.Errorf("replica %d, error %s", replica.author, err))
 		return nil
 	}
@@ -206,7 +206,7 @@ func (replica *replica) processVote(message *bftMessage) {
 	if replica.aggMap[message.sequence] == replica.quorum {
 		m := replica.cache[message.sequence]
 
-		err := replica.phalanx.StablePayload(m.payload)
+		err := replica.phalanx.SetStable(m.payload)
 		if err != nil {
 			panic(err)
 		}
@@ -237,7 +237,7 @@ func (replica *replica) execute(message *bftMessage) {
 			continue
 		}
 
-		err := replica.phalanx.CommitPayload(m.payload)
+		err := replica.phalanx.Commit(m.payload)
 		if err != nil {
 			panic(err)
 		}
