@@ -54,6 +54,14 @@ func (sp *sequencePool) InsertCommand(command *protos.Command) {
 	sp.commands[command.Digest] = command
 }
 
+// PrepareQCManager is used to prepare the status of validator of QCs.
+func (sp *sequencePool) PrepareQCManager() {
+	// init the reminder for each participate before the verification for QCs
+	for _, reminder := range sp.reminders {
+		reminder.preprocess()
+	}
+}
+
 // VerifyQCs is used to verify the QCs in qc-batch.
 // 1) we should have quorum QCs in such a batch.
 // 2) the qc should contain the specific command for it.
@@ -66,11 +74,6 @@ func (sp *sequencePool) VerifyQCs(payload []byte) error {
 	qcb := &protos.QCBatch{}
 	if err := proto.Unmarshal(payload, qcb); err != nil {
 		return fmt.Errorf("invalid QC-batch: %s", err)
-	}
-
-	// init the reminder for each participate before the verification for QCs
-	for _, reminder := range sp.reminders {
-		reminder.preprocess()
 	}
 
 	for _, filter := range qcb.Filters {
@@ -87,7 +90,7 @@ func (sp *sequencePool) VerifyQCs(payload []byte) error {
 				return fmt.Errorf("verify QC failed: %s", err)
 			}
 
-			sp.reminders[qc.Author()].lockQC(qc)
+			sp.reminders[qc.Author()].pureQC(qc)
 		}
 	}
 

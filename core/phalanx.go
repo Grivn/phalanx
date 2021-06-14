@@ -74,6 +74,10 @@ func (phi *phalanxImpl) MakePayload() ([]byte, error) {
 	return phi.sequencePool.PullQCs()
 }
 
+func (phi *phalanxImpl) Prepare() {
+	phi.sequencePool.PrepareQCManager()
+}
+
 func (phi *phalanxImpl) VerifyPayload(payload []byte) error {
 	if err := phi.sequencePool.VerifyQCs(payload); err != nil {
 		return fmt.Errorf("phalanx verify failed: %s", err)

@@ -36,8 +36,6 @@ func (ei *executorImpl) CommitQCs(payload []byte) error {
 		return fmt.Errorf("invalid QC-batch: %s", err)
 	}
 
-	fmt.Println(len(sub))
-
 	for _, blk := range sub {
 		ei.seq++
 		ei.exec.Execute(blk.TxList, ei.seq, blk.Timestamp)
