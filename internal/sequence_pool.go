@@ -16,6 +16,9 @@ type InsertManager interface {
 }
 
 type QCsManager interface {
+	// PrepareQCManager is used to init the status of validator of QCs-manager.
+	PrepareQCManager()
+
 	// PullQCs is used to pull the QCs from sync-tree to generate consensus proposal.
 	PullQCs() ([]byte, error)
 
