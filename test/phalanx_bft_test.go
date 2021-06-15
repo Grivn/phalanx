@@ -20,7 +20,7 @@ func TestPhalanx(t *testing.T) {
 
 	closeC := make(chan bool)
 
-	phx := make(map[uint64]phalanx.Provider)
+	phx := make(map[uint64]phalanx.SynchronousProvider)
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
@@ -48,7 +48,7 @@ func TestPhalanx(t *testing.T) {
 		replicas[id] = newReplica(n, id, phx[id], sendC, bftCs[id], closeC, mocks.NewRawLoggerFile("bft-node-"+strconv.Itoa(i+1)))
 		replicas[id].run()
 	}
-	go cluster(sendC, bftCs)
+	go cluster(sendC, bftCs, closeC)
 
 	count := 1000
 	for i:=0; i<count; i++ {
@@ -58,7 +58,7 @@ func TestPhalanx(t *testing.T) {
 	time.Sleep(20 * time.Second)
 }
 
-func phalanxListener(phx phalanx.Provider, net chan *protos.ConsensusMessage, closeC chan bool) {
+func phalanxListener(phx phalanx.SynchronousProvider, net chan *protos.ConsensusMessage, closeC chan bool) {
 	for {
 		select {
 		case message := <-net:
@@ -69,7 +69,7 @@ func phalanxListener(phx phalanx.Provider, net chan *protos.ConsensusMessage, cl
 	}
 }
 
-func commandSender(phx map[uint64]phalanx.Provider) {
+func commandSender(phx map[uint64]phalanx.SynchronousProvider) {
 	command := mocks.NewCommand()
 
 	for _, p := range phx {
