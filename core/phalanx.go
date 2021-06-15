@@ -74,22 +74,22 @@ func (phi *phalanxImpl) MakePayload() ([]byte, error) {
 	return phi.sequencePool.PullQCs()
 }
 
-func (phi *phalanxImpl) Prepare() {
-	phi.sequencePool.PrepareQCManager()
+func (phi *phalanxImpl) Restore() {
+	phi.sequencePool.RestoreQCs()
 }
 
-func (phi *phalanxImpl) VerifyPayload(payload []byte) error {
+func (phi *phalanxImpl) Verify(payload []byte) error {
 	if err := phi.sequencePool.VerifyQCs(payload); err != nil {
 		return fmt.Errorf("phalanx verify failed: %s", err)
 	}
 	return nil
 }
 
-func (phi *phalanxImpl) StablePayload(payload []byte) error {
-	return phi.sequencePool.StableQCs(payload)
+func (phi *phalanxImpl) SetStable(payload []byte) error {
+	return phi.sequencePool.SetStableQCs(payload)
 }
 
-func (phi *phalanxImpl) CommitPayload(payload []byte) error {
+func (phi *phalanxImpl) Commit(payload []byte) error {
 	if err := phi.executor.CommitQCs(payload); err != nil {
 		return fmt.Errorf("phalanx execution failed: %s", err)
 	}

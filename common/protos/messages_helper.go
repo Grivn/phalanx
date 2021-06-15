@@ -80,6 +80,6 @@ func NewQCFilter() *QCFilter {
 	return &QCFilter{QCs: nil}
 }
 
-func NewQCBatch() *QCBatch {
-	return &QCBatch{Commands: make(map[string]*Command)}
+func NewQCBatch(author uint64) *QCBatch {
+	return &QCBatch{Author: author, Commands: make(map[string]*Command)}
 }

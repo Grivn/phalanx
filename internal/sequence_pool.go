@@ -16,8 +16,8 @@ type InsertManager interface {
 }
 
 type QCsManager interface {
-	// PrepareQCManager is used to init the status of validator of QCs-manager.
-	PrepareQCManager()
+	// RestoreQCs is used to init the status of validator of QCs-manager.
+	RestoreQCs()
 
 	// PullQCs is used to pull the QCs from sync-tree to generate consensus proposal.
 	PullQCs() ([]byte, error)
@@ -29,5 +29,6 @@ type QCsManager interface {
 	// 4) the proof-certs should be valid.
 	VerifyQCs(payload []byte) error
 
-	StableQCs(payload []byte) error
+	// SetStableQCs is used to process stable QCs which have been verified by bft consensus.
+	SetStableQCs(payload []byte) error
 }
