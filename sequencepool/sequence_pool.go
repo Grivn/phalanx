@@ -15,6 +15,9 @@ type sequencePool struct {
 	// mutex is used to deal with the concurrent problems of sequence-pool.
 	mutex sync.Mutex
 
+	// author indicates the identifier for current participate.
+	author uint64
+
 	// quorum indicates the legal size for stable-state.
 	quorum int
 
@@ -35,7 +38,7 @@ func NewSequencePool(author uint64, n int) *sequencePool {
 		reminders[uint64(i+1)] = newQCReminder(author, n, uint64(i+1))
 	}
 
-	return &sequencePool{quorum: types.CalculateQuorum(n), reminders: reminders, commands: make(map[string]*protos.Command)}
+	return &sequencePool{author: author, quorum: types.CalculateQuorum(n), reminders: reminders, commands: make(map[string]*protos.Command)}
 }
 
 // InsertQuorumCert could insertQC the quorum-cert into sync-tree for specific node.
@@ -56,8 +59,8 @@ func (sp *sequencePool) InsertCommand(command *protos.Command) {
 
 // RestoreQCs is used to prepare the status of validator of QCs.
 func (sp *sequencePool) RestoreQCs() {
-	// init the reminder for each participate before the verification for QCs
 	for _, reminder := range sp.reminders {
+		// restore the QCs in each reminder.
 		reminder.restoreQCs()
 	}
 }
@@ -86,18 +89,16 @@ func (sp *sequencePool) VerifyQCs(payload []byte) error {
 				return errors.New("nil command")
 			}
 
-			if err := sp.reminders[qc.Author()].verify(qc); err != nil {
+			if err := sp.reminders[qc.Author()].verify(qcb.Author, qc); err != nil {
 				return fmt.Errorf("verify QC failed: %s", err)
 			}
-
-			sp.reminders[qc.Author()].pureQC(qc)
 		}
 	}
 
 	return nil
 }
 
-func (sp *sequencePool) StableQCs(payload []byte) error {
+func (sp *sequencePool) SetStableQCs(payload []byte) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
@@ -108,7 +109,7 @@ func (sp *sequencePool) StableQCs(payload []byte) error {
 
 	for _, filter := range qcb.Filters {
 		for _, qc := range filter.QCs {
-			if err := sp.reminders[qc.Author()].stableQC(qc); err != nil {
+			if err := sp.reminders[qc.Author()].setStableQC(qc); err != nil {
 				return fmt.Errorf("stable QC failed: %s", err)
 			}
 		}
@@ -122,7 +123,7 @@ func (sp *sequencePool) PullQCs() ([]byte, error) {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
-	qcb := protos.NewQCBatch()
+	qcb := protos.NewQCBatch(sp.author)
 	var qcs []*protos.QuorumCert
 
 	for _, reminder := range sp.reminders {

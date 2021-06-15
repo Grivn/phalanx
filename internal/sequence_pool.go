@@ -29,5 +29,6 @@ type QCsManager interface {
 	// 4) the proof-certs should be valid.
 	VerifyQCs(payload []byte) error
 
-	StableQCs(payload []byte) error
+	// SetStableQCs is used to process stable QCs which have been verified by bft consensus.
+	SetStableQCs(payload []byte) error
 }

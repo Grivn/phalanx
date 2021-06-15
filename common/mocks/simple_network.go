@@ -5,6 +5,8 @@ import (
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
 	"github.com/gogo/protobuf/proto"
+	"math/rand"
+	"time"
 )
 
 type SimpleNetwork struct {
@@ -17,6 +19,10 @@ func NewSimpleNetwork(networkC map[uint64]chan *protos.ConsensusMessage) *Simple
 }
 
 func (net *SimpleNetwork) Broadcast(message *protos.ConsensusMessage) {
+	// NOTE: phalanx itself could be running in a asynchronous network environment.
+	i := rand.Int()%10
+	time.Sleep(time.Duration(i) * time.Millisecond)
+
 	go net.broadcast(message)
 }
 

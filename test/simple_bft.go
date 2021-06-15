@@ -53,7 +53,7 @@ type bftMessage struct {
 
 func newReplica(n int, author uint64, phx phalanx.Provider, sendC chan *bftMessage, bftC chan *bftMessage, closeC chan bool, logger external.Logger) *replica {
 	return &replica{
-		quorum:       n,
+		quorum:       n-(n-1)/3,
 		author:       author,
 		phalanx:      phx,
 		sendC:        sendC,

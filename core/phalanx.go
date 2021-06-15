@@ -86,7 +86,7 @@ func (phi *phalanxImpl) Verify(payload []byte) error {
 }
 
 func (phi *phalanxImpl) SetStable(payload []byte) error {
-	return phi.sequencePool.StableQCs(payload)
+	return phi.sequencePool.SetStableQCs(payload)
 }
 
 func (phi *phalanxImpl) Commit(payload []byte) error {
