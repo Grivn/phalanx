@@ -4,16 +4,17 @@ import (
 	"fmt"
 
 	"github.com/Grivn/phalanx/common/protos"
-	"github.com/Grivn/phalanx/executor/blockgenerator"
 	"github.com/Grivn/phalanx/external"
 
 	"github.com/gogo/protobuf/proto"
 )
 
 type executorImpl struct {
-	seq uint64
+	// seqNo is used to track the sequence number for blocks.
+	seqNo uint64
 
-	bg BlockGenerator
+	// generator is used to generate blocks.
+	generator *blockGenerator
 
 	// exec is used to execute the block.
 	exec external.ExecutorService
@@ -21,7 +22,7 @@ type executorImpl struct {
 
 // NewExecutor is used to generator an executor for phalanx.
 func NewExecutor(n int, exec external.ExecutorService) *executorImpl {
-	return &executorImpl{bg: blockgenerator.NewBlockGenerator(n), exec: exec}
+	return &executorImpl{generator: newBlockGenerator(n), exec: exec}
 }
 
 // CommitQCs is used to commit the QCs.
@@ -31,14 +32,14 @@ func (ei *executorImpl) CommitQCs(payload []byte) error {
 		return fmt.Errorf("invalid QC-batch: %s", err)
 	}
 
-	sub, err := ei.bg.InsertQCBatch(qcb)
+	sub, err := ei.generator.insertQCBatch(qcb)
 	if err != nil {
 		return fmt.Errorf("invalid QC-batch: %s", err)
 	}
 
 	for _, blk := range sub {
-		ei.seq++
-		ei.exec.Execute(blk.TxList, ei.seq, blk.Timestamp)
+		ei.seqNo++
+		ei.exec.Execute(blk.TxList, ei.seqNo, blk.Timestamp)
 	}
 
 	return nil

@@ -24,9 +24,6 @@ type sequencePool struct {
 	// reminders would store the proof for each node.
 	reminders map[uint64]*qcReminder
 
-	// stableS indicates the stable-sequence for each participate.
-	stableS map[uint64]uint64
-
 	// commands would store the command we received.
 	commands map[string]*protos.Command
 }

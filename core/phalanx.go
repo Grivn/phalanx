@@ -34,6 +34,7 @@ func NewPhalanxProvider(n int, author uint64, exec external.ExecutorService, net
 	}
 }
 
+// ProcessCommand is used to process the commands from clients.
 func (phi *phalanxImpl) ProcessCommand(command *protos.Command) {
 	phi.sequencePool.InsertCommand(command)
 	if err := phi.logManager.ProcessCommand(command); err != nil {
@@ -41,6 +42,7 @@ func (phi *phalanxImpl) ProcessCommand(command *protos.Command) {
 	}
 }
 
+// ProcessConsensusMessage is used process the consensus messages from phalanx replica.
 func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.ConsensusMessage) {
 	switch message.Type {
 	case protos.MessageType_PRE_ORDER:
@@ -70,14 +72,18 @@ func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.ConsensusMessage
 	}
 }
 
+// MakePayload is used to generate payloads for bft consensus.
 func (phi *phalanxImpl) MakePayload() ([]byte, error) {
 	return phi.sequencePool.PullQCs()
 }
 
+// Restore is used to restore data when we have found a timeout event in partial-synchronized bft consensus module.
 func (phi *phalanxImpl) Restore() {
 	phi.sequencePool.RestoreQCs()
 }
 
+// Verify is used to verify the phalanx payload.
+// here, we would like to verify the validation of phalanx QCs, and record which seqNo has already been proposed.
 func (phi *phalanxImpl) Verify(payload []byte) error {
 	if err := phi.sequencePool.VerifyQCs(payload); err != nil {
 		return fmt.Errorf("phalanx verify failed: %s", err)
@@ -85,10 +91,18 @@ func (phi *phalanxImpl) Verify(payload []byte) error {
 	return nil
 }
 
+// SetStable is used to set stable
+// here we would like to use it to control the order to process phalanx QCs.
+// when such a interface has returned error, a timeout event should be triggered.
+// 1) chained-bft: for each round we have generated a QC for chained-bft, we would like to use
+//    it to set phalanx stable status.
+// 2) classic-bft: for every time we are trying to execute a block, we would like to use it to
+//    set phalanx stable status.
 func (phi *phalanxImpl) SetStable(payload []byte) error {
 	return phi.sequencePool.SetStableQCs(payload)
 }
 
+// Commit is used to commit the phalanx-QCBatch which has been verified by bft consensus.
 func (phi *phalanxImpl) Commit(payload []byte) error {
 	if err := phi.executor.CommitQCs(payload); err != nil {
 		return fmt.Errorf("phalanx execution failed: %s", err)

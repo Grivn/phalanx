@@ -14,29 +14,30 @@ import (
 	"github.com/google/btree"
 )
 
+// subInstance is used to process the remote log, each instance would be used for one replica.
 type subInstance struct {
-	// author is the local node's identifier
+	// author is the local node's identifier.
 	author uint64
 
-	// id indicates which node the current request-pool is maintained for
+	// id indicates which node the current request-pool is maintained for.
 	id uint64
 
-	// quorum indicates the set size for invalid signatures
+	// quorum indicates the set size for invalid signatures.
 	quorum int
 
-	// sequence is the preferred number for the next request
+	// sequence is the preferred seqNo for the next request.
 	sequence uint64
 
-	// recorder is used to track the pre-order/order messages
+	// recorder is used to track the pre-order/order messages.
 	recorder *btree.BTree
 
-	// sender is used to send votes to others
+	// sender is used to send votes to others.
 	sender external.NetworkService
 
-	// sp is the seq-pool module for phalanx
+	// sp is the seq-pool module for phalanx.
 	sp internal.SequencePool
 
-	// logger is used to print logs
+	// logger is used to print logs.
 	logger external.Logger
 }
 
@@ -54,7 +55,7 @@ func newSubInstance(author, id uint64, sp internal.SequencePool, sender external
 }
 
 func (si *subInstance) processPreOrder(pre *protos.PreOrder) error {
-	si.logger.Infof("replica %d received a pre-order message from replica %d, hash %s", si.author, pre.Author, pre.Digest)
+	si.logger.Infof("replica %d received a pre-order message from replica %d, sequence %d, hash %s", si.author, pre.Author, pre.Sequence, pre.Digest)
 
 	ev := &event.BtreeEvent{EventType: event.BTreeEventPreOrder, Sequence: pre.Sequence, Digest: pre.Digest, Event: pre}
 

@@ -14,6 +14,7 @@ import (
 )
 
 type logManager struct {
+	// mutex is used to deal with the concurrent problems of log-manager.
 	mutex sync.Mutex
 
 	// author is the identifier for current node.
@@ -55,6 +56,10 @@ func NewLogManager(n int, author uint64, sp internal.SequencePool, sender extern
 		logger:   logger,
 	}
 }
+
+//===============================================================
+//                 Processor for Local Logs
+//===============================================================
 
 // ProcessCommand is used to process command received from clients.
 // We would like to assign a sequence number for such a command and generate a pre-order message.
@@ -135,6 +140,10 @@ func (mgr *logManager) ProcessVote(vote *protos.Vote) error {
 	mgr.logger.Debugf("replica %d aggregated vote for %s, has %d, need %d", mgr.author, vote.Digest, len(qc.ProofCerts.Certs), mgr.quorum)
 	return nil
 }
+
+//===============================================================
+//                 Processor for Remote Logs
+//===============================================================
 
 // ProcessPreOrder is used to process pre-order messages.
 // We should make sure that we have never received a pre-order/order message

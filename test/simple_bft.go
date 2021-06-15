@@ -9,10 +9,6 @@ import (
 	"sync"
 )
 
-func bftConsensus(phx map[uint64]phalanx.Provider) {
-	// fixed-leader byzantine fault tolerance consensus simulator
-}
-
 const (
 	proposal = iota
 	vote
@@ -24,12 +20,10 @@ type replica struct {
 	author uint64
 	quorum int
 
-	phalanx phalanx.Provider
+	phalanx phalanx.SynchronousProvider
 
 	bftC   chan *bftMessage
 	sendC  chan *bftMessage
-	timeC  chan bool
-	exitC  chan bool
 	closeC chan bool
 
 	sequence uint64
@@ -51,15 +45,13 @@ type bftMessage struct {
 	payload  []byte
 }
 
-func newReplica(n int, author uint64, phx phalanx.Provider, sendC chan *bftMessage, bftC chan *bftMessage, closeC chan bool, logger external.Logger) *replica {
+func newReplica(n int, author uint64, phx phalanx.SynchronousProvider, sendC chan *bftMessage, bftC chan *bftMessage, closeC chan bool, logger external.Logger) *replica {
 	return &replica{
 		quorum:       n-(n-1)/3,
 		author:       author,
 		phalanx:      phx,
 		sendC:        sendC,
 		bftC:         bftC,
-		timeC:        make(chan bool),
-		exitC:        make(chan bool),
 		closeC:       closeC,
 		sequence:     uint64(0),
 		cache:        make(map[uint64]*bftMessage),
@@ -70,7 +62,7 @@ func newReplica(n int, author uint64, phx phalanx.Provider, sendC chan *bftMessa
 	}
 }
 
-func cluster(sendC chan *bftMessage, bftCs map[uint64]chan *bftMessage) {
+func cluster(sendC chan *bftMessage, bftCs map[uint64]chan *bftMessage, closeC chan bool) {
 	for {
 		select {
 		case msg := <-sendC:
@@ -84,6 +76,8 @@ func cluster(sendC chan *bftMessage, bftCs map[uint64]chan *bftMessage) {
 			default:
 				panic("invalid type")
 			}
+		case <-closeC:
+			return
 		}
 	}
 }
@@ -124,6 +118,8 @@ func (replica *replica) bftListener() {
 			case vote:
 				replica.processVote(msg)
 			}
+		case <-replica.closeC:
+			return
 		}
 	}
 }
@@ -173,7 +169,6 @@ func (replica *replica) processProposal(message *bftMessage) *bftMessage {
 
 	if err := replica.phalanx.Verify(message.payload); err != nil {
 		panic(fmt.Errorf("replica %d, error %s", replica.author, err))
-		return nil
 	}
 
 	replica.cache[message.sequence] = message

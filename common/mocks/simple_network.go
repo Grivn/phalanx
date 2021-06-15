@@ -31,11 +31,7 @@ func (net *SimpleNetwork) Unicast(message *protos.ConsensusMessage) {
 }
 
 func (net *SimpleNetwork) broadcast(message *protos.ConsensusMessage) {
-	for id, ch := range net.networkC {
-		if id == message.From {
-			continue
-		}
-
+	for _, ch := range net.networkC {
 		ch <- message
 	}
 }
