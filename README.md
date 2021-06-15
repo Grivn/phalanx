@@ -19,7 +19,7 @@ to complete the transaction order in blocks, which is an open problem for them.
 ## Background
 The development of BFT protocols, the importance for order-fairness property, and some research on it.
 
-## Phalanx Phase
+## Phalanx Phase (need update)
 ### Overview
 
 ### Steps
