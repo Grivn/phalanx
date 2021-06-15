@@ -46,19 +46,17 @@ func newSubInstance(author, id uint64, sp internal.SequencePool, sender external
 		author:   author,
 		id:       id,
 		sequence: uint64(1),
-
 		recorder: btree.New(2),
-
-		sp:     sp,
-		sender: sender,
-		logger: logger,
+		sp:       sp,
+		sender:   sender,
+		logger:   logger,
 	}
 }
 
 func (si *subInstance) processPreOrder(pre *protos.PreOrder) error {
 	si.logger.Infof("replica %d received a pre-order message from replica %d, hash %s", si.author, pre.Author, pre.Digest)
 
-	ev := &event.BtreeEvent{EventType: event.BTreeEventPreOrder, Seq: pre.Sequence, Digest: pre.Digest, Event: pre}
+	ev := &event.BtreeEvent{EventType: event.BTreeEventPreOrder, Sequence: pre.Sequence, Digest: pre.Digest, Event: pre}
 
 	if si.recorder.Has(ev) {
 		return si.processBTree()
@@ -80,7 +78,7 @@ func (si *subInstance) processQC(qc *protos.QuorumCert) error {
 		return fmt.Errorf("invalid order: %s", err)
 	}
 
-	ev := &event.BtreeEvent{EventType: event.BTreeEventOrder, Seq: qc.PreOrder.Sequence, Digest: qc.PreOrder.Digest, Event: qc}
+	ev := &event.BtreeEvent{EventType: event.BTreeEventOrder, Sequence: qc.PreOrder.Sequence, Digest: qc.PreOrder.Digest, Event: qc}
 	si.recorder.ReplaceOrInsert(ev)
 
 	return si.processBTree()
@@ -95,7 +93,7 @@ func (si *subInstance) processBTree() error {
 
 	switch ev.EventType {
 	case event.BTreeEventPreOrder:
-		if ev.Seq != si.sequence {
+		if ev.Sequence != si.sequence {
 			si.logger.Debugf("replica %d needs sequence %d for replica %d", si.author, si.sequence, si.id)
 			return nil
 		}
@@ -127,7 +125,9 @@ func (si *subInstance) processBTree() error {
 
 		qc := ev.Event.(*protos.QuorumCert)
 
-		si.sp.InsertQuorumCert(qc)
+		if err := si.sp.InsertQuorumCert(qc); err != nil {
+			si.logger.Warningf("insert failed: %s", err)
+		}
 
 		si.recorder.Delete(ev)
 
