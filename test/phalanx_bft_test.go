@@ -1,6 +1,7 @@
 package test
 
 import (
+	"math/rand"
 	"strconv"
 	"testing"
 	"time"
@@ -50,12 +51,12 @@ func TestPhalanx(t *testing.T) {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	count := 1000
+	count := 2000
 	for i:=0; i<count; i++ {
 		go commandSender(phx)
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(3000 * time.Second)
 }
 
 func phalanxListener(phx phalanx.SynchronousProvider, net chan *protos.ConsensusMessage, closeC chan bool) {
@@ -70,9 +71,12 @@ func phalanxListener(phx phalanx.SynchronousProvider, net chan *protos.Consensus
 }
 
 func commandSender(phx map[uint64]phalanx.SynchronousProvider) {
+	i := rand.Int()%10
+	time.Sleep(time.Duration(i) * time.Millisecond)
+
 	command := mocks.NewCommand()
 
 	for _, p := range phx {
-		p.ProcessCommand(command)
+		go p.ProcessCommand(command)
 	}
 }

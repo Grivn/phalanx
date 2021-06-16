@@ -33,6 +33,8 @@ type Generator interface {
 //    and we prefer to clean the persisted data after a checkpoint has been found.
 // in order to use phalanx in these 2 types of bft consensus algorithm, we made the following interfaces.
 type Validator interface {
+	BecomeLeader()
+
 	// Restore is used to restore data when we have found a timeout event in partial-synchronized bft consensus module.
 	Restore()
 

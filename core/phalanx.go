@@ -17,6 +17,8 @@ type phalanxImpl struct {
 	logManager   internal.LogManager
 	executor     internal.Executor
 	sequencePool internal.SequencePool
+
+	logger external.Logger
 }
 
 func NewPhalanxProvider(n int, author uint64, exec external.ExecutorService, network external.NetworkService, logger external.Logger) *phalanxImpl {
@@ -31,6 +33,7 @@ func NewPhalanxProvider(n int, author uint64, exec external.ExecutorService, net
 		logManager:   mgr,
 		sequencePool: seq,
 		executor:     exe,
+		logger:       logger,
 	}
 }
 
@@ -79,12 +82,20 @@ func (phi *phalanxImpl) MakePayload() ([]byte, error) {
 		return nil, err
 	}
 
+	for _, qc := range qcb.Filters[0].QCs {
+		phi.logger.Infof("payload generation: replica %d sequence %d digest %s", qc.Author(), qc.Sequence(), qc.CommandDigest())
+	}
+
 	payload, err := marshal(qcb)
 	if err != nil {
 		return nil, err
 	}
 
 	return payload, nil
+}
+
+func (phi *phalanxImpl) BecomeLeader() {
+	phi.sequencePool.BecomeLeader()
 }
 
 // Restore is used to restore data when we have found a timeout event in partial-synchronized bft consensus module.

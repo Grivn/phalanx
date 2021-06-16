@@ -24,6 +24,9 @@ type sequencePool struct {
 
 	// commands would store the command we received.
 	commands map[string]*protos.Command
+
+	//
+	tracker CommandTracker
 }
 
 func NewSequencePool(author uint64, n int) *sequencePool {
@@ -33,7 +36,16 @@ func NewSequencePool(author uint64, n int) *sequencePool {
 		reminders[uint64(i+1)] = newQCReminder(author, n, uint64(i+1))
 	}
 
-	return &sequencePool{author: author, quorum: types.CalculateQuorum(n), reminders: reminders, commands: make(map[string]*protos.Command)}
+	return &sequencePool{author: author, quorum: types.CalculateQuorum(n), reminders: reminders, commands: make(map[string]*protos.Command), tracker: NewCommandTracker(n)}
+}
+
+func (sp *sequencePool) BecomeLeader() {
+	sp.mutex.Lock()
+	defer sp.mutex.Unlock()
+
+	for _, reminder := range sp.reminders {
+		reminder.becomeLeader()
+	}
 }
 
 // InsertQuorumCert could insertQC the quorum-cert into sync-tree for specific node.
@@ -56,7 +68,7 @@ func (sp *sequencePool) InsertCommand(command *protos.Command) {
 func (sp *sequencePool) RestoreQCs() {
 	for _, reminder := range sp.reminders {
 		// restore the QCs in each reminder.
-		reminder.restoreQCs()
+		reminder.restoreQCs(sp.tracker)
 	}
 }
 
@@ -69,19 +81,33 @@ func (sp *sequencePool) VerifyQCs(qcb *protos.QCBatch) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
+	// verify the validation
 	for _, filter := range qcb.Filters {
 		if len(filter.QCs) < sp.quorum {
 			return errors.New("not enough qc")
 		}
 
 		for _, qc := range filter.QCs {
+			if sp.tracker.IsQuorum(qc.CommandDigest()) {
+				continue
+			}
+
 			if _, ok := qcb.Commands[qc.CommandDigest()]; !ok {
-				return errors.New("nil command")
+				return fmt.Errorf("nil command: replica %d, seqNo %d, digest %s", qc.Author(), qc.Sequence(), qc.CommandDigest())
 			}
 
 			if err := sp.reminders[qc.Author()].verify(qcb.Author, qc); err != nil {
 				return fmt.Errorf("verify QC failed: %s", err)
 			}
+		}
+	}
+
+	// proposed target
+	for _, filter := range qcb.Filters {
+		for _, qc := range filter.QCs {
+			sp.reminders[qc.Author()].proposedQC(qc)
+
+			sp.tracker.Add(qc.CommandDigest())
 		}
 	}
 
@@ -111,13 +137,28 @@ func (sp *sequencePool) PullQCs() (*protos.QCBatch, error) {
 	qcb := protos.NewQCBatch(sp.author)
 	var qcs []*protos.QuorumCert
 
+	count := 0
 	for _, reminder := range sp.reminders {
-		qc := reminder.pullQC()
+		var qc *protos.QuorumCert
 
-		// blank:
-		// cannot find QC info, continue for next replica log.
+		for {
+			qc = reminder.pullQC()
+
+			// blank:
+			// cannot find QC info, continue for next replica log.
+			if qc == nil {
+				break
+			}
+
+			if sp.tracker.NonQuorum(qc.CommandDigest()) {
+				break
+			}
+
+			qcs = append(qcs, qc)
+		}
+
 		if qc == nil {
-			continue
+			break
 		}
 
 		// command:
@@ -134,11 +175,13 @@ func (sp *sequencePool) PullQCs() (*protos.QCBatch, error) {
 		// append:
 		// we have found a QC which could be proposed in next phase, append into QCs slice.
 		qcs = append(qcs, qc)
+
+		count++
 	}
 
 	// todo pre-generate for block
 
-	if len(qcs) < sp.quorum {
+	if count < sp.quorum {
 		for _, qc := range qcs {
 			// push the unavailable QCs back
 			sp.reminders[qc.Author()].backQC(qc)

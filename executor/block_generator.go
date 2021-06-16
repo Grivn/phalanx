@@ -22,6 +22,8 @@ type blockGenerator struct {
 
 	// pending is used to track the commands which have been verified by bft consensus for execution.
 	pending map[string]*types.PendingCommand
+
+	executed map[string]bool
 }
 
 // newBlockGenerator is used to initiate an instance for block generation.
@@ -30,6 +32,7 @@ func newBlockGenerator(n int) *blockGenerator {
 		fault:   types.CalculateFault(n),
 		quorum:  types.CalculateQuorum(n),
 		pending: make(map[string]*types.PendingCommand),
+		executed: make(map[string]bool),
 	}
 }
 
@@ -48,6 +51,10 @@ func (bg *blockGenerator) insertQCBatch(qcb *protos.QCBatch) (types.SubBlock, er
 	// collect the QCs for block generation.
 	for _, filter := range qcb.Filters {
 		for _, qc := range filter.QCs {
+			if bg.executed[qc.CommandDigest()] {
+				continue
+			}
+
 			pc, ok := bg.pending[qc.CommandDigest()]
 			if !ok {
 				return nil, errors.New("invalid QC")
@@ -72,6 +79,8 @@ func (bg *blockGenerator) insertQCBatch(qcb *protos.QCBatch) (types.SubBlock, er
 			HashList:  pCommand.Command.HashList,
 			Timestamp: pCommand.Timestamps[bg.fault],
 		}
+
+		bg.executed[pCommand.Command.Digest] = true
 
 		sub = append(sub, blk)
 		delete(bg.pending, digest)

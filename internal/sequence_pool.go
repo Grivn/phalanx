@@ -16,6 +16,8 @@ type InsertManager interface {
 }
 
 type QCsManager interface {
+	BecomeLeader()
+
 	// RestoreQCs is used to init the status of validator of QCs-manager.
 	RestoreQCs()
 

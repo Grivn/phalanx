@@ -88,6 +88,7 @@ func (replica *replica) run() {
 	go replica.bftListener()
 
 	if replica.author == uint64(1) {
+		replica.phalanx.BecomeLeader()
 		go replica.runningProposal()
 	}
 }
