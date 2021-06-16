@@ -31,6 +31,9 @@ type qcReminder struct {
 	// stableNo indicates the latest stable seqNo.
 	// stable sequence number: the number which has been verified by bft consensus module.
 	stableNo uint64
+
+	// seqNo is used for leader in synchronous bft to track the block generation, it is the next seqNo to propose.
+	seqNo uint64
 }
 
 func newQCReminder(author uint64, n int, id uint64) *qcReminder {
@@ -41,7 +44,13 @@ func newQCReminder(author uint64, n int, id uint64) *qcReminder {
 		cachedQCs:   btree.New(2),
 		proposedQCs: btree.New(2),
 		proposedNo:  make(map[uint64]bool),
+		seqNo:       uint64(1),
 	}
+}
+
+// becomeLeader is used to init the replica which has just become the leader of cluster.
+func (qr *qcReminder) becomeLeader() {
+	qr.seqNo = qr.stableNo+1
 }
 
 // restoreQCs is used to restore the QCs from proposedQCs and remove these seqNo from proposedNo.
@@ -89,17 +98,28 @@ func (qr *qcReminder) insertQC(qc *protos.QuorumCert) error {
 
 // pullQC is used to pull the QCs to generate the payload for bft.
 func (qr *qcReminder) pullQC() *protos.QuorumCert {
-	minQC := qr.cachedMin()
+	minQC := qr.cacheDeleteMin()
 
 	if minQC == nil {
 		return nil
 	}
 
-	if minQC.Sequence() != qr.stableNo+1 {
+	if minQC.Sequence() != qr.seqNo {
 		return nil
 	}
 
+	qr.seqNo++
+
 	return minQC
+}
+
+// backQC is used to push back the QC and update the seqNo for payload generation.
+func (qr *qcReminder) backQC(qc *protos.QuorumCert) {
+	if qc.Sequence() < qr.seqNo {
+		qr.seqNo = qc.Sequence()
+	}
+
+	qr.cachedQCs.ReplaceOrInsert(qc)
 }
 
 // setStableQC is used to make the verified QCs stable, in which we would like to update the stable seqNo and remove the expired QCs.
@@ -181,6 +201,17 @@ func (qr *qcReminder) verify(author uint64, remoteQC *protos.QuorumCert) error {
 // cachedMin is used to get the smallest QC from cache.
 func (qr *qcReminder) cachedMin() *protos.QuorumCert {
 	item := qr.cachedQCs.Min()
+
+	if item == nil {
+		return nil
+	}
+
+	return item.(*protos.QuorumCert)
+}
+
+// cacheDeleteMin is used to get the smallest QC from cache and delete it.
+func (qr *qcReminder) cacheDeleteMin() *protos.QuorumCert {
+	item := qr.cachedQCs.DeleteMin()
 
 	if item == nil {
 		return nil

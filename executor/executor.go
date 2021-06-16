@@ -5,8 +5,6 @@ import (
 
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
-
-	"github.com/gogo/protobuf/proto"
 )
 
 type executorImpl struct {
@@ -26,12 +24,7 @@ func NewExecutor(n int, exec external.ExecutorService) *executorImpl {
 }
 
 // CommitQCs is used to commit the QCs.
-func (ei *executorImpl) CommitQCs(payload []byte) error {
-	qcb := &protos.QCBatch{}
-	if err := proto.Unmarshal(payload, qcb); err != nil {
-		return fmt.Errorf("invalid QC-batch: %s", err)
-	}
-
+func (ei *executorImpl) CommitQCs(qcb *protos.QCBatch) error {
 	sub, err := ei.generator.insertQCBatch(qcb)
 	if err != nil {
 		return fmt.Errorf("invalid QC-batch: %s", err)

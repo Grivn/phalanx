@@ -20,15 +20,15 @@ type QCsManager interface {
 	RestoreQCs()
 
 	// PullQCs is used to pull the QCs from sync-tree to generate consensus proposal.
-	PullQCs() ([]byte, error)
+	PullQCs() (*protos.QCBatch, error)
 
 	// VerifyQCs is used to verify the QCs in qc-batch.
 	// 1) we should have quorum QCs in such a batch.
 	// 2) the qc should contain the specific command for it.
 	// 3) the sequence number for qc should be matched with the local record for logs of replicas.
 	// 4) the proof-certs should be valid.
-	VerifyQCs(payload []byte) error
+	VerifyQCs(qcb *protos.QCBatch) error
 
 	// SetStableQCs is used to process stable QCs which have been verified by bft consensus.
-	SetStableQCs(payload []byte) error
+	SetStableQCs(qcb *protos.QCBatch) error
 }

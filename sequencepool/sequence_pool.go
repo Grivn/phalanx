@@ -7,8 +7,6 @@ import (
 
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
-
-	"github.com/gogo/protobuf/proto"
 )
 
 type sequencePool struct {
@@ -67,14 +65,9 @@ func (sp *sequencePool) RestoreQCs() {
 // 2) the qc should contain the specific command for it.
 // 3) the sequence number for qc should be matched with the local record for logs of replicas.
 // 4) the proof-certs should be valid.
-func (sp *sequencePool) VerifyQCs(payload []byte) error {
+func (sp *sequencePool) VerifyQCs(qcb *protos.QCBatch) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
-
-	qcb := &protos.QCBatch{}
-	if err := proto.Unmarshal(payload, qcb); err != nil {
-		return fmt.Errorf("invalid QC-batch: %s", err)
-	}
 
 	for _, filter := range qcb.Filters {
 		if len(filter.QCs) < sp.quorum {
@@ -95,14 +88,9 @@ func (sp *sequencePool) VerifyQCs(payload []byte) error {
 	return nil
 }
 
-func (sp *sequencePool) SetStableQCs(payload []byte) error {
+func (sp *sequencePool) SetStableQCs(qcb *protos.QCBatch) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
-
-	qcb := &protos.QCBatch{}
-	if err := proto.Unmarshal(payload, qcb); err != nil {
-		return fmt.Errorf("invalid QC-batch: %s", err)
-	}
 
 	for _, filter := range qcb.Filters {
 		for _, qc := range filter.QCs {
@@ -116,7 +104,7 @@ func (sp *sequencePool) SetStableQCs(payload []byte) error {
 }
 
 // PullQCs is used to pull the QCs from sync-tree to generate consensus proposal.
-func (sp *sequencePool) PullQCs() ([]byte, error) {
+func (sp *sequencePool) PullQCs() (*protos.QCBatch, error) {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
@@ -148,18 +136,20 @@ func (sp *sequencePool) PullQCs() ([]byte, error) {
 		qcs = append(qcs, qc)
 	}
 
+	// todo pre-generate for block
+
 	if len(qcs) < sp.quorum {
+		for _, qc := range qcs {
+			// push the unavailable QCs back
+			sp.reminders[qc.Author()].backQC(qc)
+		}
+
 		// there are not enough QCs for current QC
 		return nil, fmt.Errorf("not enough QCs, need %d, has %d", sp.quorum, len(qcs))
 	}
 
 	qcb.Filters = append(qcb.Filters, &protos.QCFilter{QCs: qcs})
-	payload, err := proto.Marshal(qcb)
-	if err != nil {
-		return nil, err
-	}
-
-	return payload, nil
+	return qcb, nil
 }
 
 func (sp *sequencePool) getCommand(digest string) *protos.Command {
