@@ -1,3 +1,4 @@
 /node_modules/
 /testLogger/
 /test/testLogger/
+/package-lock.json
