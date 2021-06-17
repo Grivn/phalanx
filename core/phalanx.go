@@ -17,6 +17,8 @@ type phalanxImpl struct {
 	logManager   internal.LogManager
 	executor     internal.Executor
 	sequencePool internal.SequencePool
+
+	logger external.Logger
 }
 
 func NewPhalanxProvider(n int, author uint64, exec external.ExecutorService, network external.NetworkService, logger external.Logger) *phalanxImpl {
@@ -31,6 +33,7 @@ func NewPhalanxProvider(n int, author uint64, exec external.ExecutorService, net
 		logManager:   mgr,
 		sequencePool: seq,
 		executor:     exe,
+		logger:       logger,
 	}
 }
 
@@ -74,7 +77,25 @@ func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.ConsensusMessage
 
 // MakePayload is used to generate payloads for bft consensus.
 func (phi *phalanxImpl) MakePayload() ([]byte, error) {
-	return phi.sequencePool.PullQCs()
+	qcb, err := phi.sequencePool.PullQCs()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, qc := range qcb.Filters[0].QCs {
+		phi.logger.Infof("payload generation: replica %d sequence %d digest %s", qc.Author(), qc.Sequence(), qc.CommandDigest())
+	}
+
+	payload, err := marshal(qcb)
+	if err != nil {
+		return nil, err
+	}
+
+	return payload, nil
+}
+
+func (phi *phalanxImpl) BecomeLeader() {
+	phi.sequencePool.BecomeLeader()
 }
 
 // Restore is used to restore data when we have found a timeout event in partial-synchronized bft consensus module.
@@ -85,7 +106,13 @@ func (phi *phalanxImpl) Restore() {
 // Verify is used to verify the phalanx payload.
 // here, we would like to verify the validation of phalanx QCs, and record which seqNo has already been proposed.
 func (phi *phalanxImpl) Verify(payload []byte) error {
-	if err := phi.sequencePool.VerifyQCs(payload); err != nil {
+	qcb, err := unmarshal(payload)
+	if err != nil {
+		return fmt.Errorf("invalid payload: %s", err)
+	}
+
+	err = phi.sequencePool.VerifyQCs(qcb);
+	if err != nil {
 		return fmt.Errorf("phalanx verify failed: %s", err)
 	}
 	return nil
@@ -99,13 +126,37 @@ func (phi *phalanxImpl) Verify(payload []byte) error {
 // 2) classic-bft: for every time we are trying to execute a block, we would like to use it to
 //    set phalanx stable status.
 func (phi *phalanxImpl) SetStable(payload []byte) error {
-	return phi.sequencePool.SetStableQCs(payload)
+	qcb, err := unmarshal(payload)
+	if err != nil {
+		return fmt.Errorf("invalid payload: %s", err)
+	}
+
+	return phi.sequencePool.SetStableQCs(qcb)
 }
 
 // Commit is used to commit the phalanx-QCBatch which has been verified by bft consensus.
 func (phi *phalanxImpl) Commit(payload []byte) error {
-	if err := phi.executor.CommitQCs(payload); err != nil {
+	qcb, err := unmarshal(payload)
+	if err != nil {
+		return fmt.Errorf("invalid payload: %s", err)
+	}
+
+	err = phi.executor.CommitQCs(qcb)
+	if  err != nil {
 		return fmt.Errorf("phalanx execution failed: %s", err)
 	}
 	return nil
+}
+
+func marshal(qcb *protos.QCBatch) ([]byte, error) {
+	return proto.Marshal(qcb)
+}
+
+func unmarshal(payload []byte) (*protos.QCBatch, error) {
+	qcb := &protos.QCBatch{}
+	if err := proto.Unmarshal(payload, qcb); err != nil {
+		return nil, fmt.Errorf("invalid QC-batch: %s", err)
+	}
+
+	return qcb, nil
 }

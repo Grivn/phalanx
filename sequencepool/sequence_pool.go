@@ -7,8 +7,6 @@ import (
 
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
-
-	"github.com/gogo/protobuf/proto"
 )
 
 type sequencePool struct {
@@ -26,6 +24,9 @@ type sequencePool struct {
 
 	// commands would store the command we received.
 	commands map[string]*protos.Command
+
+	//
+	tracker CommandTracker
 }
 
 func NewSequencePool(author uint64, n int) *sequencePool {
@@ -35,7 +36,16 @@ func NewSequencePool(author uint64, n int) *sequencePool {
 		reminders[uint64(i+1)] = newQCReminder(author, n, uint64(i+1))
 	}
 
-	return &sequencePool{author: author, quorum: types.CalculateQuorum(n), reminders: reminders, commands: make(map[string]*protos.Command)}
+	return &sequencePool{author: author, quorum: types.CalculateQuorum(n), reminders: reminders, commands: make(map[string]*protos.Command), tracker: NewCommandTracker(n)}
+}
+
+func (sp *sequencePool) BecomeLeader() {
+	sp.mutex.Lock()
+	defer sp.mutex.Unlock()
+
+	for _, reminder := range sp.reminders {
+		reminder.becomeLeader()
+	}
 }
 
 // InsertQuorumCert could insertQC the quorum-cert into sync-tree for specific node.
@@ -58,7 +68,7 @@ func (sp *sequencePool) InsertCommand(command *protos.Command) {
 func (sp *sequencePool) RestoreQCs() {
 	for _, reminder := range sp.reminders {
 		// restore the QCs in each reminder.
-		reminder.restoreQCs()
+		reminder.restoreQCs(sp.tracker)
 	}
 }
 
@@ -67,23 +77,23 @@ func (sp *sequencePool) RestoreQCs() {
 // 2) the qc should contain the specific command for it.
 // 3) the sequence number for qc should be matched with the local record for logs of replicas.
 // 4) the proof-certs should be valid.
-func (sp *sequencePool) VerifyQCs(payload []byte) error {
+func (sp *sequencePool) VerifyQCs(qcb *protos.QCBatch) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
-	qcb := &protos.QCBatch{}
-	if err := proto.Unmarshal(payload, qcb); err != nil {
-		return fmt.Errorf("invalid QC-batch: %s", err)
-	}
-
+	// verify the validation
 	for _, filter := range qcb.Filters {
 		if len(filter.QCs) < sp.quorum {
 			return errors.New("not enough qc")
 		}
 
 		for _, qc := range filter.QCs {
+			if sp.tracker.IsQuorum(qc.CommandDigest()) {
+				continue
+			}
+
 			if _, ok := qcb.Commands[qc.CommandDigest()]; !ok {
-				return errors.New("nil command")
+				return fmt.Errorf("nil command: replica %d, seqNo %d, digest %s", qc.Author(), qc.Sequence(), qc.CommandDigest())
 			}
 
 			if err := sp.reminders[qc.Author()].verify(qcb.Author, qc); err != nil {
@@ -92,17 +102,21 @@ func (sp *sequencePool) VerifyQCs(payload []byte) error {
 		}
 	}
 
+	// proposed target
+	for _, filter := range qcb.Filters {
+		for _, qc := range filter.QCs {
+			sp.reminders[qc.Author()].proposedQC(qc)
+
+			sp.tracker.Add(qc.CommandDigest())
+		}
+	}
+
 	return nil
 }
 
-func (sp *sequencePool) SetStableQCs(payload []byte) error {
+func (sp *sequencePool) SetStableQCs(qcb *protos.QCBatch) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
-
-	qcb := &protos.QCBatch{}
-	if err := proto.Unmarshal(payload, qcb); err != nil {
-		return fmt.Errorf("invalid QC-batch: %s", err)
-	}
 
 	for _, filter := range qcb.Filters {
 		for _, qc := range filter.QCs {
@@ -116,20 +130,35 @@ func (sp *sequencePool) SetStableQCs(payload []byte) error {
 }
 
 // PullQCs is used to pull the QCs from sync-tree to generate consensus proposal.
-func (sp *sequencePool) PullQCs() ([]byte, error) {
+func (sp *sequencePool) PullQCs() (*protos.QCBatch, error) {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
 	qcb := protos.NewQCBatch(sp.author)
 	var qcs []*protos.QuorumCert
 
+	count := 0
 	for _, reminder := range sp.reminders {
-		qc := reminder.pullQC()
+		var qc *protos.QuorumCert
 
-		// blank:
-		// cannot find QC info, continue for next replica log.
+		for {
+			qc = reminder.pullQC()
+
+			// blank:
+			// cannot find QC info, continue for next replica log.
+			if qc == nil {
+				break
+			}
+
+			if sp.tracker.NonQuorum(qc.CommandDigest()) {
+				break
+			}
+
+			qcs = append(qcs, qc)
+		}
+
 		if qc == nil {
-			continue
+			break
 		}
 
 		// command:
@@ -146,20 +175,24 @@ func (sp *sequencePool) PullQCs() ([]byte, error) {
 		// append:
 		// we have found a QC which could be proposed in next phase, append into QCs slice.
 		qcs = append(qcs, qc)
+
+		count++
 	}
 
-	if len(qcs) < sp.quorum {
+	// todo pre-generate for block
+
+	if count < sp.quorum {
+		for _, qc := range qcs {
+			// push the unavailable QCs back
+			sp.reminders[qc.Author()].backQC(qc)
+		}
+
 		// there are not enough QCs for current QC
 		return nil, fmt.Errorf("not enough QCs, need %d, has %d", sp.quorum, len(qcs))
 	}
 
 	qcb.Filters = append(qcb.Filters, &protos.QCFilter{QCs: qcs})
-	payload, err := proto.Marshal(qcb)
-	if err != nil {
-		return nil, err
-	}
-
-	return payload, nil
+	return qcb, nil
 }
 
 func (sp *sequencePool) getCommand(digest string) *protos.Command {
