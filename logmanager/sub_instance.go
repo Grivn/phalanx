@@ -42,7 +42,7 @@ type subInstance struct {
 }
 
 func newSubInstance(author, id uint64, sp internal.SequencePool, sender external.NetworkService, logger external.Logger) *subInstance {
-	logger.Noticef("replica %d init the sub instance of order for replica %d", author, id)
+	logger.Infof("replica %d init the sub instance of order for replica %d", author, id)
 	return &subInstance{
 		author:   author,
 		id:       id,
@@ -127,7 +127,7 @@ func (si *subInstance) processBTree() error {
 		qc := ev.Event.(*protos.QuorumCert)
 
 		if err := si.sp.InsertQuorumCert(qc); err != nil {
-			si.logger.Warningf("insert failed: %s", err)
+			si.logger.Errorf("insert failed: %s", err)
 		}
 
 		si.recorder.Delete(ev)

@@ -21,7 +21,7 @@ type phalanxImpl struct {
 	logger external.Logger
 }
 
-func NewPhalanxProvider(n int, author uint64, exec external.ExecutorService, network external.NetworkService, logger external.Logger) *phalanxImpl {
+func NewPhalanxProvider(n int, author uint64, exec external.ExecuteService, network external.NetworkService, logger external.Logger) *phalanxImpl {
 
 	seq := sequencepool.NewSequencePool(author, n)
 

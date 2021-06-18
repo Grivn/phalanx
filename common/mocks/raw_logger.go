@@ -1,49 +1,56 @@
 package mocks
 
 import (
+	"io"
 	"os"
+	"time"
 
-	"github.com/Grivn/phalanx/external"
-
-	"github.com/ultramesh/fancylogger"
+	nested "github.com/antonfisher/nested-logrus-formatter"
+	"github.com/sirupsen/logrus"
 )
 
-// NewRawLoggerFile create log file for local cluster tests
-func NewRawLoggerFile(hostname string) external.Logger {
-	rawLogger := fancylogger.NewLogger("test", fancylogger.DEBUG)
-
-	consoleFormatter := &fancylogger.StringFormatter{
-		EnableColors:    true,
-		TimestampFormat: "2006-01-02T15:04:05.000",
-		IsTerminal:      true,
-	}
-
-	//test with logger files
-	_ = os.Mkdir("testLogger", os.ModePerm)
-	fileName := "testLogger/" + hostname + ".log"
-	f, _ := os.Create(fileName)
-	consoleBackend := fancylogger.NewIOBackend(consoleFormatter, f)
-
-	rawLogger.SetBackends(consoleBackend)
-	rawLogger.SetEnableCaller(true)
-
-	return rawLogger
+// mockLogger is an implement for Logger.
+type mockLogger struct {
+	logger *logrus.Logger
 }
 
-// NewRawLogger create log file for local cluster tests
-func NewRawLogger() external.Logger {
-	rawLogger := fancylogger.NewLogger("test", fancylogger.DEBUG)
+// NewRawLogger provides a Logger instance to print logs in stdout.
+func NewRawLogger() *mockLogger {
+	log := logrus.New()
+	writer := os.Stdout
+	log.SetFormatter(&nested.Formatter{NoColors: true})
+	log.SetOutput(io.MultiWriter(writer))
+	return &mockLogger{logger: log}
+}
 
-	consoleFormatter := &fancylogger.StringFormatter{
-		EnableColors:    true,
-		TimestampFormat: "2006-01-02T15:04:05.000",
-		IsTerminal:      true,
+// NewRawLoggerFile provides a Logger instance to print logs in files.
+func NewRawLoggerFile(hostname string) *mockLogger {
+	log := logrus.New()
+	writer, err := os.OpenFile(hostname+"_"+time.Now().Format("2006-01-02_15:04:05")+".log", os.O_WRONLY|os.O_CREATE, 0755)
+	if err != nil {
+		panic(err)
 	}
+	log.SetLevel(logrus.DebugLevel)
+	log.SetFormatter(&nested.Formatter{NoColors: true})
+	log.SetOutput(io.MultiWriter(writer))
+	return &mockLogger{logger: log}
+}
 
-	consoleBackend := fancylogger.NewIOBackend(consoleFormatter, os.Stdout)
-
-	rawLogger.SetBackends(consoleBackend)
-	rawLogger.SetEnableCaller(true)
-
-	return rawLogger
+func (log *mockLogger) Debug(v ...interface{}) {
+	log.logger.Debug(v...)
+}
+func (log *mockLogger) Debugf(format string, v ...interface{}) {
+	log.logger.Debugf(format, v...)
+}
+func (log *mockLogger) Info(v ...interface{}) {
+	log.logger.Info(v...)
+}
+func (log *mockLogger) Infof(format string, v ...interface{}) {
+	log.logger.Infof(format, v...)
+}
+func (log *mockLogger) Error(v ...interface{}) {
+	log.logger.Error(v...)
+}
+func (log *mockLogger) Errorf(format string, v ...interface{}) {
+	log.logger.Errorf(format, v...)
 }

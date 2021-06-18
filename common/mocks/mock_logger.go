@@ -89,64 +89,6 @@ func (_mr *MockLoggerMockRecorder) Infof(arg0 interface{}, arg1 ...interface{}) 
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Infof", reflect.TypeOf((*MockLogger)(nil).Infof), _s...)
 }
 
-// Notice mocks base method
-func (_m *MockLogger) Notice(v ...interface{}) {
-	_s := []interface{}{}
-	for _, _x := range v {
-		_s = append(_s, _x)
-	}
-	_m.ctrl.Call(_m, "Notice", _s...)
-}
-
-// Notice indicates an expected call of Notice
-func (_mr *MockLoggerMockRecorder) Notice(arg0 ...interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Notice", reflect.TypeOf((*MockLogger)(nil).Notice), arg0...)
-}
-
-// Noticef mocks base method
-func (_m *MockLogger) Noticef(format string, v ...interface{}) {
-	_s := []interface{}{format}
-	for _, _x := range v {
-		_s = append(_s, _x)
-	}
-	_m.ctrl.Call(_m, "Noticef", _s...)
-}
-
-// Noticef indicates an expected call of Noticef
-func (_mr *MockLoggerMockRecorder) Noticef(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
-	_s := append([]interface{}{arg0}, arg1...)
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Noticef", reflect.TypeOf((*MockLogger)(nil).Noticef), _s...)
-}
-
-// Warning mocks base method
-func (_m *MockLogger) Warning(v ...interface{}) {
-	_s := []interface{}{}
-	for _, _x := range v {
-		_s = append(_s, _x)
-	}
-	_m.ctrl.Call(_m, "Warning", _s...)
-}
-
-// Warning indicates an expected call of Warning
-func (_mr *MockLoggerMockRecorder) Warning(arg0 ...interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Warning", reflect.TypeOf((*MockLogger)(nil).Warning), arg0...)
-}
-
-// Warningf mocks base method
-func (_m *MockLogger) Warningf(format string, v ...interface{}) {
-	_s := []interface{}{format}
-	for _, _x := range v {
-		_s = append(_s, _x)
-	}
-	_m.ctrl.Call(_m, "Warningf", _s...)
-}
-
-// Warningf indicates an expected call of Warningf
-func (_mr *MockLoggerMockRecorder) Warningf(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
-	_s := append([]interface{}{arg0}, arg1...)
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Warningf", reflect.TypeOf((*MockLogger)(nil).Warningf), _s...)
-}
-
 // Error mocks base method
 func (_m *MockLogger) Error(v ...interface{}) {
 	_s := []interface{}{}
@@ -174,33 +116,4 @@ func (_m *MockLogger) Errorf(format string, v ...interface{}) {
 func (_mr *MockLoggerMockRecorder) Errorf(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	_s := append([]interface{}{arg0}, arg1...)
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Errorf", reflect.TypeOf((*MockLogger)(nil).Errorf), _s...)
-}
-
-// Critical mocks base method
-func (_m *MockLogger) Critical(v ...interface{}) {
-	_s := []interface{}{}
-	for _, _x := range v {
-		_s = append(_s, _x)
-	}
-	_m.ctrl.Call(_m, "Critical", _s...)
-}
-
-// Critical indicates an expected call of Critical
-func (_mr *MockLoggerMockRecorder) Critical(arg0 ...interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Critical", reflect.TypeOf((*MockLogger)(nil).Critical), arg0...)
-}
-
-// Criticalf mocks base method
-func (_m *MockLogger) Criticalf(format string, v ...interface{}) {
-	_s := []interface{}{format}
-	for _, _x := range v {
-		_s = append(_s, _x)
-	}
-	_m.ctrl.Call(_m, "Criticalf", _s...)
-}
-
-// Criticalf indicates an expected call of Criticalf
-func (_mr *MockLoggerMockRecorder) Criticalf(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
-	_s := append([]interface{}{arg0}, arg1...)
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Criticalf", reflect.TypeOf((*MockLogger)(nil).Criticalf), _s...)
 }
