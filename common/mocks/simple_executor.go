@@ -13,7 +13,7 @@ type executor struct {
 	logger external.Logger
 }
 
-func NewSimpleExecutor(author uint64, logger external.Logger) external.ExecutorService {
+func NewSimpleExecutor(author uint64, logger external.Logger) external.ExecuteService {
 	return &executor{
 		author: author,
 		hash:   "initial",
