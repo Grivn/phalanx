@@ -16,6 +16,8 @@ func TestLogManager(t *testing.T) {
 
 	n := 4
 
+	async := false
+
 	nc := make(map[uint64]chan *protos.ConsensusMessage)
 
 	for i:=0; i<n; i++ {
@@ -23,7 +25,7 @@ func TestLogManager(t *testing.T) {
 		nc[id] = make(chan *protos.ConsensusMessage)
 	}
 
-	net := mocks.NewSimpleNetwork(nc)
+	net := mocks.NewSimpleNetwork(nc, async)
 
 	lms := make(map[uint64]internal.LogManager)
 

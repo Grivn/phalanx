@@ -2,3 +2,4 @@
 /testLogger/
 /test/testLogger/
 /package-lock.json
+*.log

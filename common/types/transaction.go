@@ -6,7 +6,36 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"github.com/Grivn/phalanx/common/protos"
+	"github.com/gogo/protobuf/proto"
+	"math/rand"
 )
+
+func GenerateRandCommand(count, size int) *protos.Command {
+	tList := make([]*protos.Transaction, count)
+	hList := make([]string, count)
+
+	for i:=0; i<count; i++ {
+		tx := GenerateRandTransaction(size)
+
+		tList[i] = tx
+		hList[i] = tx.Hash
+	}
+
+	command := &protos.Command{Content: tList, HashList: hList}
+	payload, err := proto.Marshal(command)
+	if err != nil {
+		panic(err)
+	}
+	command.Digest = CalculatePayloadHash(payload, 0)
+
+	return command
+}
+
+func GenerateRandTransaction(size int) *protos.Transaction {
+	payload := make([]byte, size)
+	rand.Read(payload)
+	return GenerateTransaction(payload)
+}
 
 func GenerateTransaction(payload []byte) *protos.Transaction {
 	return &protos.Transaction{

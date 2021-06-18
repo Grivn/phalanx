@@ -9,6 +9,7 @@ import (
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/mocks"
 	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/core"
 )
 
@@ -16,6 +17,8 @@ func TestPhalanx(t *testing.T) {
 	_ = crypto.SetKeys()
 
 	n := 4
+
+	async := false
 
 	nc := make(map[uint64]chan *protos.ConsensusMessage)
 
@@ -27,7 +30,7 @@ func TestPhalanx(t *testing.T) {
 		id := uint64(i+1)
 		nc[id] = make(chan *protos.ConsensusMessage)
 	}
-	net := mocks.NewSimpleNetwork(nc)
+	net := mocks.NewSimpleNetwork(nc, async)
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
@@ -74,7 +77,7 @@ func commandSender(phx map[uint64]phalanx.SynchronousProvider) {
 	i := rand.Int()%10
 	time.Sleep(time.Duration(i) * time.Millisecond)
 
-	command := mocks.NewCommand()
+	command := types.GenerateRandCommand(200, 5)
 
 	for _, p := range phx {
 		go p.ProcessCommand(command)
