@@ -1,5 +1,5 @@
 # Phalanx: An Asynchronous Order-Fairness Byzantine Consensus Protocol
-
+[TOC]
 ## Introduction
 Generally, a BFT (*Byzantine Fault Tolerance*) consensus algorithm concentrates on two properties, *safety* and *liveness*. 
 Well, in the system on reality, we should also pay attention to the order of transactions, in which an incorrect order may make the tasks failed.
