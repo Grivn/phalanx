@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/mocks"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
@@ -14,7 +13,6 @@ import (
 )
 
 func TestPhalanx(t *testing.T) {
-	_ = crypto.SetKeys()
 
 	n := 4
 
