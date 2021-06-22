@@ -32,7 +32,7 @@ func (ei *executorImpl) CommitQCs(qcb *protos.QCBatch) error {
 
 	for _, blk := range sub {
 		ei.seqNo++
-		ei.exec.Execute(blk.TxList, ei.seqNo, blk.Timestamp)
+		ei.exec.Execute(blk.CommandD, blk.TxList, ei.seqNo, blk.Timestamp)
 	}
 
 	return nil

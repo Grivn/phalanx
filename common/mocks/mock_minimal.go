@@ -4,14 +4,14 @@ import "github.com/golang/mock/gomock"
 
 func NewMockMinimalNetworkService(ctrl *gomock.Controller) *MockNetworkService {
 	mock := NewMockNetworkService(ctrl)
-	mock.EXPECT().Broadcast(gomock.Any()).AnyTimes()
-	mock.EXPECT().Unicast(gomock.Any()).AnyTimes()
+	mock.EXPECT().PhalanxBroadcast(gomock.Any()).AnyTimes()
+	mock.EXPECT().PhalanxUnicast(gomock.Any()).AnyTimes()
 	return mock
 }
 
 func NewMockMinimalExecutorService(ctrl *gomock.Controller) *MockExecuteService {
 	mock := NewMockExecuteService(ctrl)
-	mock.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	mock.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	return mock
 }
 

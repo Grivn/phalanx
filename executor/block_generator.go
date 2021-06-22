@@ -75,6 +75,7 @@ func (bg *blockGenerator) insertQCBatch(qcb *protos.QCBatch) (types.SubBlock, er
 		// construct the block entity
 		sort.Sort(pCommand.Timestamps)
 		blk := types.Block{
+			CommandD:  pCommand.Command.Digest,
 			TxList:    pCommand.Command.Content,
 			HashList:  pCommand.Command.HashList,
 			Timestamp: pCommand.Timestamps[bg.fault],
