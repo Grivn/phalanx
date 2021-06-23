@@ -19,7 +19,7 @@ func NewSimpleNetwork(networkC map[uint64]chan *protos.ConsensusMessage, async b
 	return &SimpleNetwork{async: async, networkC: networkC, logger: NewRawLogger()}
 }
 
-func (net *SimpleNetwork) PhalanxBroadcast(message *protos.ConsensusMessage) {
+func (net *SimpleNetwork) BroadcastPCM(message *protos.ConsensusMessage) {
 	if net.async {
 		// NOTE: phalanx itself could be running in a asynchronous network environment.
 		i := rand.Int()%10
@@ -29,7 +29,7 @@ func (net *SimpleNetwork) PhalanxBroadcast(message *protos.ConsensusMessage) {
 	go net.broadcast(message)
 }
 
-func (net *SimpleNetwork) PhalanxUnicast(message *protos.ConsensusMessage) {
+func (net *SimpleNetwork) UnicastPCM(message *protos.ConsensusMessage) {
 	go net.unicast(message)
 }
 

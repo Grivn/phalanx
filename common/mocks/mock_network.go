@@ -32,22 +32,22 @@ func (_m *MockNetworkService) EXPECT() *MockNetworkServiceMockRecorder {
 	return _m.recorder
 }
 
-// PhalanxBroadcast mocks base method
-func (_m *MockNetworkService) PhalanxBroadcast(message *protos.ConsensusMessage) {
-	_m.ctrl.Call(_m, "PhalanxBroadcast", message)
+// BroadcastPCM mocks base method
+func (_m *MockNetworkService) BroadcastPCM(message *protos.ConsensusMessage) {
+	_m.ctrl.Call(_m, "BroadcastPCM", message)
 }
 
-// PhalanxBroadcast indicates an expected call of PhalanxBroadcast
-func (_mr *MockNetworkServiceMockRecorder) PhalanxBroadcast(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "PhalanxBroadcast", reflect.TypeOf((*MockNetworkService)(nil).PhalanxBroadcast), arg0)
+// BroadcastPCM indicates an expected call of BroadcastPCM
+func (_mr *MockNetworkServiceMockRecorder) BroadcastPCM(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "BroadcastPCM", reflect.TypeOf((*MockNetworkService)(nil).BroadcastPCM), arg0)
 }
 
-// PhalanxUnicast mocks base method
-func (_m *MockNetworkService) PhalanxUnicast(message *protos.ConsensusMessage) {
-	_m.ctrl.Call(_m, "PhalanxUnicast", message)
+// UnicastPCM mocks base method
+func (_m *MockNetworkService) UnicastPCM(message *protos.ConsensusMessage) {
+	_m.ctrl.Call(_m, "UnicastPCM", message)
 }
 
-// PhalanxUnicast indicates an expected call of PhalanxUnicast
-func (_mr *MockNetworkServiceMockRecorder) PhalanxUnicast(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "PhalanxUnicast", reflect.TypeOf((*MockNetworkService)(nil).PhalanxUnicast), arg0)
+// UnicastPCM indicates an expected call of UnicastPCM
+func (_mr *MockNetworkServiceMockRecorder) UnicastPCM(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "UnicastPCM", reflect.TypeOf((*MockNetworkService)(nil).UnicastPCM), arg0)
 }
