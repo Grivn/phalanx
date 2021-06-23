@@ -30,7 +30,7 @@ type blockGenerator struct {
 func newBlockGenerator(n int) *blockGenerator {
 	return &blockGenerator{
 		fault:   types.CalculateFault(n),
-		quorum:  types.CalculateOneQuorum(n),
+		quorum:  types.CalculateQuorum(n),
 		pending: make(map[string]*types.PendingCommand),
 		executed: make(map[string]bool),
 	}
