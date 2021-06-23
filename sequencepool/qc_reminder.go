@@ -40,7 +40,7 @@ func newQCReminder(author uint64, n int, id uint64) *qcReminder {
 	return &qcReminder{
 		author:      author,
 		id:          id,
-		quorum:      types.CalculateQuorum(n),
+		quorum:      types.CalculateOneQuorum(n),
 		cachedQCs:   btree.New(2),
 		proposedQCs: btree.New(2),
 		proposedNo:  make(map[uint64]bool),

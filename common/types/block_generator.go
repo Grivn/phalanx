@@ -21,6 +21,7 @@ func NewPendingCommand(command *protos.Command) *PendingCommand {
 }
 
 type Block struct {
+	CommandD  string
 	TxList    []*protos.Transaction
 	HashList  []string
 	Timestamp int64

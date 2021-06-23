@@ -10,23 +10,26 @@ import (
 )
 
 type SimpleNetwork struct {
+	async    bool
 	networkC map[uint64]chan *protos.ConsensusMessage
-	logger external.Logger
+	logger   external.Logger
 }
 
-func NewSimpleNetwork(networkC map[uint64]chan *protos.ConsensusMessage) *SimpleNetwork {
-	return &SimpleNetwork{networkC: networkC, logger: NewRawLogger()}
+func NewSimpleNetwork(networkC map[uint64]chan *protos.ConsensusMessage, async bool) *SimpleNetwork {
+	return &SimpleNetwork{async: async, networkC: networkC, logger: NewRawLogger()}
 }
 
-func (net *SimpleNetwork) Broadcast(message *protos.ConsensusMessage) {
-	// NOTE: phalanx itself could be running in a asynchronous network environment.
-	i := rand.Int()%10
-	time.Sleep(time.Duration(i) * time.Millisecond)
+func (net *SimpleNetwork) BroadcastPCM(message *protos.ConsensusMessage) {
+	if net.async {
+		// NOTE: phalanx itself could be running in a asynchronous network environment.
+		i := rand.Int()%10
+		time.Sleep(time.Duration(i) * time.Millisecond)
+	}
 
 	go net.broadcast(message)
 }
 
-func (net *SimpleNetwork) Unicast(message *protos.ConsensusMessage) {
+func (net *SimpleNetwork) UnicastPCM(message *protos.ConsensusMessage) {
 	go net.unicast(message)
 }
 

@@ -36,7 +36,7 @@ func NewSequencePool(author uint64, n int) *sequencePool {
 		reminders[uint64(i+1)] = newQCReminder(author, n, uint64(i+1))
 	}
 
-	return &sequencePool{author: author, quorum: types.CalculateQuorum(n), reminders: reminders, commands: make(map[string]*protos.Command), tracker: NewCommandTracker(n)}
+	return &sequencePool{author: author, quorum: types.CalculateOneQuorum(n), reminders: reminders, commands: make(map[string]*protos.Command), tracker: NewCommandTracker(n)}
 }
 
 func (sp *sequencePool) BecomeLeader() {

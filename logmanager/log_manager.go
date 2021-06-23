@@ -93,7 +93,7 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 	if err != nil {
 		return fmt.Errorf("generate consensus message error: %s", err)
 	}
-	mgr.sender.Broadcast(cm)
+	mgr.sender.BroadcastPCM(cm)
 	return nil
 }
 
@@ -133,7 +133,7 @@ func (mgr *logManager) ProcessVote(vote *protos.Vote) error {
 		if err != nil {
 			return fmt.Errorf("generate consensus message error: %s", err)
 		}
-		mgr.sender.Broadcast(cm)
+		mgr.sender.BroadcastPCM(cm)
 		return nil
 	}
 

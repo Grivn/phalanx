@@ -33,11 +33,11 @@ func (_m *MockExecuteService) EXPECT() *MockExecuteServiceMockRecorder {
 }
 
 // Execute mocks base method
-func (_m *MockExecuteService) Execute(txs []*protos.Transaction, seqNo uint64, timestamp int64) {
-	_m.ctrl.Call(_m, "Execute", txs, seqNo, timestamp)
+func (_m *MockExecuteService) Execute(commandD string, txs []*protos.Transaction, seqNo uint64, timestamp int64) {
+	_m.ctrl.Call(_m, "Execute", commandD, txs, seqNo, timestamp)
 }
 
 // Execute indicates an expected call of Execute
-func (_mr *MockExecuteServiceMockRecorder) Execute(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Execute", reflect.TypeOf((*MockExecuteService)(nil).Execute), arg0, arg1, arg2)
+func (_mr *MockExecuteServiceMockRecorder) Execute(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Execute", reflect.TypeOf((*MockExecuteService)(nil).Execute), arg0, arg1, arg2, arg3)
 }

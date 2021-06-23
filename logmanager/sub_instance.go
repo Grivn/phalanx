@@ -116,7 +116,7 @@ func (si *subInstance) processBTree() error {
 		if err != nil {
 			return fmt.Errorf("generate consensus message error: %s", err)
 		}
-		si.sender.Unicast(cm)
+		si.sender.UnicastPCM(cm)
 
 		si.sequence++
 		return nil

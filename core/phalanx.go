@@ -3,6 +3,7 @@ package phalanx
 import (
 	"fmt"
 
+	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/executor"
 	"github.com/Grivn/phalanx/external"
@@ -22,6 +23,7 @@ type phalanxImpl struct {
 }
 
 func NewPhalanxProvider(n int, author uint64, exec external.ExecuteService, network external.NetworkService, logger external.Logger) *phalanxImpl {
+	_ = crypto.SetKeys()
 
 	seq := sequencepool.NewSequencePool(author, n)
 
