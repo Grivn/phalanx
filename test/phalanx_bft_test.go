@@ -52,7 +52,7 @@ func TestPhalanx(t *testing.T) {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	count := 20000
+	count := 2000
 	for i:=0; i<count; i++ {
 		go commandSender(phx)
 	}
