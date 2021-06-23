@@ -19,7 +19,7 @@ type commandTracker struct {
 }
 
 func NewCommandTracker(n int) *commandTracker {
-	return &commandTracker{quorum: types.CalculateOneQuorum(n), proposedCmd: make(map[string]int)}
+	return &commandTracker{quorum: types.CalculateQuorum(n), proposedCmd: make(map[string]int)}
 }
 
 func (ct *commandTracker) Add(digest string) {
