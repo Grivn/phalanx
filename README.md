@@ -87,6 +87,8 @@ It is used to generate a phalanx-proposal.
 
 Generate a proposal when there are at least f+1 replicas waiting for consensus-order that they have finished 
 their own selfish-order. We would like to pull their first pending ordered log to make a consensus proposal.
+Here, we should skip the ordered logs which has reached the quorum size of execution (2f+1) to speed up the 
+consensus process.
 
 #### Communicator
 It is used to communicate with each other.
@@ -134,3 +136,6 @@ finished its selfish-order. But we would like not to generate a block until ther
 one command passing the consensus process. A 2f+1 set could make sure a correct command order (which could be 
 proofed by contradiction). On the other hand, if there are several commands reach one block, a 2f+1 set could 
 help us find the trusted timestamp to execute the command in correct order.
+
+### Involution
+A local ordered transaction set for clients could speed up the consensus throughput of phalanx protocol.
