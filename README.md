@@ -58,6 +58,9 @@ The client would like to execute *command* should broadcast it to all the replic
 Every replica in phalanx cluster should maintain a *selfish-order* for the commands received from clients.
 The replica itself should be responsible for the *selfish-order* that there wouldn't be any byzantine problems on it.
 
+### RBC
+A protocol to make sure the command from client could be sent for all the phalanx replicas.
+
 ### Selfish-Order Protocol
 We can regard it as a fixed-leader BFT cluster in which we use a byzantine quorum system here to detect *fork-attack*.
 
@@ -80,26 +83,54 @@ a quorum-cert (QC) for pre-order, and broadcast order message. The node received
 Interfaces for phalanx protocol that we could use them to make a traditional synchronous BFT protocol achieve *order-fairness* property.
 
 #### Generator
-It is used to generate a phalanx-proposal. rules
+It is used to generate a phalanx-proposal. 
+
+Generate a proposal when there are at least f+1 replicas waiting for consensus-order that they have finished 
+their own selfish-order. We would like to pull their first pending ordered log to make a consensus proposal.
 
 #### Communicator
 It is used to communicate with each other.
 
 #### Validator
-It is used for verification of phalanx order during normal BFT process. rules
+It is used for verification of phalanx order during normal BFT process.
+
+Verify the QC-batch first. We should make sure that there are at least f+1 ordered logs in it. Then, we would like to 
+verify each QC in QC-batch. A valid QC should have a correct aggregate signature. Besides, we should make sure the 
+ordered logs in proposal have never been proposed before. At last, before trying to commit the proposal, we need to
+check if the ordered logs in proposal commit by order. If not, refuse to commit them and put back the ordered logs.
+
+Besides, if we start a phalanx service in chained bft, we could set stable QCs and check the order when the consensus
+QC has reached 2-chained rule. It is because that the phalanx protocol is an asynchronous protocol. The rule of
+3-chained in synchronous BFT protocol aims to prevent the liveness problem from GST assumption.
 
 #### Executor
-It is used to execute the phalanx-proposal after the BFT consensus. rules
+It is used to execute the phalanx-proposal after the BFT consensus. 
+
+Generate a block when there are at least 2f+1 replicas' ordered log passing the consensus phase. If there are several 
+commands reaching a quorum size at the same time, the order of them would be decided by trusted timestamp, which means 
+the median number of timestamp in quorum set.
 
 ### Proof
 Proof for properties, safety, liveness and order-fairness.
 #### Safety
-- safety of selfish-order.
-- safety of validator.
+##### safety of selfish-order
+Here, we need to collect 2f+1 votes from all the replicas, so that, the selfish order could not
+make a fork.
+##### safety of validator
+The safety of validator is based on the BFT algorithm which we use in consensus process.
 
 #### Liveness
-- liveness of selfish-order.
-- liveness of validator.
+##### liveness of selfish-order
+##### liveness of validator
 
 #### Order-Fairness
-- order-fairness of generator&executor.
+##### order-fairness
+First, we should make sure that the all the correct transactions we send into cluster could be executed, 
+and all the transactions which have been executed are valid.
+
+Here, we would like to generate a consensus proposal when we have found f+1 replicas have a non-consensus QC.
+It is because that in such a situation, there is at least one correct node waiting for common-order as it has 
+finished its selfish-order. But we would like not to generate a block until there are 2f+1 replicas' order for
+one command passing the consensus process. A 2f+1 set could make sure a correct command order (which could be 
+proofed by contradiction). On the other hand, if there are several commands reach one block, a 2f+1 set could 
+help us find the trusted timestamp to execute the command in correct order.
