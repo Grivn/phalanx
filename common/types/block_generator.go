@@ -29,7 +29,15 @@ type Block struct {
 
 // SubBlock is a slice of Block to sort.
 type SubBlock []Block
-
-func (s SubBlock) Len() int           { return len(s) }
-func (s SubBlock) Less(i, j int) bool { return s[i].Timestamp < s[j].Timestamp }
-func (s SubBlock) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s SubBlock) Len() int {
+	return len(s)
+}
+func (s SubBlock) Less(i, j int) bool {
+	if s[i].Timestamp == s[j].Timestamp {
+		return s[i].CommandD < s[j].CommandD
+	}
+	return s[i].Timestamp < s[j].Timestamp
+}
+func (s SubBlock) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}

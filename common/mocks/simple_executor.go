@@ -30,6 +30,6 @@ func (exe *executor) Execute(commandD string, txs []*protos.Transaction, seqNo u
 	}
 
 	exe.count += len(txs)
-	exe.hash = types.CalculateListHash(list, timestamp)
+	exe.hash = types.CalculateListHash(list, 0)
 	exe.logger.Infof("Author %d, Block Number %d, total len %d, Hash: %s, from Command %s", exe.author, seqNo, exe.count, exe.hash, commandD)
 }

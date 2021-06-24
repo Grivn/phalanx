@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/external"
 )
 
 type sequencePool struct {
@@ -16,8 +18,8 @@ type sequencePool struct {
 	// author indicates the identifier for current participate.
 	author uint64
 
-	// quorum indicates the legal size for stable-state.
-	quorum int
+	// oneQuorum indicates the legal size for stable-state.
+	oneQuorum int
 
 	// reminders would store the proof for each node.
 	reminders map[uint64]*qcReminder
@@ -25,18 +27,36 @@ type sequencePool struct {
 	// commands would store the command we received.
 	commands map[string]*protos.Command
 
-	//
+	// tracker is used to track the duplicated ordered logs for proposal generation.
 	tracker CommandTracker
+
+	// rotation indicates the expected window for one block generation in synchronous consensus.
+	rotation int
+
+	// duration indicates the network quality in synchronous consensus.
+	duration time.Duration
+
+	// logger is used to print logs.
+	logger external.Logger
 }
 
-func NewSequencePool(author uint64, n int) *sequencePool {
+func NewSequencePool(author uint64, n int, rotation int, duration time.Duration, logger external.Logger) *sequencePool {
 	reminders := make(map[uint64]*qcReminder)
 
 	for i:=0; i<n; i++ {
 		reminders[uint64(i+1)] = newQCReminder(author, n, uint64(i+1))
 	}
 
-	return &sequencePool{author: author, quorum: types.CalculateOneQuorum(n), reminders: reminders, commands: make(map[string]*protos.Command), tracker: NewCommandTracker(n)}
+	return &sequencePool{
+		author:    author,
+		oneQuorum: types.CalculateOneQuorum(n),
+		reminders: reminders,
+		commands:  make(map[string]*protos.Command),
+		tracker:   NewCommandTracker(n),
+		rotation:  rotation,
+		duration:  duration,
+		logger:    logger,
+	}
 }
 
 func (sp *sequencePool) BecomeLeader() {
@@ -83,7 +103,7 @@ func (sp *sequencePool) VerifyQCs(qcb *protos.QCBatch) error {
 
 	// verify the validation
 	for _, filter := range qcb.Filters {
-		if len(filter.QCs) < sp.quorum {
+		if len(filter.QCs) < sp.oneQuorum {
 			return errors.New("not enough qc")
 		}
 
@@ -131,67 +151,78 @@ func (sp *sequencePool) SetStableQCs(qcb *protos.QCBatch) error {
 
 // PullQCs is used to pull the QCs from sync-tree to generate consensus proposal.
 func (sp *sequencePool) PullQCs() (*protos.QCBatch, error) {
+	time.Sleep(sp.duration)
+
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
-
 	qcb := protos.NewQCBatch(sp.author)
-	var qcs []*protos.QuorumCert
 
-	count := 0
-	for _, reminder := range sp.reminders {
-		var qc *protos.QuorumCert
+	for i:=0; i<sp.rotation; i++ {
+		var qcs []*protos.QuorumCert
+		count := 0
+		for _, reminder := range sp.reminders {
+			var qc *protos.QuorumCert
+			var tmpQCs []*protos.QuorumCert
+			for {
+				qc = reminder.pullQC()
 
-		for {
-			qc = reminder.pullQC()
+				// blank:
+				// cannot find QC info, continue for next replica log.
+				if qc == nil {
+					break
+				}
+				tmpQCs = append(tmpQCs, qc)
 
-			// blank:
-			// cannot find QC info, continue for next replica log.
+				if sp.tracker.NonQuorum(qc.CommandDigest()) {
+					break
+				}
+			}
+
 			if qc == nil {
-				break
+				for _, tmpQC := range tmpQCs {
+					reminder.backQC(tmpQC)
+				}
+				continue
 			}
 
-			if sp.tracker.NonQuorum(qc.CommandDigest()) {
-				break
+			// command:
+			// we should find the command the QC refers to.
+			if _, ok := qcb.Commands[qc.CommandDigest()]; !ok {
+				if command := sp.getCommand(qc.CommandDigest()); command == nil {
+					for _, tmpQC := range tmpQCs {
+						reminder.backQC(tmpQC)
+					}
+					continue
+				} else {
+					qcb.Commands[qc.CommandDigest()] = command
+				}
 			}
 
-			qcs = append(qcs, qc)
+			// append:
+			// we have found a QC which could be proposed in next phase, append into QCs slice.
+			qcs = append(qcs, tmpQCs...)
+
+			count++
 		}
 
-		if qc == nil {
+		if count < sp.oneQuorum {
+			// there are not enough QCs for current QC
+			// oneQuorum here (f+1) indicates that there is at least one correct node has finished selfish order and
+			// trying to trigger consensus phase.
+			for _, qc := range qcs {
+				// push the unavailable QCs back
+				sp.reminders[qc.Author()].backQC(qc)
+			}
 			break
 		}
 
-		// command:
-		// we should find the command the QC refers to.
-		if _, ok := qcb.Commands[qc.CommandDigest()]; !ok {
-			if command := sp.getCommand(qc.CommandDigest()); command == nil {
-				//fmt.Printf("don't have %s\n", qc.Digest())
-				continue
-			} else {
-				qcb.Commands[qc.CommandDigest()] = command
-			}
-		}
-
-		// append:
-		// we have found a QC which could be proposed in next phase, append into QCs slice.
-		qcs = append(qcs, qc)
-
-		count++
+		qcb.Filters = append(qcb.Filters, &protos.QCFilter{QCs: qcs})
 	}
 
-	// todo pre-generate for block
-
-	if count < sp.quorum {
-		for _, qc := range qcs {
-			// push the unavailable QCs back
-			sp.reminders[qc.Author()].backQC(qc)
-		}
-
-		// there are not enough QCs for current QC
-		return nil, fmt.Errorf("not enough QCs, need %d, has %d", sp.quorum, len(qcs))
+	if len(qcb.Filters) == 0 {
+		return nil, errors.New("failed to generate a proposal")
 	}
 
-	qcb.Filters = append(qcb.Filters, &protos.QCFilter{QCs: qcs})
 	return qcb, nil
 }
 

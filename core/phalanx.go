@@ -2,6 +2,7 @@ package phalanx
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
@@ -18,14 +19,13 @@ type phalanxImpl struct {
 	logManager   internal.LogManager
 	executor     internal.Executor
 	sequencePool internal.SequencePool
-
-	logger external.Logger
+	logger       external.Logger
 }
 
-func NewPhalanxProvider(n int, author uint64, exec external.ExecuteService, network external.NetworkService, logger external.Logger) *phalanxImpl {
+func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, exec external.ExecuteService, network external.NetworkService, logger external.Logger) *phalanxImpl {
 	_ = crypto.SetKeys()
 
-	seq := sequencepool.NewSequencePool(author, n)
+	seq := sequencepool.NewSequencePool(author, n, size, duration, logger)
 
 	exe := executor.NewExecutor(n, exec)
 
@@ -84,8 +84,10 @@ func (phi *phalanxImpl) MakePayload() ([]byte, error) {
 		return nil, err
 	}
 
-	for _, qc := range qcb.Filters[0].QCs {
-		phi.logger.Infof("payload generation: replica %d sequence %d digest %s", qc.Author(), qc.Sequence(), qc.CommandDigest())
+	for _, filter := range qcb.Filters {
+		for _, qc := range filter.QCs {
+			phi.logger.Infof("payload generation: replica %d sequence %d digest %s", qc.Author(), qc.Sequence(), qc.CommandDigest())
+		}
 	}
 
 	payload, err := marshal(qcb)
