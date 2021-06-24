@@ -33,7 +33,8 @@ func TestPhalanx(t *testing.T) {
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 		exec := mocks.NewSimpleExecutor(id, mocks.NewRawLogger())
-		phx[id] = phalanx.NewPhalanxProvider(n, id, exec, net, mocks.NewRawLoggerFile("node-"+strconv.Itoa(i+1)))
+		phx[id] = phalanx.NewPhalanxProvider(n, id, types.DefaultLogRotation, types.DefaultTimeDuration,
+			exec, net, mocks.NewRawLoggerFile("node-"+strconv.Itoa(i+1)))
 	}
 
 	for i:=0; i<n; i++ {
@@ -52,7 +53,7 @@ func TestPhalanx(t *testing.T) {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	count := 2000
+	count := 1000
 	for i:=0; i<count; i++ {
 		go commandSender(phx)
 	}

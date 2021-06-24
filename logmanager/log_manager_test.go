@@ -1,6 +1,7 @@
 package logmanager
 
 import (
+	"github.com/Grivn/phalanx/common/types"
 	"testing"
 	"time"
 
@@ -31,7 +32,7 @@ func TestLogManager(t *testing.T) {
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		sp := sequencepool.NewSequencePool(id, n)
+		sp := sequencepool.NewSequencePool(id, n, types.DefaultLogRotation, types.DefaultTimeDuration, mocks.NewRawLogger())
 		lms[id] = NewLogManager(n, id, sp, net, mocks.NewRawLogger())
 	}
 
