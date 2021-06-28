@@ -103,9 +103,9 @@ func (sp *sequencePool) VerifyPartials(batch *protos.PartialOrderBatch) error {
 
 	// verify the validation
 	for _, filter := range batch.PartialSet {
-		if len(filter.PartialOrders) < sp.oneQuorum {
-			return errors.New("not enough partial order")
-		}
+		//if len(filter.PartialOrders) < sp.oneQuorum {
+		//	return errors.New("not enough partial order")
+		//}
 
 		for _, pOrder := range filter.PartialOrders {
 			if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
@@ -205,16 +205,16 @@ func (sp *sequencePool) PullPartials() (*protos.PartialOrderBatch, error) {
 			count++
 		}
 
-		if count < sp.oneQuorum {
-			// there are not enough Partials for current partial order
-			// oneQuorum here (f+1) indicates that there is at least one correct node has finished selfish order and
-			// trying to trigger consensus phase.
-			for _, pOrder := range pOrderSet {
-				// push the unavailable Partials back
-				sp.reminders[pOrder.Author()].backPartial(pOrder)
-			}
-			break
-		}
+		//if count < sp.oneQuorum {
+		//	// there are not enough Partials for current partial order
+		//	// oneQuorum here (f+1) indicates that there is at least one correct node has finished selfish order and
+		//	// trying to trigger consensus phase.
+		//	for _, pOrder := range pOrderSet {
+		//		// push the unavailable Partials back
+		//		sp.reminders[pOrder.Author()].backPartial(pOrder)
+		//	}
+		//	break
+		//}
 
 		batch.PartialSet = append(batch.PartialSet, &protos.PartialSet{PartialOrders: pOrderSet})
 	}
