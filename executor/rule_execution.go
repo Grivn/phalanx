@@ -66,7 +66,7 @@ func (er *executionRule) executeQSCs() []*commandInfo {
 func (er *executionRule) priCheck(qInfo *commandInfo, cCommandInfos []*commandInfo) bool {
 	valid := true
 
-	// init filter btree map
+	// init democracy btree map
 	filter := make(map[uint64]*btree.BTree)
 	for i:=0; i<er.n; i++ {
 		filter[uint64(i+1)] = btree.New(2)
