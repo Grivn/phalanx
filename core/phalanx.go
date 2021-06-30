@@ -59,11 +59,11 @@ func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.ConsensusMessage
 			panic(err)
 		}
 	case protos.MessageType_QUORUM_CERT:
-		qc := &protos.QuorumCert{}
-		if err := proto.Unmarshal(message.Payload, qc); err != nil {
+		pOrder := &protos.PartialOrder{}
+		if err := proto.Unmarshal(message.Payload, pOrder); err != nil {
 			panic(err)
 		}
-		if err := phi.logManager.ProcessQC(qc); err != nil {
+		if err := phi.logManager.ProcessPartial(pOrder); err != nil {
 			panic(err)
 		}
 	case protos.MessageType_VOTE:
@@ -79,18 +79,18 @@ func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.ConsensusMessage
 
 // MakePayload is used to generate payloads for bft consensus.
 func (phi *phalanxImpl) MakePayload() ([]byte, error) {
-	qcb, err := phi.sequencePool.PullQCs()
+	pBatch, err := phi.sequencePool.PullPartials()
 	if err != nil {
 		return nil, err
 	}
 
-	for _, filter := range qcb.Filters {
-		for _, qc := range filter.QCs {
-			phi.logger.Infof("payload generation: replica %d sequence %d digest %s", qc.Author(), qc.Sequence(), qc.CommandDigest())
+	for _, filter := range pBatch.PartialSet {
+		for _, pOrder := range filter.PartialOrders {
+			phi.logger.Infof("payload generation: replica %d sequence %d digest %s", pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
 		}
 	}
 
-	payload, err := marshal(qcb)
+	payload, err := marshal(pBatch)
 	if err != nil {
 		return nil, err
 	}
@@ -104,18 +104,18 @@ func (phi *phalanxImpl) BecomeLeader() {
 
 // Restore is used to restore data when we have found a timeout event in partial-synchronized bft consensus module.
 func (phi *phalanxImpl) Restore() {
-	phi.sequencePool.RestoreQCs()
+	phi.sequencePool.RestorePartials()
 }
 
 // Verify is used to verify the phalanx payload.
-// here, we would like to verify the validation of phalanx QCs, and record which seqNo has already been proposed.
+// here, we would like to verify the validation of phalanx partial order, and record which seqNo has already been proposed.
 func (phi *phalanxImpl) Verify(payload []byte) error {
-	qcb, err := unmarshal(payload)
+	pBatch, err := unmarshal(payload)
 	if err != nil {
 		return fmt.Errorf("invalid payload: %s", err)
 	}
 
-	err = phi.sequencePool.VerifyQCs(qcb);
+	err = phi.sequencePool.VerifyPartials(pBatch);
 	if err != nil {
 		return fmt.Errorf("phalanx verify failed: %s", err)
 	}
@@ -123,44 +123,44 @@ func (phi *phalanxImpl) Verify(payload []byte) error {
 }
 
 // SetStable is used to set stable
-// here we would like to use it to control the order to process phalanx QCs.
+// here we would like to use it to control the order to process phalanx partial order.
 // when such a interface has returned error, a timeout event should be triggered.
-// 1) chained-bft: for each round we have generated a QC for chained-bft, we would like to use
+// 1) chained-bft: for each round we have generated a pBatch for chained-bft, we would like to use
 //    it to set phalanx stable status.
 // 2) classic-bft: for every time we are trying to execute a block, we would like to use it to
 //    set phalanx stable status.
 func (phi *phalanxImpl) SetStable(payload []byte) error {
-	qcb, err := unmarshal(payload)
+	pBatch, err := unmarshal(payload)
 	if err != nil {
 		return fmt.Errorf("invalid payload: %s", err)
 	}
 
-	return phi.sequencePool.SetStableQCs(qcb)
+	return phi.sequencePool.SetStablePartials(pBatch)
 }
 
-// Commit is used to commit the phalanx-QCBatch which has been verified by bft consensus.
+// Commit is used to commit the phalanx partial order batch which has been verified by bft consensus.
 func (phi *phalanxImpl) Commit(payload []byte) error {
-	qcb, err := unmarshal(payload)
+	pBatch, err := unmarshal(payload)
 	if err != nil {
 		return fmt.Errorf("invalid payload: %s", err)
 	}
 
-	err = phi.executor.CommitQCs(qcb)
+	err = phi.executor.CommitPartials(pBatch)
 	if  err != nil {
 		return fmt.Errorf("phalanx execution failed: %s", err)
 	}
 	return nil
 }
 
-func marshal(qcb *protos.QCBatch) ([]byte, error) {
-	return proto.Marshal(qcb)
+func marshal(pBatch *protos.PartialOrderBatch) ([]byte, error) {
+	return proto.Marshal(pBatch)
 }
 
-func unmarshal(payload []byte) (*protos.QCBatch, error) {
-	qcb := &protos.QCBatch{}
-	if err := proto.Unmarshal(payload, qcb); err != nil {
-		return nil, fmt.Errorf("invalid QC-batch: %s", err)
+func unmarshal(payload []byte) (*protos.PartialOrderBatch, error) {
+	pBatch := &protos.PartialOrderBatch{}
+	if err := proto.Unmarshal(payload, pBatch); err != nil {
+		return nil, fmt.Errorf("invalid partial order batch: %s", err)
 	}
 
-	return qcb, nil
+	return pBatch, nil
 }

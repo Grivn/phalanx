@@ -36,32 +36,32 @@ func newBlockGenerator(n int) *blockGenerator {
 	}
 }
 
-// insertQCBatch is used to insert the QCs into executor for block generation.
-func (bg *blockGenerator) insertQCBatch(qcb *protos.QCBatch) (types.SubBlock, error) {
+// insertBatch is used to insert the partial order into executor for block generation.
+func (bg *blockGenerator) insertBatch(pBatch *protos.PartialOrderBatch) (types.SubBlock, error) {
 	bg.mutex.Lock()
 	defer bg.mutex.Unlock()
 
 	// collect the commands which may be selected into the blocks.
-	for digest, command := range qcb.Commands {
+	for digest, command := range pBatch.Commands {
 		if _, ok := bg.pending[digest]; !ok {
 			bg.pending[digest] = types.NewPendingCommand(command)
 		}
 	}
 
-	// collect the QCs for block generation.
-	for _, filter := range qcb.Filters {
-		for _, qc := range filter.QCs {
-			if bg.executed[qc.CommandDigest()] {
+	// collect the partial order for block generation.
+	for _, filter := range pBatch.PartialSet {
+		for _, pOrder := range filter.PartialOrders {
+			if bg.executed[pOrder.CommandDigest()] {
 				continue
 			}
 
-			pc, ok := bg.pending[qc.CommandDigest()]
+			pc, ok := bg.pending[pOrder.CommandDigest()]
 			if !ok {
-				return nil, errors.New("invalid QC")
+				return nil, errors.New("invalid partial order")
 			}
 
-			pc.Replicas[qc.Author()] = true
-			pc.Timestamps = append(pc.Timestamps, qc.Timestamp())
+			pc.Replicas[pOrder.Author()] = true
+			pc.Timestamps = append(pc.Timestamps, pOrder.Timestamp())
 		}
 	}
 

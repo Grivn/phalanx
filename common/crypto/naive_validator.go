@@ -42,7 +42,7 @@ func PubVerify(cert *protos.Certification, hash types.Hash, nodeID int) error {
 }
 
 // VerifyProofCerts is used to verify the validation of proof-certs
-func VerifyProofCerts(digest types.Hash, pc *protos.ProofCerts, quorum int) error {
+func VerifyProofCerts(digest types.Hash, pc *protos.QuorumCert, quorum int) error {
 	if pc == nil {
 		return errors.New("nil proof-certs")
 	}

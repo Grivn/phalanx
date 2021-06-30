@@ -4,33 +4,33 @@ import "github.com/Grivn/phalanx/common/protos"
 
 type SequencePool interface {
 	InsertManager
-	QCsManager
+	PartialManager
 }
 
 type InsertManager interface {
-	// InsertQuorumCert could insert the quorum-cert into sync-tree for specific node.
-	InsertQuorumCert(qc *protos.QuorumCert) error
+	// InsertPartialOrder could insert the quorum-cert into sync-tree for specific node.
+	InsertPartialOrder(pOrder *protos.PartialOrder) error
 
 	// InsertCommand could insert command into the sync-map.
 	InsertCommand(command *protos.Command)
 }
 
-type QCsManager interface {
+type PartialManager interface {
 	BecomeLeader()
 
-	// RestoreQCs is used to init the status of validator of QCs-manager.
-	RestoreQCs()
+	// RestorePartials is used to init the status of validator of POs-manager.
+	RestorePartials()
 
-	// PullQCs is used to pull the QCs from sync-tree to generate consensus proposal.
-	PullQCs() (*protos.QCBatch, error)
+	// PullPartials is used to pull the partial order from sync-tree to generate consensus proposal.
+	PullPartials() (*protos.PartialOrderBatch, error)
 
-	// VerifyQCs is used to verify the QCs in qc-batch.
-	// 1) we should have quorum QCs in such a batch.
+	// VerifyPartials is used to verify the POs in qc-batch.
+	// 1) we should have quorum POs in such a batch.
 	// 2) the qc should contain the specific command for it.
 	// 3) the sequence number for qc should be matched with the local record for logs of replicas.
 	// 4) the proof-certs should be valid.
-	VerifyQCs(qcb *protos.QCBatch) error
+	VerifyPartials(pBatch *protos.PartialOrderBatch) error
 
-	// SetStableQCs is used to process stable QCs which have been verified by bft consensus.
-	SetStableQCs(qcb *protos.QCBatch) error
+	// SetStablePartials is used to process stable POs which have been verified by bft consensus.
+	SetStablePartials(pBatch *protos.PartialOrderBatch) error
 }

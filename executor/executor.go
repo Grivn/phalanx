@@ -23,11 +23,11 @@ func NewExecutor(n int, exec external.ExecuteService) *executorImpl {
 	return &executorImpl{generator: newBlockGenerator(n), exec: exec}
 }
 
-// CommitQCs is used to commit the QCs.
-func (ei *executorImpl) CommitQCs(qcb *protos.QCBatch) error {
-	sub, err := ei.generator.insertQCBatch(qcb)
+// CommitPartials is used to commit the QCs.
+func (ei *executorImpl) CommitPartials(pBatch *protos.PartialOrderBatch) error {
+	sub, err := ei.generator.insertBatch(pBatch)
 	if err != nil {
-		return fmt.Errorf("invalid QC-batch: %s", err)
+		return fmt.Errorf("invalid partial order batch: %s", err)
 	}
 
 	for _, blk := range sub {

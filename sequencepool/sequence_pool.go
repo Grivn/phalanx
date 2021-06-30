@@ -22,12 +22,12 @@ type sequencePool struct {
 	oneQuorum int
 
 	// reminders would store the proof for each node.
-	reminders map[uint64]*qcReminder
+	reminders map[uint64]*partialReminder
 
 	// commands would store the command we received.
 	commands map[string]*protos.Command
 
-	// tracker is used to track the duplicated ordered logs for proposal generation.
+	// tracker is used to track the duplicated ordered logs for proPartialsal generation.
 	tracker CommandTracker
 
 	// rotation indicates the expected window for one block generation in synchronous consensus.
@@ -41,10 +41,10 @@ type sequencePool struct {
 }
 
 func NewSequencePool(author uint64, n int, rotation int, duration time.Duration, logger external.Logger) *sequencePool {
-	reminders := make(map[uint64]*qcReminder)
+	reminders := make(map[uint64]*partialReminder)
 
 	for i:=0; i<n; i++ {
-		reminders[uint64(i+1)] = newQCReminder(author, n, uint64(i+1))
+		reminders[uint64(i+1)] = newPartialReminder(author, n, uint64(i+1))
 	}
 
 	return &sequencePool{
@@ -68,15 +68,15 @@ func (sp *sequencePool) BecomeLeader() {
 	}
 }
 
-// InsertQuorumCert could insertQC the quorum-cert into sync-tree for specific node.
-func (sp *sequencePool) InsertQuorumCert(qc *protos.QuorumCert) error {
+// InsertPartialOrder could insertPartial the quorum-cert into sync-tree for specific node.
+func (sp *sequencePool) InsertPartialOrder(pOrder *protos.PartialOrder) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
-	return sp.reminders[qc.Author()].insertQC(qc)
+	return sp.reminders[pOrder.Author()].insertPartial(pOrder)
 }
 
-// InsertCommand could insertQC command into the sync-map.
+// InsertCommand could insertPartial command into the sync-map.
 func (sp *sequencePool) InsertCommand(command *protos.Command) {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
@@ -84,64 +84,64 @@ func (sp *sequencePool) InsertCommand(command *protos.Command) {
 	sp.commands[command.Digest] = command
 }
 
-// RestoreQCs is used to prepare the status of validator of QCs.
-func (sp *sequencePool) RestoreQCs() {
+// RestorePartials is used to prepare the status of validator of Partials.
+func (sp *sequencePool) RestorePartials() {
 	for _, reminder := range sp.reminders {
-		// restore the QCs in each reminder.
-		reminder.restoreQCs(sp.tracker)
+		// restore the Partials in each reminder.
+		reminder.restorePartials(sp.tracker)
 	}
 }
 
-// VerifyQCs is used to verify the QCs in qc-batch.
-// 1) we should have quorum QCs in such a batch.
-// 2) the qc should contain the specific command for it.
-// 3) the sequence number for qc should be matched with the local record for logs of replicas.
+// VerifyPartials is used to verify the Partials in partial order batch.
+// 1) we should have quorum Partials in such a batch.
+// 2) the partial order should contain the specific command for it.
+// 3) the sequence number for partial order should be matched with the local record for logs of replicas.
 // 4) the proof-certs should be valid.
-func (sp *sequencePool) VerifyQCs(qcb *protos.QCBatch) error {
+func (sp *sequencePool) VerifyPartials(batch *protos.PartialOrderBatch) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
 	// verify the validation
-	for _, filter := range qcb.Filters {
-		if len(filter.QCs) < sp.oneQuorum {
-			return errors.New("not enough qc")
+	for _, filter := range batch.PartialSet {
+		if len(filter.PartialOrders) < sp.oneQuorum {
+			return errors.New("not enough partial order")
 		}
 
-		for _, qc := range filter.QCs {
-			if sp.tracker.IsQuorum(qc.CommandDigest()) {
+		for _, pOrder := range filter.PartialOrders {
+			if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
 				continue
 			}
 
-			if _, ok := qcb.Commands[qc.CommandDigest()]; !ok {
-				return fmt.Errorf("nil command: replica %d, seqNo %d, digest %s", qc.Author(), qc.Sequence(), qc.CommandDigest())
+			if _, ok := batch.Commands[pOrder.CommandDigest()]; !ok {
+				return fmt.Errorf("nil command: replica %d, seqNo %d, digest %s", pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
 			}
 
-			if err := sp.reminders[qc.Author()].verify(qcb.Author, qc); err != nil {
-				return fmt.Errorf("verify QC failed: %s", err)
+			if err := sp.reminders[pOrder.Author()].verify(batch.Author, pOrder); err != nil {
+				return fmt.Errorf("verify partial order failed: %s", err)
 			}
 		}
 	}
 
 	// proposed target
-	for _, filter := range qcb.Filters {
-		for _, qc := range filter.QCs {
-			sp.reminders[qc.Author()].proposedQC(qc)
+	for _, filter := range batch.PartialSet {
+		for _, pOrder := range filter.GetPartialOrders() {
+			sp.reminders[pOrder.Author()].proposedPartial(pOrder)
 
-			sp.tracker.Add(qc.CommandDigest())
+			sp.tracker.Add(pOrder.CommandDigest())
 		}
 	}
 
 	return nil
 }
 
-func (sp *sequencePool) SetStableQCs(qcb *protos.QCBatch) error {
+func (sp *sequencePool) SetStablePartials(batch *protos.PartialOrderBatch) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
-	for _, filter := range qcb.Filters {
-		for _, qc := range filter.QCs {
-			if err := sp.reminders[qc.Author()].setStableQC(qc); err != nil {
-				return fmt.Errorf("stable QC failed: %s", err)
+	for _, filter := range batch.PartialSet {
+		for _, pOrder := range filter.PartialOrders {
+			if err := sp.reminders[pOrder.Author()].setStablePartial(pOrder); err != nil {
+				return fmt.Errorf("stable partial order failed: %s", err)
 			}
 		}
 	}
@@ -149,81 +149,81 @@ func (sp *sequencePool) SetStableQCs(qcb *protos.QCBatch) error {
 	return nil
 }
 
-// PullQCs is used to pull the QCs from sync-tree to generate consensus proposal.
-func (sp *sequencePool) PullQCs() (*protos.QCBatch, error) {
+// PullPartials is used to pull the Partials from sync-tree to generate consensus proPartialsal.
+func (sp *sequencePool) PullPartials() (*protos.PartialOrderBatch, error) {
 	time.Sleep(sp.duration)
 
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
-	qcb := protos.NewQCBatch(sp.author)
+	batch := protos.NewPartialOrderBatch(sp.author)
 
 	for i:=0; i<sp.rotation; i++ {
-		var qcs []*protos.QuorumCert
+		var pOrderSet []*protos.PartialOrder
 		count := 0
 		for _, reminder := range sp.reminders {
-			var qc *protos.QuorumCert
-			var tmpQCs []*protos.QuorumCert
+			var pOrder *protos.PartialOrder
+			var tmpPartials []*protos.PartialOrder
 			for {
-				qc = reminder.pullQC()
+				pOrder = reminder.pullPartial()
 
 				// blank:
-				// cannot find QC info, continue for next replica log.
-				if qc == nil {
+				// cannot find partial order info, continue for next replica log.
+				if pOrder == nil {
 					break
 				}
-				tmpQCs = append(tmpQCs, qc)
+				tmpPartials = append(tmpPartials, pOrder)
 
-				if sp.tracker.NonQuorum(qc.CommandDigest()) {
+				if sp.tracker.NonQuorum(pOrder.CommandDigest()) {
 					break
 				}
 			}
 
-			if qc == nil {
-				for _, tmpQC := range tmpQCs {
-					reminder.backQC(tmpQC)
+			if pOrder == nil {
+				for _, tmpPO := range tmpPartials {
+					reminder.backPartial(tmpPO)
 				}
 				continue
 			}
 
 			// command:
-			// we should find the command the QC refers to.
-			if _, ok := qcb.Commands[qc.CommandDigest()]; !ok {
-				if command := sp.getCommand(qc.CommandDigest()); command == nil {
-					for _, tmpQC := range tmpQCs {
-						reminder.backQC(tmpQC)
+			// we should find the command the partial order refers to.
+			if _, ok := batch.Commands[pOrder.CommandDigest()]; !ok {
+				if command := sp.getCommand(pOrder.CommandDigest()); command == nil {
+					for _, tmpPO := range tmpPartials {
+						reminder.backPartial(tmpPO)
 					}
 					continue
 				} else {
-					qcb.Commands[qc.CommandDigest()] = command
+					batch.Commands[pOrder.CommandDigest()] = command
 				}
 			}
 
 			// append:
-			// we have found a QC which could be proposed in next phase, append into QCs slice.
-			qcs = append(qcs, tmpQCs...)
+			// we have found a partial order which could be proPartialsed in next phase, append into Partials slice.
+			pOrderSet = append(pOrderSet, tmpPartials...)
 
 			count++
 		}
 
 		if count < sp.oneQuorum {
-			// there are not enough QCs for current QC
+			// there are not enough Partials for current partial order
 			// oneQuorum here (f+1) indicates that there is at least one correct node has finished selfish order and
 			// trying to trigger consensus phase.
-			for _, qc := range qcs {
-				// push the unavailable QCs back
-				sp.reminders[qc.Author()].backQC(qc)
+			for _, pOrder := range pOrderSet {
+				// push the unavailable Partials back
+				sp.reminders[pOrder.Author()].backPartial(pOrder)
 			}
 			break
 		}
 
-		qcb.Filters = append(qcb.Filters, &protos.QCFilter{QCs: qcs})
+		batch.PartialSet = append(batch.PartialSet, &protos.PartialSet{PartialOrders: pOrderSet})
 	}
 
-	if len(qcb.Filters) == 0 {
-		return nil, errors.New("failed to generate a proposal")
+	if len(batch.PartialSet) == 0 {
+		return nil, errors.New("failed to generate a proPartialsal")
 	}
 
-	return qcb, nil
+	return batch, nil
 }
 
 func (sp *sequencePool) getCommand(digest string) *protos.Command {
