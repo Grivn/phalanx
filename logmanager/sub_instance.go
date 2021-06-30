@@ -72,14 +72,14 @@ func (si *subInstance) processPreOrder(pre *protos.PreOrder) error {
 	return si.processBTree()
 }
 
-func (si *subInstance) processQC(qc *protos.QuorumCert) error {
-	si.logger.Infof("replica %d received a QC message", si.author)
+func (si *subInstance) processPartial(pOrder *protos.PartialOrder) error {
+	si.logger.Infof("replica %d received a partial order message", si.author)
 
-	if err := crypto.VerifyProofCerts(types.StringToBytes(qc.Digest()), qc.ProofCerts, si.quorum); err != nil {
+	if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.Digest()), pOrder.QC, si.quorum); err != nil {
 		return fmt.Errorf("invalid order: %s", err)
 	}
 
-	ev := &event.BtreeEvent{EventType: event.BTreeEventOrder, Sequence: qc.PreOrder.Sequence, Digest: qc.PreOrder.Digest, Event: qc}
+	ev := &event.BtreeEvent{EventType: event.BTreeEventOrder, Sequence: pOrder.PreOrder.Sequence, Digest: pOrder.PreOrder.Digest, Event: pOrder}
 	si.recorder.ReplaceOrInsert(ev)
 
 	return si.processBTree()
@@ -122,11 +122,11 @@ func (si *subInstance) processBTree() error {
 		return nil
 
 	case event.BTreeEventOrder:
-		si.logger.Infof("replica %d process QC event", si.author)
+		si.logger.Infof("replica %d process partial order event", si.author)
 
-		qc := ev.Event.(*protos.QuorumCert)
+		pOrder := ev.Event.(*protos.PartialOrder)
 
-		if err := si.sp.InsertQuorumCert(qc); err != nil {
+		if err := si.sp.InsertPartialOrder(pOrder); err != nil {
 			si.logger.Errorf("insert failed: %s", err)
 		}
 

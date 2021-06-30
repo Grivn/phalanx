@@ -24,9 +24,9 @@ type RemoteLog interface {
 	// vote message for it if it's legal for us.
 	ProcessPreOrder(pre *protos.PreOrder) error
 
-	// ProcessQC is used to process quorum-cert messages.
+	// ProcessPartial is used to process quorum-cert messages.
 	// A valid quorum-cert message, which has a series of valid signature which has reached quorum size,
 	// could advance the sequence counter. We should record the advanced counter and put the info of
 	// order message into the sequential-pool.
-	ProcessQC(qc *protos.QuorumCert) error
+	ProcessPartial(pOrder *protos.PartialOrder) error
 }

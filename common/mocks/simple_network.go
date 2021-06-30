@@ -57,11 +57,11 @@ func SimpleListener(mgr internal.LogManager, net chan *protos.ConsensusMessage, 
 					panic(err)
 				}
 			case protos.MessageType_QUORUM_CERT:
-				qc := &protos.QuorumCert{}
-				if err := proto.Unmarshal(msg.Payload, qc); err != nil {
+				pOrder := &protos.PartialOrder{}
+				if err := proto.Unmarshal(msg.Payload, pOrder); err != nil {
 					panic(err)
 				}
-				if err := mgr.ProcessQC(qc); err != nil {
+				if err := mgr.ProcessPartial(pOrder); err != nil {
 				panic(err)
 			}
 			case protos.MessageType_VOTE:

@@ -27,7 +27,7 @@ type logManager struct {
 	sequence uint64
 
 	// aggMap is used to generate aggregated-certificates.
-	aggMap map[string]*protos.QuorumCert
+	aggMap map[string]*protos.PartialOrder
 
 	// subs is the module for us to process consensus messages for participates.
 	subs map[uint64]*subInstance
@@ -50,7 +50,7 @@ func NewLogManager(n int, author uint64, sp internal.SequencePool, sender extern
 		quorum:   types.CalculateQuorum(n),
 		author:   author,
 		sequence: uint64(0),
-		aggMap:   make(map[string]*protos.QuorumCert),
+		aggMap:   make(map[string]*protos.PartialOrder),
 		subs:     subs,
 		sender:   sender,
 		logger:   logger,
@@ -84,8 +84,8 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 	}
 
 	// init the order message in aggregate map and assign self signature
-	mgr.aggMap[pre.Digest] = protos.NewQuorumCert(pre)
-	mgr.aggMap[pre.Digest].ProofCerts.Certs[mgr.author] = signature
+	mgr.aggMap[pre.Digest] = protos.NewPartialOrder(pre)
+	mgr.aggMap[pre.Digest].QC.Certs[mgr.author] = signature
 
 	mgr.logger.Infof("replica %d generated a pre-order, sequence %d, hash %s", mgr.author, pre.Sequence, pre.Digest)
 
@@ -107,7 +107,7 @@ func (mgr *logManager) ProcessVote(vote *protos.Vote) error {
 
 	// check the existence of order message
 	// here, we should make sure that there is a valid pre-order for us which we have ever assigned.
-	qc, ok := mgr.aggMap[vote.Digest]
+	pOrder, ok := mgr.aggMap[vote.Digest]
 	if !ok {
 		// there are 2 conditions that a pre-order waiting for agg-sig cannot be found: 1) we have never generated such
 		// a pre-order message, 2) we have already generated an order message for it, which means it has been verified.
@@ -121,15 +121,15 @@ func (mgr *logManager) ProcessVote(vote *protos.Vote) error {
 	}
 
 	// record the certification in current vote
-	qc.ProofCerts.Certs[vote.Author] = vote.Certification
+	pOrder.QC.Certs[vote.Author] = vote.Certification
 
 	// check the quorum size for proof-certs
-	if len(qc.ProofCerts.Certs) == mgr.quorum {
+	if len(pOrder.QC.Certs) == mgr.quorum {
 		mgr.logger.Debugf("replica %d find quorum votes for pre-log sequence %d hash %s, generate quorum order",
-			mgr.author, qc.PreOrder.Sequence, qc.PreOrder.Digest)
+			mgr.author, pOrder.PreOrder.Sequence, pOrder.PreOrder.Digest)
 		delete(mgr.aggMap, vote.Digest)
 
-		cm, err := protos.PackQC(qc)
+		cm, err := protos.PackPartialOrder(pOrder)
 		if err != nil {
 			return fmt.Errorf("generate consensus message error: %s", err)
 		}
@@ -137,7 +137,7 @@ func (mgr *logManager) ProcessVote(vote *protos.Vote) error {
 		return nil
 	}
 
-	mgr.logger.Debugf("replica %d aggregated vote for %s, has %d, need %d", mgr.author, vote.Digest, len(qc.ProofCerts.Certs), mgr.quorum)
+	mgr.logger.Debugf("replica %d aggregated vote for %s, has %d, need %d", mgr.author, vote.Digest, len(pOrder.QC.Certs), mgr.quorum)
 	return nil
 }
 
@@ -156,13 +156,13 @@ func (mgr *logManager) ProcessPreOrder(pre *protos.PreOrder) error {
 	return mgr.subs[pre.Author].processPreOrder(pre)
 }
 
-// ProcessQC is used to process quorum-cert messages.
+// ProcessPartial is used to process quorum-cert messages.
 // A valid quorum-cert message, which has a series of valid signature which has reached quorum size,
 // could advance the sequence counter. We should record the advanced counter and put the info of
 // order message into the sequential-pool.
-func (mgr *logManager) ProcessQC(qc *protos.QuorumCert) error {
+func (mgr *logManager) ProcessPartial(pOrder *protos.PartialOrder) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	return mgr.subs[qc.Author()].processQC(qc)
+	return mgr.subs[pOrder.Author()].processPartial(pOrder)
 }
