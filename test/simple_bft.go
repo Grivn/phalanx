@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"github.com/Grivn/phalanx/common/protos"
 	"sync"
 
 	"github.com/Grivn/phalanx/common/types"
@@ -22,7 +23,7 @@ type replica struct {
 	author uint64
 	quorum int
 
-	phalanx phalanx.SynchronousProvider
+	phalanx phalanx.Provider
 
 	bftC   chan *bftMessage
 	sendC  chan *bftMessage
@@ -44,10 +45,10 @@ type bftMessage struct {
 	sequence uint64
 	digest   string
 	typ      int
-	payload  []byte
+	pBatch   *protos.PartialOrderBatch
 }
 
-func newReplica(n int, author uint64, phx phalanx.SynchronousProvider, sendC chan *bftMessage, bftC chan *bftMessage, closeC chan bool, logger external.Logger) *replica {
+func newReplica(n int, author uint64, phx phalanx.Provider, sendC chan *bftMessage, bftC chan *bftMessage, closeC chan bool, logger external.Logger) *replica {
 	return &replica{
 		quorum:       n-(n-1)/3,
 		author:       author,
@@ -90,7 +91,6 @@ func (replica *replica) run() {
 	go replica.bftListener()
 
 	if replica.author == uint64(1) {
-		replica.phalanx.BecomeLeader()
 		go replica.runningProposal()
 	}
 }
@@ -135,14 +135,14 @@ func (replica *replica) propose() *bftMessage {
 		return nil
 	}
 
-	payload, err := replica.phalanx.MakePayload()
+	pBatch, err := replica.phalanx.MakeProposal()
 	if err != nil {
 		return nil
 	}
 
 	replica.sequence++
 	replica.aggMap[replica.sequence] = 0
-	return &bftMessage{from: replica.author, to: 0, typ: proposal, sequence: replica.sequence, digest: types.CalculatePayloadHash(payload, 0), payload: payload}
+	return &bftMessage{from: replica.author, to: 0, typ: proposal, sequence: replica.sequence, digest: types.CalculateBatchHash(pBatch), pBatch: pBatch}
 }
 
 func (replica *replica) processProposal(message *bftMessage) *bftMessage {
@@ -152,10 +152,6 @@ func (replica *replica) processProposal(message *bftMessage) *bftMessage {
 	replica.logger.Infof("[%d] process proposal sequence %d, hash %s", replica.author, message.sequence, message.digest)
 
 	if m, ok := replica.cache[message.sequence-1]; ok && replica.author != uint64(1) {
-		err := replica.phalanx.SetStable(m.payload)
-		if err != nil {
-			panic(err)
-		}
 		replica.execute(m)
 	}
 
@@ -170,7 +166,7 @@ func (replica *replica) processProposal(message *bftMessage) *bftMessage {
 		return nil
 	}
 
-	if err := replica.phalanx.Verify(message.payload); err != nil {
+	if err := replica.phalanx.Verify(message.pBatch); err != nil {
 		panic(fmt.Errorf("replica %d, error %s", replica.author, err))
 	}
 
@@ -203,11 +199,6 @@ func (replica *replica) processVote(message *bftMessage) {
 
 	if replica.aggMap[message.sequence] == replica.quorum {
 		m := replica.cache[message.sequence]
-
-		err := replica.phalanx.SetStable(m.payload)
-		if err != nil {
-			panic(err)
-		}
 		replica.execute(m)
 
 		go replica.runningProposal()
@@ -230,13 +221,17 @@ func (replica *replica) execute(message *bftMessage) {
 		}
 
 		replica.logger.Infof("[%d] execute sequence %d, digest %s", replica.author, m.sequence, m.digest)
-		if m.payload == nil {
+		if m.pBatch == nil {
 			replica.executedSeq++
 			continue
 		}
 
-		err := replica.phalanx.Commit(m.payload)
-		if err != nil {
+		if err := replica.phalanx.SetStable(m.pBatch); err != nil {
+			replica.phalanx.Restore()
+			m.pBatch = nil
+		}
+
+		if err := replica.phalanx.Commit(m.pBatch); err != nil {
 			panic(err)
 		}
 

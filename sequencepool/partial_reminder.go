@@ -46,12 +46,9 @@ func newPartialReminder(author uint64, n int, id uint64) *partialReminder {
 		cachedPartials:   btree.New(2),
 		proposedPartials: btree.New(2),
 		proposedNo:       make(map[uint64]bool),
+		stableNo:         uint64(0),
+		seqNo:            uint64(1),
 	}
-}
-
-// becomeLeader is used to init the replica which has just become the leader of cluster.
-func (pr *partialReminder) becomeLeader() {
-	pr.seqNo = pr.stableNo+1
 }
 
 // restorePartials is used to restore the partial order from proposedPartials and remove these seqNo from proposedNo.
@@ -228,15 +225,20 @@ func (pr *partialReminder) isProposed(qc *protos.PartialOrder) bool {
 	return pr.proposedNo[qc.Sequence()]
 }
 
-func (pr *partialReminder) proposedPartial(remoteQC *protos.PartialOrder) {
-	// remove the remoteQC from cache.
-	pr.cachedDelete(remoteQC)
+func (pr *partialReminder) proposedPartial(remotePartial *protos.PartialOrder) {
+	// remove the remotePartial from cache.
+	pr.cachedDelete(remotePartial)
 
 	// update the proposedNo
-	pr.proposedNo[remoteQC.Sequence()] = true
+	pr.proposedNo[remotePartial.Sequence()] = true
 
 	// record the QC into proposedPartials map
-	pr.proposedPartials.ReplaceOrInsert(remoteQC)
+	pr.proposedPartials.ReplaceOrInsert(remotePartial)
+
+	// update the sequence number.
+	if pr.seqNo <= remotePartial.Sequence() {
+		pr.seqNo = remotePartial.Sequence()+1
+	}
 }
 
 // proposedMin is used to get the smallest QC from proposed.

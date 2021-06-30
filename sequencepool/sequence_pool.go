@@ -54,15 +54,6 @@ func NewSequencePool(author uint64, n int, rotation int, duration time.Duration,
 	}
 }
 
-func (sp *sequencePool) BecomeLeader() {
-	sp.mutex.Lock()
-	defer sp.mutex.Unlock()
-
-	for _, reminder := range sp.reminders {
-		reminder.becomeLeader()
-	}
-}
-
 // InsertPartialOrder could insertPartial the quorum-cert into sync-tree for specific node.
 func (sp *sequencePool) InsertPartialOrder(pOrder *protos.PartialOrder) error {
 	sp.mutex.Lock()
@@ -182,6 +173,10 @@ func (sp *sequencePool) PullPartials() (*protos.PartialOrderBatch, error) {
 	if len(pBatch.Partials) == 0 {
 		// we cannot find any valid partial order the generate batch, return failure message
 		return nil, errors.New("failed to generate a batch, no valid partial order")
+	}
+
+	for _, pOrder := range pBatch.Partials {
+		sp.logger.Infof("payload generation: replica %d sequence %d digest %s", pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
 	}
 
 	return pBatch, nil
