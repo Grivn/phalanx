@@ -84,10 +84,8 @@ func (phi *phalanxImpl) MakePayload() ([]byte, error) {
 		return nil, err
 	}
 
-	for _, filter := range pBatch.PartialSet {
-		for _, pOrder := range filter.PartialOrders {
-			phi.logger.Infof("payload generation: replica %d sequence %d digest %s", pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
-		}
+	for _, pOrder := range pBatch.Partials {
+		phi.logger.Infof("payload generation: replica %d sequence %d digest %s", pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
 	}
 
 	payload, err := marshal(pBatch)

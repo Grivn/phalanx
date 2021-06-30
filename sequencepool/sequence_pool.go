@@ -102,33 +102,25 @@ func (sp *sequencePool) VerifyPartials(batch *protos.PartialOrderBatch) error {
 	defer sp.mutex.Unlock()
 
 	// verify the validation
-	for _, filter := range batch.PartialSet {
-		//if len(filter.PartialOrders) < sp.oneQuorum {
-		//	return errors.New("not enough partial order")
-		//}
+	for _, pOrder := range batch.Partials {
+		if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
+			continue
+		}
 
-		for _, pOrder := range filter.PartialOrders {
-			if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
-				continue
-			}
+		if _, ok := batch.Commands[pOrder.CommandDigest()]; !ok {
+			return fmt.Errorf("nil command: replica %d, seqNo %d, digest %s", pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
+		}
 
-			if _, ok := batch.Commands[pOrder.CommandDigest()]; !ok {
-				return fmt.Errorf("nil command: replica %d, seqNo %d, digest %s", pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
-			}
-
-			if err := sp.reminders[pOrder.Author()].verify(batch.Author, pOrder); err != nil {
-				return fmt.Errorf("verify partial order failed: %s", err)
-			}
+		if err := sp.reminders[pOrder.Author()].verify(batch.Author, pOrder); err != nil {
+			return fmt.Errorf("verify partial order failed: %s", err)
 		}
 	}
 
 	// proposed target
-	for _, filter := range batch.PartialSet {
-		for _, pOrder := range filter.GetPartialOrders() {
-			sp.reminders[pOrder.Author()].proposedPartial(pOrder)
+	for _, pOrder := range batch.Partials {
+		sp.reminders[pOrder.Author()].proposedPartial(pOrder)
 
-			sp.tracker.Add(pOrder.CommandDigest())
-		}
+		sp.tracker.Add(pOrder.CommandDigest())
 	}
 
 	return nil
@@ -138,92 +130,66 @@ func (sp *sequencePool) SetStablePartials(batch *protos.PartialOrderBatch) error
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
-	for _, filter := range batch.PartialSet {
-		for _, pOrder := range filter.PartialOrders {
-			if err := sp.reminders[pOrder.Author()].setStablePartial(pOrder); err != nil {
-				return fmt.Errorf("stable partial order failed: %s", err)
-			}
+	for _, pOrder := range batch.Partials {
+		if err := sp.reminders[pOrder.Author()].setStablePartial(pOrder); err != nil {
+			return fmt.Errorf("stable partial order failed: %s", err)
 		}
 	}
 
 	return nil
 }
 
-// PullPartials is used to pull the Partials from sync-tree to generate consensus proPartialsal.
+// PullPartials is used to pull the Partials from b-tree to generate consensus proposal.
 func (sp *sequencePool) PullPartials() (*protos.PartialOrderBatch, error) {
 	time.Sleep(sp.duration)
 
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
-	batch := protos.NewPartialOrderBatch(sp.author)
+	pBatch := protos.NewPartialOrderBatch(sp.author)
 
 	for i:=0; i<sp.rotation; i++ {
-		var pOrderSet []*protos.PartialOrder
-		count := 0
 		for _, reminder := range sp.reminders {
-			var pOrder *protos.PartialOrder
-			var tmpPartials []*protos.PartialOrder
 			for {
-				pOrder = reminder.pullPartial()
+				pOrder := reminder.pullPartial()
 
-				// blank:
-				// cannot find partial order info, continue for next replica log.
+				// existence of partial order:
+				// cannot find partial order info, continue for next replica's partial order.
 				if pOrder == nil {
 					break
 				}
-				tmpPartials = append(tmpPartials, pOrder)
 
-				if sp.tracker.NonQuorum(pOrder.CommandDigest()) {
+				// redundancy of partial order:
+				// collect the redundant partial order directly for batch generation.
+				if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
+					pBatch.Append(pOrder)
+					continue
+				}
+
+				// existence of command:
+				// 1) try to find the command of current partial order in partial batch.
+				if _, ok := pBatch.Commands[pOrder.CommandDigest()]; ok {
+					pBatch.Append(pOrder)
 					break
 				}
-			}
-
-			if pOrder == nil {
-				for _, tmpPO := range tmpPartials {
-					reminder.backPartial(tmpPO)
-				}
-				continue
-			}
-
-			// command:
-			// we should find the command the partial order refers to.
-			if _, ok := batch.Commands[pOrder.CommandDigest()]; !ok {
+				// 2) try to find the command of current partial order in local command reminder.
 				if command := sp.getCommand(pOrder.CommandDigest()); command == nil {
-					for _, tmpPO := range tmpPartials {
-						reminder.backPartial(tmpPO)
-					}
-					continue
+					// cannot find current command, then put back the pending partial order.
+					reminder.backPartial(pOrder)
 				} else {
-					batch.Commands[pOrder.CommandDigest()] = command
+					pBatch.Commands[pOrder.CommandDigest()] = command
+					pBatch.Append(pOrder)
 				}
+				break
 			}
-
-			// append:
-			// we have found a partial order which could be proPartialsed in next phase, append into Partials slice.
-			pOrderSet = append(pOrderSet, tmpPartials...)
-
-			count++
 		}
-
-		//if count < sp.oneQuorum {
-		//	// there are not enough Partials for current partial order
-		//	// oneQuorum here (f+1) indicates that there is at least one correct node has finished selfish order and
-		//	// trying to trigger consensus phase.
-		//	for _, pOrder := range pOrderSet {
-		//		// push the unavailable Partials back
-		//		sp.reminders[pOrder.Author()].backPartial(pOrder)
-		//	}
-		//	break
-		//}
-
-		batch.PartialSet = append(batch.PartialSet, &protos.PartialSet{PartialOrders: pOrderSet})
 	}
 
-	if len(batch.PartialSet) == 0 {
-		return nil, errors.New("failed to generate a proPartialsal")
+	if len(pBatch.Partials) == 0 {
+		// we cannot find any valid partial order the generate batch, return failure message
+		return nil, errors.New("failed to generate a batch, no valid partial order")
 	}
 
-	return batch, nil
+	return pBatch, nil
 }
 
 func (sp *sequencePool) getCommand(digest string) *protos.Command {

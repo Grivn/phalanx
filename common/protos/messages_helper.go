@@ -36,7 +36,7 @@ func PackPartialOrder(qc *PartialOrder) (*ConsensusMessage, error) {
 	}
 	return NewConsensusMessage(MessageType_QUORUM_CERT, qc.Author(), 0, payload), nil
 }
-//=============================== Quorum Cert ===============================================
+//=============================== Partial Order ===============================================
 
 func (m *PartialOrder) Less(item btree.Item) bool {
 	return m.PreOrder.Sequence < (item.(*PartialOrder)).PreOrder.Sequence
@@ -62,6 +62,14 @@ func (m *PartialOrder) Timestamp() int64 {
 	return m.PreOrder.Timestamp
 }
 
+//=============================== Partial Order Batch ===============================================
+
+func (m *PartialOrderBatch) Append(pOrder *PartialOrder) {
+	// append:
+	// we have found a partial order which could be proposed in next phase, append into Partials slice.
+	m.Partials = append(m.Partials, pOrder)
+}
+
 //=================================== Generate Messages ============================================
 
 func NewQuorumCert() *QuorumCert {
@@ -75,10 +83,6 @@ func NewPartialOrder(pre *PreOrder) *PartialOrder {
 
 func NewPreOrder(author uint64, sequence uint64, command *Command) *PreOrder {
 	return &PreOrder{Author: author, Sequence: sequence, BatchDigest: command.Digest, Timestamp: time.Now().UnixNano()}
-}
-
-func NewQCFilter() *PartialSet {
-	return &PartialSet{PartialOrders: nil}
 }
 
 func NewPartialOrderBatch(author uint64) *PartialOrderBatch {

@@ -49,20 +49,18 @@ func (bg *blockGenerator) insertBatch(pBatch *protos.PartialOrderBatch) (types.S
 	}
 
 	// collect the partial order for block generation.
-	for _, filter := range pBatch.PartialSet {
-		for _, pOrder := range filter.PartialOrders {
-			if bg.executed[pOrder.CommandDigest()] {
-				continue
-			}
-
-			pc, ok := bg.pending[pOrder.CommandDigest()]
-			if !ok {
-				return nil, errors.New("invalid partial order")
-			}
-
-			pc.Replicas[pOrder.Author()] = true
-			pc.Timestamps = append(pc.Timestamps, pOrder.Timestamp())
+	for _, pOrder := range pBatch.Partials {
+		if bg.executed[pOrder.CommandDigest()] {
+			continue
 		}
+
+		pc, ok := bg.pending[pOrder.CommandDigest()]
+		if !ok {
+			return nil, errors.New("invalid partial order")
+		}
+
+		pc.Replicas[pOrder.Author()] = true
+		pc.Timestamps = append(pc.Timestamps, pOrder.Timestamp())
 	}
 
 	var sub types.SubBlock
