@@ -2,11 +2,13 @@ package test
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/core"
 	"github.com/Grivn/phalanx/external"
+
 	"github.com/google/btree"
-	"sync"
 )
 
 const (

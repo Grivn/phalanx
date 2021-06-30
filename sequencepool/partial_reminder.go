@@ -3,9 +3,11 @@ package sequencepool
 import (
 	"errors"
 	"fmt"
+
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
+
 	"github.com/google/btree"
 )
 
@@ -40,7 +42,7 @@ func newPartialReminder(author uint64, n int, id uint64) *partialReminder {
 	return &partialReminder{
 		author:           author,
 		id:               id,
-		quorum:           types.CalculateOneQuorum(n),
+		quorum:           types.CalculateOneCorrect(n),
 		cachedPartials:   btree.New(2),
 		proposedPartials: btree.New(2),
 		proposedNo:       make(map[uint64]bool),

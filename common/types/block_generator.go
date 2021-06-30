@@ -20,6 +20,10 @@ func NewPendingCommand(command *protos.Command) *PendingCommand {
 	return &PendingCommand{Replicas: make(map[uint64]bool), Command: command, Timestamps: nil}
 }
 
+func NewBlock(commandD string, txList []*protos.Transaction, hashList []string, timestamp int64) Block {
+	return Block{CommandD: commandD, TxList: txList, HashList: hashList, Timestamp: timestamp}
+}
+
 type Block struct {
 	CommandD  string
 	TxList    []*protos.Transaction

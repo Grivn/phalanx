@@ -95,12 +95,8 @@ message PartialOrder {
 //                 quorum certification
 //======================================================
 
-message PartialSet {
-  repeated PartialOrder PartialOrders = 1;
-}
-
 message PartialOrderBatch {
   uint64 Author = 1;
-  repeated PartialSet PartialSet = 2;
+  repeated PartialOrder Partials = 2;
   map<string, Command> Commands = 3;
 }

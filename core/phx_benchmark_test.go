@@ -14,7 +14,7 @@ import (
 var count = 500
 var size = 100
 
-func QCBatchGeneration() *protos.QCBatch {
+func QCBatchGeneration() *protos.PartialOrderBatch {
 	command := types.GenerateRandCommand(count, size)
 
 	agg := make(map[uint64]*protos.Certification)
@@ -27,24 +27,20 @@ func QCBatchGeneration() *protos.QCBatch {
 		agg[uint64(i)] = signature
 	}
 
-	qc := &protos.QuorumCert{ProofCerts: &protos.ProofCerts{Certs: agg}}
+	pOrder := &protos.PartialOrder{QC: &protos.QuorumCert{Certs: agg}}
 
-	var qcs []*protos.QuorumCert
+	var pOrders []*protos.PartialOrder
 
 	for i:=0; i<types.COUNT; i++ {
-		qcs = append(qcs, qc)
+		pOrders = append(pOrders, pOrder)
 	}
-
-	filter := &protos.QCFilter{QCs: qcs}
-
-	filters := []*protos.QCFilter{filter}
 
 	commands := make(map[string]*protos.Command)
 	for i:=0; i<types.COUNT; i++ {
 		commands[strconv.Itoa(i)] = command
 	}
 
-	qcb := &protos.QCBatch{Filters: filters, Commands: commands}
+	qcb := &protos.PartialOrderBatch{Partials: pOrders, Commands: commands}
 	return qcb
 }
 
