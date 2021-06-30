@@ -12,6 +12,23 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
+func GenerateCommand(txs []*protos.Transaction) *protos.Command {
+	var hashList []string
+	for _, tx := range txs {
+		hashList = append(hashList, tx.Hash)
+	}
+	command := &protos.Command{
+		Content: txs,
+		HashList: hashList,
+	}
+	payload, err := proto.Marshal(command)
+	if err != nil {
+		return nil
+	}
+	command.Digest = CalculatePayloadHash(payload, 0)
+	return command
+}
+
 func GenerateRandCommand(count, size int) *protos.Command {
 	tList := make([]*protos.Transaction, count)
 	hList := make([]string, count)
