@@ -29,17 +29,17 @@ type commitmentRule struct {
 	// recorder is used to record the command info.
 	recorder *commandRecorder
 
-	// filter is used to generate block according to free will.
-	filter map[uint64]*btree.BTree
+	// democracy is used to generate block with free will committee.
+	democracy map[uint64]*btree.BTree
 
 	// logger is used to print logs.
 	logger external.Logger
 }
 
 func newCommitmentRule(author uint64, n int, recorder *commandRecorder, logger external.Logger) *commitmentRule {
-	filter := make(map[uint64]*btree.BTree)
+	democracy := make(map[uint64]*btree.BTree)
 	for i:=0; i<n; i++ {
-		filter[uint64(i+1)] = btree.New(2)
+		democracy[uint64(i+1)] = btree.New(2)
 	}
 
 	return &commitmentRule{
@@ -48,8 +48,8 @@ func newCommitmentRule(author uint64, n int, recorder *commandRecorder, logger e
 		fault:      types.CalculateFault(n),
 		oneCorrect: types.CalculateOneCorrect(n),
 		quorum:     types.CalculateQuorum(n),
-		recorder:	recorder,
-		filter:     filter,
+		recorder:   recorder,
+		democracy:  democracy,
 		logger:     logger,
 	}
 }
@@ -59,42 +59,17 @@ func (cr *commitmentRule) freeWill(executionInfos []*commandInfo) []types.Block 
 		return nil
 	}
 
-	var blocks []types.Block
-
-	// init the raw data for free will.
+	// free will: init the raw data for democracy committee.
 	for _, eInfo := range executionInfos {
 		for _, pOrder := range eInfo.pOrders {
-			cr.filter[pOrder.Author()].ReplaceOrInsert(pOrder)
+			cr.democracy[pOrder.Author()].ReplaceOrInsert(pOrder)
 		}
 	}
 
+	// free will: trying to generate blocks.
+	var blocks []types.Block
 	for {
-		var concurrentC []string
-		counter := make(map[string]int)
-
-		for _, will := range cr.filter {
-			item := will.Min()
-
-			if item == nil {
-				continue
-			}
-
-			pOrder := item.(*protos.PartialOrder)
-			counter[pOrder.CommandDigest()]++
-		}
-
-		for digest, count := range counter {
-			if count >= cr.oneCorrect {
-				concurrentC = append(concurrentC, digest)
-			}
-		}
-
-		if len(concurrentC) == 0 {
-			for digest := range counter {
-				concurrentC = append(concurrentC, digest)
-			}
-		}
-
+		concurrentC := cr.generateConcurrentC()
 		sub := cr.generateSortedBlocks(concurrentC)
 		blocks = append(blocks, sub...)
 
@@ -106,26 +81,78 @@ func (cr *commitmentRule) freeWill(executionInfos []*commandInfo) []types.Block 
 	return blocks
 }
 
+func (cr *commitmentRule) generateConcurrentC() []string {
+	// free will:
+	// we would like to find the first concurrent command set in current democracy committee,
+	// and produce a slice for concurrent commands' digest for advanced processing.
+	var concurrentC []string
+	counter := make(map[string]int)
+
+	// read the front command of partial order on each replica.
+	for _, will := range cr.democracy {
+		item := will.Min()
+
+		if item == nil {
+			continue
+		}
+
+		pOrder := item.(*protos.PartialOrder)
+		counter[pOrder.CommandDigest()]++
+	}
+
+	// if there is at least one correct node (f+1) believing one specific command should be the front,
+	// we should put it into concurrent slice. the one correct set could make sure that it is a preference from
+	// correct node, and we would like to put it first.
+	for digest, count := range counter {
+		if count >= cr.oneCorrect {
+			concurrentC = append(concurrentC, digest)
+		}
+	}
+
+	// if there is not any command selected into concurrent slice, it means we cannot find a correct set for
+	// concurrent command, so that put all the command in the front of replica's partial order into the concurrent
+	// slice.
+	if len(concurrentC) == 0 {
+		for digest := range counter {
+			concurrentC = append(concurrentC, digest)
+		}
+	}
+	return concurrentC
+}
+
 func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.Block {
+	// free will:
 	// generate blocks and sort according to the trusted timestamp
 	// here, the command-pair with natural order cannot take part in concurrent command set.
-	var sub types.SubBlock
+	var sortable types.SortableBlocks
 	for _, digest := range concurrentC {
+		// read the command info from command recorder.
 		info := cr.recorder.readCommandInfo(digest)
+
+		// generate block framework.
 		block := types.NewBlock(info.curCmd, nil, nil, info.timestamps[cr.fault])
+
+		// try to fetch the raw command to fulfill the block.
 		rawCommand := cr.recorder.readCommandRaw(info.curCmd)
 		if rawCommand != nil {
 			block.TxList = rawCommand.Content
 			block.HashList = rawCommand.HashList
 		}
-		cr.recorder.committedStatus(info.curCmd)
-		sub = append(sub, block)
+		cr.logger.Infof("replica %d generate block: %s", block.Format())
 
-		// remove the partial order from filter b-trees.
+		// finished the block generation for command (digest), update the status of digest in command recorder.
+		cr.recorder.committedStatus(info.curCmd)
+
+		// append the current block into sortable slice, waiting for order-determination.
+		sortable = append(sortable, block)
+
+		// remove the partial order from democracy committee.
 		for _, pOrder := range info.pOrders {
-			cr.filter[pOrder.Author()].Delete(pOrder)
+			cr.democracy[pOrder.Author()].Delete(pOrder)
 		}
 	}
-	sort.Sort(sub)
-	return sub
+
+	// determine the order of commands which do not have any natural orders according to trusted timestamp.
+	sort.Sort(sortable)
+	return sortable
 }
