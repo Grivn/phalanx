@@ -1,9 +1,9 @@
 package protos
 
 import (
-	"github.com/gogo/protobuf/proto"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/google/btree"
 )
 
@@ -39,6 +39,7 @@ func PackPartialOrder(qc *PartialOrder) (*ConsensusMessage, error) {
 //=============================== Partial Order ===============================================
 
 func (m *PartialOrder) Less(item btree.Item) bool {
+	// for b-tree initiation
 	return m.PreOrder.Sequence < (item.(*PartialOrder)).PreOrder.Sequence
 }
 

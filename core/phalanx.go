@@ -27,7 +27,7 @@ func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, 
 
 	seq := sequencepool.NewSequencePool(author, n, size, duration, logger)
 
-	exe := executor.NewExecutor(n, exec)
+	exe := executor.NewExecutor(author, n, exec, logger)
 
 	mgr := logmanager.NewLogManager(n, author, seq, network, logger)
 

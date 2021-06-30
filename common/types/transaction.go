@@ -5,9 +5,11 @@ import (
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/Grivn/phalanx/common/protos"
-	"github.com/gogo/protobuf/proto"
 	"math/rand"
+
+	"github.com/Grivn/phalanx/common/protos"
+
+	"github.com/gogo/protobuf/proto"
 )
 
 func GenerateRandCommand(count, size int) *protos.Command {

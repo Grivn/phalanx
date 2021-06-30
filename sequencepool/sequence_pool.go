@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Grivn/phalanx/common/protos"
-	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 )
 
@@ -17,9 +16,6 @@ type sequencePool struct {
 
 	// author indicates the identifier for current participate.
 	author uint64
-
-	// oneQuorum indicates the legal size for stable-state.
-	oneQuorum int
 
 	// reminders would store the proof for each node.
 	reminders map[uint64]*partialReminder
@@ -49,7 +45,6 @@ func NewSequencePool(author uint64, n int, rotation int, duration time.Duration,
 
 	return &sequencePool{
 		author:    author,
-		oneQuorum: types.CalculateOneQuorum(n),
 		reminders: reminders,
 		commands:  make(map[string]*protos.Command),
 		tracker:   NewCommandTracker(n),
