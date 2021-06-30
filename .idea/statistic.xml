@@ -4,7 +4,6 @@
     <option name="fileTypes" value="class;svn-base;svn-work;Extra;gif;png;jpg;jpeg;bmp;tga;tiff;ear;war;zip;jar;iml;iws;ipr;bz2;gz;pyc;so;o;log;" />
     <option name="excludedDirectories">
       <list>
-        <option value="$PROJECT_DIR$/core/testLogger" />
         <option value="$PROJECT_DIR$/node_modules" />
       </list>
     </option>

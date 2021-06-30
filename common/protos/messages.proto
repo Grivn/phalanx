@@ -28,16 +28,22 @@ message Command {
 //                 consensus message
 //======================================================
 
+// MessageType indicates the type of messages.
 enum MessageType {
   PRE_ORDER = 0;
   VOTE = 1;
   QUORUM_CERT = 2;
 }
 
+// ConsensusMessage is the raw consensus messages in real network.
 message ConsensusMessage {
+  // MessageType indicates the message type which could be used in unmarshal process.
   MessageType Type = 1;
+  // From is the sender of current message.
   uint64 From = 2;
+  // To is the receiver of current message, 0 means broadcast.
   uint64 To = 3;
+  // Payload is the message content.
   bytes Payload = 4;
 }
 
@@ -95,8 +101,12 @@ message PartialOrder {
 //                 quorum certification
 //======================================================
 
+// PartialOrderBatch is used to collect the partial orders for bft consensus.
 message PartialOrderBatch {
+  // Author is the generator for current batch.
   uint64 Author = 1;
+  // Partials are the collected partial orders.
   repeated PartialOrder Partials = 2;
+  // Commands are the commands which partial orders refer to.
   map<string, Command> Commands = 3;
 }

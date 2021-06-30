@@ -39,10 +39,6 @@ func (info *commandInfo) pOrderCount() int {
 	return len(info.pOrders)
 }
 
-func (info *commandInfo) pOrderRead() []*protos.PartialOrder {
-	return info.pOrders
-}
-
 func (info *commandInfo) prioriRecord(commandD string) {
 	info.priCmd[commandD] = true
 }

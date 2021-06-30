@@ -138,7 +138,7 @@ func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.Blo
 			block.TxList = rawCommand.Content
 			block.HashList = rawCommand.HashList
 		}
-		cr.logger.Infof("replica %d generate block: %s", block.Format())
+		cr.logger.Infof("replica %d generate block: %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.
 		cr.recorder.committedStatus(info.curCmd)

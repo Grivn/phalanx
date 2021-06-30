@@ -21,6 +21,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
+// MessageType indicates the type of messages.
 type MessageType int32
 
 const (
@@ -168,11 +169,16 @@ func (m *Command) GetHashList() []string {
 	return nil
 }
 
+// ConsensusMessage is the raw consensus messages in real network.
 type ConsensusMessage struct {
-	Type    MessageType `protobuf:"varint,1,opt,name=Type,proto3,enum=protos.MessageType" json:"Type,omitempty"`
-	From    uint64      `protobuf:"varint,2,opt,name=From,proto3" json:"From,omitempty"`
-	To      uint64      `protobuf:"varint,3,opt,name=To,proto3" json:"To,omitempty"`
-	Payload []byte      `protobuf:"bytes,4,opt,name=Payload,proto3" json:"Payload,omitempty"`
+	// MessageType indicates the message type which could be used in unmarshal process.
+	Type MessageType `protobuf:"varint,1,opt,name=Type,proto3,enum=protos.MessageType" json:"Type,omitempty"`
+	// From is the sender of current message.
+	From uint64 `protobuf:"varint,2,opt,name=From,proto3" json:"From,omitempty"`
+	// To is the receiver of current message, 0 means broadcast.
+	To uint64 `protobuf:"varint,3,opt,name=To,proto3" json:"To,omitempty"`
+	// Payload is the message content.
+	Payload []byte `protobuf:"bytes,4,opt,name=Payload,proto3" json:"Payload,omitempty"`
 }
 
 func (m *ConsensusMessage) Reset()         { *m = ConsensusMessage{} }
@@ -531,9 +537,13 @@ func (m *PartialOrder) GetQC() *QuorumCert {
 	return nil
 }
 
+// PartialOrderBatch is used to collect the partial orders for bft consensus.
 type PartialOrderBatch struct {
-	Author   uint64              `protobuf:"varint,1,opt,name=Author,proto3" json:"Author,omitempty"`
-	Partials []*PartialOrder     `protobuf:"bytes,2,rep,name=Partials,proto3" json:"Partials,omitempty"`
+	// Author is the generator for current batch.
+	Author uint64 `protobuf:"varint,1,opt,name=Author,proto3" json:"Author,omitempty"`
+	// Partials are the collected partial orders.
+	Partials []*PartialOrder `protobuf:"bytes,2,rep,name=Partials,proto3" json:"Partials,omitempty"`
+	// Commands are the commands which partial orders refer to.
 	Commands map[string]*Command `protobuf:"bytes,3,rep,name=Commands,proto3" json:"Commands,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
