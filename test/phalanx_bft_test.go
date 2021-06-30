@@ -22,7 +22,7 @@ func TestPhalanx(t *testing.T) {
 
 	closeC := make(chan bool)
 
-	phx := make(map[uint64]phalanx.SynchronousProvider)
+	phx := make(map[uint64]phalanx.Provider)
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
@@ -61,7 +61,7 @@ func TestPhalanx(t *testing.T) {
 	time.Sleep(3000 * time.Second)
 }
 
-func phalanxListener(phx phalanx.SynchronousProvider, net chan *protos.ConsensusMessage, closeC chan bool) {
+func phalanxListener(phx phalanx.Provider, net chan *protos.ConsensusMessage, closeC chan bool) {
 	for {
 		select {
 		case message := <-net:
@@ -72,7 +72,7 @@ func phalanxListener(phx phalanx.SynchronousProvider, net chan *protos.Consensus
 	}
 }
 
-func commandSender(phx map[uint64]phalanx.SynchronousProvider) {
+func commandSender(phx map[uint64]phalanx.Provider) {
 	i := rand.Int()%10
 	time.Sleep(time.Duration(i) * time.Millisecond)
 

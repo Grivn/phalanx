@@ -39,6 +39,11 @@ func (ei *executorImpl) CommitPartials(pBatch *protos.PartialOrderBatch) error {
 	ei.mutex.Lock()
 	defer ei.mutex.Unlock()
 
+	if pBatch == nil {
+		// nil partial order batch means we should skip the current commitment attempt.
+		return nil
+	}
+
 	for _, rawCommand := range pBatch.Commands {
 		ei.recorder.storeCommand(rawCommand)
 	}

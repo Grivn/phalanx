@@ -1,7 +1,6 @@
 package phalanx
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -77,27 +76,9 @@ func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.ConsensusMessage
 	}
 }
 
-// MakePayload is used to generate payloads for bft consensus.
-func (phi *phalanxImpl) MakePayload() ([]byte, error) {
-	pBatch, err := phi.sequencePool.PullPartials()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, pOrder := range pBatch.Partials {
-		phi.logger.Infof("payload generation: replica %d sequence %d digest %s", pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
-	}
-
-	payload, err := marshal(pBatch)
-	if err != nil {
-		return nil, err
-	}
-
-	return payload, nil
-}
-
-func (phi *phalanxImpl) BecomeLeader() {
-	phi.sequencePool.BecomeLeader()
+// MakeProposal is used to generate payloads for bft consensus.
+func (phi *phalanxImpl) MakeProposal() (*protos.PartialOrderBatch, error) {
+	return phi.sequencePool.PullPartials()
 }
 
 // Restore is used to restore data when we have found a timeout event in partial-synchronized bft consensus module.
@@ -107,17 +88,8 @@ func (phi *phalanxImpl) Restore() {
 
 // Verify is used to verify the phalanx payload.
 // here, we would like to verify the validation of phalanx partial order, and record which seqNo has already been proposed.
-func (phi *phalanxImpl) Verify(payload []byte) error {
-	pBatch, err := unmarshal(payload)
-	if err != nil {
-		return fmt.Errorf("invalid payload: %s", err)
-	}
-
-	err = phi.sequencePool.VerifyPartials(pBatch);
-	if err != nil {
-		return fmt.Errorf("phalanx verify failed: %s", err)
-	}
-	return nil
+func (phi *phalanxImpl) Verify(pBatch *protos.PartialOrderBatch) error {
+	return phi.sequencePool.VerifyPartials(pBatch)
 }
 
 // SetStable is used to set stable
@@ -127,38 +99,11 @@ func (phi *phalanxImpl) Verify(payload []byte) error {
 //    it to set phalanx stable status.
 // 2) classic-bft: for every time we are trying to execute a block, we would like to use it to
 //    set phalanx stable status.
-func (phi *phalanxImpl) SetStable(payload []byte) error {
-	pBatch, err := unmarshal(payload)
-	if err != nil {
-		return fmt.Errorf("invalid payload: %s", err)
-	}
-
+func (phi *phalanxImpl) SetStable(pBatch *protos.PartialOrderBatch) error {
 	return phi.sequencePool.SetStablePartials(pBatch)
 }
 
 // Commit is used to commit the phalanx partial order batch which has been verified by bft consensus.
-func (phi *phalanxImpl) Commit(payload []byte) error {
-	pBatch, err := unmarshal(payload)
-	if err != nil {
-		return fmt.Errorf("invalid payload: %s", err)
-	}
-
-	err = phi.executor.CommitPartials(pBatch)
-	if  err != nil {
-		return fmt.Errorf("phalanx execution failed: %s", err)
-	}
-	return nil
-}
-
-func marshal(pBatch *protos.PartialOrderBatch) ([]byte, error) {
-	return proto.Marshal(pBatch)
-}
-
-func unmarshal(payload []byte) (*protos.PartialOrderBatch, error) {
-	pBatch := &protos.PartialOrderBatch{}
-	if err := proto.Unmarshal(payload, pBatch); err != nil {
-		return nil, fmt.Errorf("invalid partial order batch: %s", err)
-	}
-
-	return pBatch, nil
+func (phi *phalanxImpl) Commit(pBatch *protos.PartialOrderBatch) error {
+	return phi.executor.CommitPartials(pBatch)
 }

@@ -97,6 +97,11 @@ func CalculateMD5Hash(payload []byte, timestamp int64) []byte {
 	return h.Sum(nil)
 }
 
+func CalculateBatchHash(pBatch *protos.PartialOrderBatch) string {
+	payload, _ := proto.Marshal(pBatch)
+	return CalculatePayloadHash(payload, 0)
+}
+
 func CalculatePayloadHash(payload []byte, timestamp int64) string {
 	h := md5.New()
 	_, _ = h.Write(payload)
