@@ -13,7 +13,7 @@ type executor struct {
 	logger external.Logger
 }
 
-func NewSimpleExecutor(author uint64, logger external.Logger) external.ExecuteService {
+func NewSimpleExecutor(author uint64, logger external.Logger) external.ExecutionService {
 	return &executor{
 		author: author,
 		hash:   "initial",
@@ -21,7 +21,7 @@ func NewSimpleExecutor(author uint64, logger external.Logger) external.ExecuteSe
 	}
 }
 
-func (exe *executor) Execute(commandD string, txs []*protos.Transaction, seqNo uint64, timestamp int64) {
+func (exe *executor) CommandExecution(commandD string, txs []*protos.Transaction, seqNo uint64, timestamp int64) {
 	var list []string
 
 	list = append(list, exe.hash)

@@ -9,9 +9,9 @@ func NewMockMinimalNetworkService(ctrl *gomock.Controller) *MockNetworkService {
 	return mock
 }
 
-func NewMockMinimalExecutorService(ctrl *gomock.Controller) *MockExecuteService {
-	mock := NewMockExecuteService(ctrl)
-	mock.EXPECT().Execute(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+func NewMockMinimalExecutionService(ctrl *gomock.Controller) *MockExecutionService {
+	mock := NewMockExecutionService(ctrl)
+	mock.EXPECT().CommandExecution(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	return mock
 }
 

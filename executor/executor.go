@@ -21,11 +21,11 @@ type executorImpl struct {
 	recorder *commandRecorder
 
 	// exec is used to execute the block.
-	exec external.ExecuteService
+	exec external.ExecutionService
 }
 
 // NewExecutor is used to generator an executor for phalanx.
-func NewExecutor(author uint64, n int, exec external.ExecuteService, logger external.Logger) *executorImpl {
+func NewExecutor(author uint64, n int, exec external.ExecutionService, logger external.Logger) *executorImpl {
 	recorder := newCommandRecorder()
 	return &executorImpl{
 		rules:    newOrderRule(author, n, recorder, logger),
@@ -52,7 +52,7 @@ func (ei *executorImpl) CommitPartials(pBatch *protos.PartialOrderBatch) error {
 		blocks := ei.rules.processPartialOrder(pOrder)
 		for _, blk := range blocks {
 			ei.seqNo++
-			ei.exec.Execute(blk.CommandD, blk.TxList, ei.seqNo, blk.Timestamp)
+			ei.exec.CommandExecution(blk.CommandD, blk.TxList, ei.seqNo, blk.Timestamp)
 		}
 	}
 

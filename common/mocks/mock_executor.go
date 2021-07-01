@@ -9,35 +9,35 @@ import (
 	reflect "reflect"
 )
 
-// MockExecuteService is a mock of ExecuteService interface
-type MockExecuteService struct {
+// MockExecutionService is a mock of ExecutionService interface
+type MockExecutionService struct {
 	ctrl     *gomock.Controller
-	recorder *MockExecuteServiceMockRecorder
+	recorder *MockExecutionServiceMockRecorder
 }
 
-// MockExecuteServiceMockRecorder is the mock recorder for MockExecuteService
-type MockExecuteServiceMockRecorder struct {
-	mock *MockExecuteService
+// MockExecutionServiceMockRecorder is the mock recorder for MockExecutionService
+type MockExecutionServiceMockRecorder struct {
+	mock *MockExecutionService
 }
 
-// NewMockExecuteService creates a new mock instance
-func NewMockExecuteService(ctrl *gomock.Controller) *MockExecuteService {
-	mock := &MockExecuteService{ctrl: ctrl}
-	mock.recorder = &MockExecuteServiceMockRecorder{mock}
+// NewMockExecutionService creates a new mock instance
+func NewMockExecutionService(ctrl *gomock.Controller) *MockExecutionService {
+	mock := &MockExecutionService{ctrl: ctrl}
+	mock.recorder = &MockExecutionServiceMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use
-func (_m *MockExecuteService) EXPECT() *MockExecuteServiceMockRecorder {
+func (_m *MockExecutionService) EXPECT() *MockExecutionServiceMockRecorder {
 	return _m.recorder
 }
 
-// Execute mocks base method
-func (_m *MockExecuteService) Execute(commandD string, txs []*protos.Transaction, seqNo uint64, timestamp int64) {
-	_m.ctrl.Call(_m, "Execute", commandD, txs, seqNo, timestamp)
+// CommandExecution mocks base method
+func (_m *MockExecutionService) CommandExecution(commandD string, txs []*protos.Transaction, seqNo uint64, timestamp int64) {
+	_m.ctrl.Call(_m, "CommandExecution", commandD, txs, seqNo, timestamp)
 }
 
-// Execute indicates an expected call of Execute
-func (_mr *MockExecuteServiceMockRecorder) Execute(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "Execute", reflect.TypeOf((*MockExecuteService)(nil).Execute), arg0, arg1, arg2, arg3)
+// CommandExecution indicates an expected call of CommandExecution
+func (_mr *MockExecutionServiceMockRecorder) CommandExecution(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "CommandExecution", reflect.TypeOf((*MockExecutionService)(nil).CommandExecution), arg0, arg1, arg2, arg3)
 }
