@@ -26,14 +26,14 @@ func TestLogManager(t *testing.T) {
 		nc[id] = make(chan *protos.ConsensusMessage)
 	}
 
-	net := mocks.NewSimpleNetwork(nc, async)
+	net := mocks.NewSimpleNetwork(nc, types.NewRawLogger(), async)
 
 	lms := make(map[uint64]internal.LogManager)
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		sp := sequencepool.NewSequencePool(id, n, types.DefaultLogRotation, types.DefaultTimeDuration, mocks.NewRawLogger())
-		lms[id] = NewLogManager(n, id, sp, net, mocks.NewRawLogger())
+		sp := sequencepool.NewSequencePool(id, n, types.DefaultLogRotation, types.DefaultTimeDuration, types.NewRawLogger())
+		lms[id] = NewLogManager(n, id, sp, net, types.NewRawLogger())
 	}
 
 	closeC := make(chan bool)

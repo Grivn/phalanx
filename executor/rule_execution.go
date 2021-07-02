@@ -39,21 +39,23 @@ func newExecutionRule(author uint64, n int, recorder *commandRecorder, logger ex
 	}
 }
 
-func (er *executionRule) executeQSCs() []*commandInfo {
+func (er *executionRule) naturalOrder() []*commandInfo {
+	// here, we would like to check the natural order for quorum sequenced commands.
 	var execution []*commandInfo
 	cCommandInfos := er.recorder.readCSCInfos()
 	qCommandInfos := er.recorder.readQSCInfos()
 
-	// case 1:
-	// there isn't any command which has reached correct sequenced status, here, we could execute
+	// natural order 1:
+	// there isn't any command which has reached correct sequenced status, which means no one could be the pri-command
+	// for one command which has reached quorum sequenced status and finished execution for its pri-commands.
 	if len(cCommandInfos) == 0 {
 		execution = append(execution, qCommandInfos...)
 		return execution
 	}
 
-	// case 2:
-	// check the validation for every quorum sequenced command that make sure all the commands in
-	// correct sequenced status cannot become the pri-command of it.
+	// natural order 2:
+	// check the quorum sequenced command to make sure all the commands in correct sequenced status cannot become
+	// the pri-command of it.
 	for _, qInfo := range qCommandInfos {
 		if er.priCheck(qInfo, cCommandInfos) {
 			execution = append(execution, qInfo)
@@ -77,6 +79,14 @@ func (er *executionRule) priCheck(qInfo *commandInfo, cCommandInfos []*commandIn
 		filter[pOrder.Author()].ReplaceOrInsert(pOrder)
 	}
 
+	// pri-command rule:
+	//
+	// c1: quorum sequenced command
+	// c2: correct sequenced command
+	// property-priori: c1, c2 belong to replica's collected partial order list
+	//                  and c2<-c1
+	//
+	// if the amount of replica with property-priori is no less than f+1, we regard c2 as c1's pri-command.
 	for _, cInfo := range cCommandInfos {
 		for _, pOrder := range cInfo.pOrders {
 			filter[pOrder.Author()].ReplaceOrInsert(pOrder)

@@ -20,14 +20,15 @@ func newOrderRule(author uint64, n int, recorder *commandRecorder, logger extern
 	}
 }
 
+// processPartialOrder is used to process partial order with order rules.
 func (rule *orderRule) processPartialOrder(pOrder *protos.PartialOrder) []types.Block {
-	// order rule 1: collection rule.
+	// order rule 1: collection rule, collect the partial order.
 	rule.collect.collectPartials(pOrder)
 
-	// order rule 2: execution rule.
-	executionList := rule.execute.executeQSCs()
+	// order rule 2: execution rule, select commands to execute with natural order.
+	executionList := rule.execute.naturalOrder()
 
-	// order rule 3: commitment rule.
+	// order rule 3: commitment rule, generate ordered blocks with free will.
 	blocks := rule.commit.freeWill(executionList)
 
 	return blocks

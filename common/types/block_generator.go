@@ -6,6 +6,7 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 )
 
+// NewBlock generates the block to commit.
 func NewBlock(commandD string, txList []*protos.Transaction, hashList []string, timestamp int64) Block {
 	return Block{CommandD: commandD, TxList: txList, HashList: hashList, Timestamp: timestamp}
 }

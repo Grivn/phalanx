@@ -2,6 +2,7 @@ package test
 
 import (
 	"math/rand"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -28,13 +29,13 @@ func TestPhalanx(t *testing.T) {
 		id := uint64(i+1)
 		nc[id] = make(chan *protos.ConsensusMessage)
 	}
-	net := mocks.NewSimpleNetwork(nc, async)
+	net := mocks.NewSimpleNetwork(nc, types.NewRawLogger(), async)
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		exec := mocks.NewSimpleExecutor(id, mocks.NewRawLogger())
+		exec := mocks.NewSimpleExecutor(id, types.NewRawLogger())
 		phx[id] = phalanx.NewPhalanxProvider(n, id, types.DefaultLogRotation, types.DefaultTimeDuration,
-			exec, net, mocks.NewRawLogger())
+			exec, net, types.NewRawLogger())
 	}
 
 	for i:=0; i<n; i++ {
@@ -45,10 +46,12 @@ func TestPhalanx(t *testing.T) {
 	replicas := make(map[uint64]*replica)
 	bftCs := make(map[uint64]chan *bftMessage)
 	sendC := make(chan *bftMessage)
+	logDir := "bft_nodes_"+time.Now().Format("2006-01-02_15:04:05")
+	_ = os.Mkdir(logDir, os.ModePerm)
 	for i:=0; i<4; i++ {
 		id := uint64(i+1)
 		bftCs[id] = make(chan *bftMessage)
-		replicas[id] = newReplica(n, id, phx[id], sendC, bftCs[id], closeC, mocks.NewRawLoggerFile("bft-node-"+strconv.Itoa(i+1)))
+		replicas[id] = newReplica(n, id, phx[id], sendC, bftCs[id], closeC, types.NewRawLoggerFile(logDir+"/bft-node-"+strconv.Itoa(i+1)+".log"))
 		replicas[id].run()
 	}
 	go cluster(sendC, bftCs, closeC)
