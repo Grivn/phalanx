@@ -69,6 +69,14 @@ func (m *PartialOrderBatch) Append(pOrder *PartialOrder) {
 	// append:
 	// we have found a partial order which could be proposed in next phase, append into Partials slice.
 	m.Partials = append(m.Partials, pOrder)
+	m.ProposedNos[pOrder.Author()] = maxUint64(m.ProposedNos[pOrder.Author()], pOrder.Sequence())
+}
+
+func maxUint64(a, b uint64) uint64 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 //=================================== Generate Messages ============================================
@@ -87,5 +95,5 @@ func NewPreOrder(author uint64, sequence uint64, command *Command) *PreOrder {
 }
 
 func NewPartialOrderBatch(author uint64) *PartialOrderBatch {
-	return &PartialOrderBatch{Author: author, Commands: make(map[string]*Command)}
+	return &PartialOrderBatch{Author: author, Commands: make(map[string]*Command), ProposedNos: make(map[uint64]uint64)}
 }

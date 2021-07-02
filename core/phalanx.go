@@ -1,6 +1,8 @@
 package phalanx
 
 import (
+	"github.com/Grivn/phalanx/common/mocks"
+	"strconv"
 	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -24,11 +26,11 @@ type phalanxImpl struct {
 func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, exec external.ExecutionService, network external.NetworkService, logger external.Logger) *phalanxImpl {
 	_ = crypto.SetKeys()
 
-	seq := sequencepool.NewSequencePool(author, n, size, duration, logger)
+	seq := sequencepool.NewSequencePool(author, n, size, duration, mocks.NewRawLoggerFile("phalanx-spool_node"+strconv.Itoa(int(author))+"_"))
 
-	exe := executor.NewExecutor(author, n, exec, logger)
+	exe := executor.NewExecutor(author, n, exec, mocks.NewRawLoggerFile("phalanx-exe_node"+strconv.Itoa(int(author))+"_"))
 
-	mgr := logmanager.NewLogManager(n, author, seq, network, logger)
+	mgr := logmanager.NewLogManager(n, author, seq, network, mocks.NewRawLoggerFile("phalanx-logs_node"+strconv.Itoa(int(author))+"_"))
 
 	return &phalanxImpl{
 		logManager:   mgr,
@@ -77,8 +79,8 @@ func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.ConsensusMessage
 }
 
 // MakeProposal is used to generate payloads for bft consensus.
-func (phi *phalanxImpl) MakeProposal() (*protos.PartialOrderBatch, error) {
-	return phi.sequencePool.PullPartials()
+func (phi *phalanxImpl) MakeProposal(priori *protos.PartialOrderBatch) (*protos.PartialOrderBatch, error) {
+	return phi.sequencePool.PullPartials(priori)
 }
 
 // Restore is used to restore data when we have found a timeout event in partial-synchronized bft consensus module.

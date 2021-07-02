@@ -83,27 +83,32 @@ func (sp *sequencePool) RestorePartials() {
 // 2) the partial order should contain the specific command for it.
 // 3) the sequence number for partial order should be matched with the local record for logs of replicas.
 // 4) the proof-certs should be valid.
-func (sp *sequencePool) VerifyPartials(batch *protos.PartialOrderBatch) error {
+func (sp *sequencePool) VerifyPartials(pBatch *protos.PartialOrderBatch) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
+	if pBatch == nil {
+		sp.logger.Infof("verify partial batch: nil partial order")
+		return nil
+	}
+
 	// verify the validation
-	for _, pOrder := range batch.Partials {
+	for _, pOrder := range pBatch.Partials {
 		if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
 			continue
 		}
 
-		if _, ok := batch.Commands[pOrder.CommandDigest()]; !ok {
+		if _, ok := pBatch.Commands[pOrder.CommandDigest()]; !ok {
 			return fmt.Errorf("nil command: replica %d, seqNo %d, digest %s", pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
 		}
 
-		if err := sp.reminders[pOrder.Author()].verify(batch.Author, pOrder); err != nil {
+		if err := sp.reminders[pOrder.Author()].verify(pBatch.Author, pOrder); err != nil {
 			return fmt.Errorf("verify partial order failed: %s", err)
 		}
 	}
 
 	// proposed target
-	for _, pOrder := range batch.Partials {
+	for _, pOrder := range pBatch.Partials {
 		sp.reminders[pOrder.Author()].proposedPartial(pOrder)
 
 		sp.tracker.Add(pOrder.CommandDigest())
@@ -112,11 +117,17 @@ func (sp *sequencePool) VerifyPartials(batch *protos.PartialOrderBatch) error {
 	return nil
 }
 
-func (sp *sequencePool) SetStablePartials(batch *protos.PartialOrderBatch) error {
+func (sp *sequencePool) SetStablePartials(pBatch *protos.PartialOrderBatch) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
-	for _, pOrder := range batch.Partials {
+	if pBatch == nil {
+		sp.logger.Infof("set stable partial batch: nil partial order")
+		return nil
+	}
+
+	for _, pOrder := range pBatch.Partials {
+		sp.logger.Debugf("replica %d set stable, replica %d, sequence %d, digest %s", sp.author, pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
 		if err := sp.reminders[pOrder.Author()].setStablePartial(pOrder); err != nil {
 			return fmt.Errorf("stable partial order failed: %s", err)
 		}
@@ -126,12 +137,24 @@ func (sp *sequencePool) SetStablePartials(batch *protos.PartialOrderBatch) error
 }
 
 // PullPartials is used to pull the Partials from b-tree to generate consensus proposal.
-func (sp *sequencePool) PullPartials() (*protos.PartialOrderBatch, error) {
+func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.PartialOrderBatch, error) {
 	time.Sleep(sp.duration)
 
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 	pBatch := protos.NewPartialOrderBatch(sp.author)
+
+	if priori == nil {
+		sp.logger.Debugf("replica %d do not have a priority block, trying genesis generation", sp.author)
+	} else {
+		// initiate the reminder to avoid duplicated partial orders.
+		for id, reminder := range sp.reminders {
+			proposedNo := priori.ProposedNos[id]
+			reminder.pullInitiation(proposedNo)
+			pBatch.ProposedNos[id] = proposedNo
+			sp.logger.Debugf("replica %d initiate reminder status, replica %d, proposedNo %d", sp.author, id, proposedNo)
+		}
+	}
 
 	for i:=0; i<sp.rotation; i++ {
 		for _, reminder := range sp.reminders {

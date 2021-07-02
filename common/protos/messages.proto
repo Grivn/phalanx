@@ -109,4 +109,6 @@ message PartialOrderBatch {
   repeated PartialOrder Partials = 2;
   // Commands are the commands which partial orders refer to.
   map<string, Command> Commands = 3;
+  // ProposedNo indicates the latest proposed sequence number for each node.
+  map<uint64, uint64> ProposedNos = 4;
 }
