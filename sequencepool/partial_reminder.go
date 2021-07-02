@@ -82,6 +82,10 @@ func (pr *partialReminder) pullInitiation(proposedNo uint64) {
 func (pr *partialReminder) restorePartials(tracker CommandTracker) {
 	// here, we would like to restore the partial order which have a larger seqNo than the stable one in proposedPartials, which means
 	// these restored partial order should be re-proposed for block generation.
+	if minCached := pr.cachedMin(); minCached != nil {
+		// initiate the expected sequence number, if there is a cached partial order.
+		pr.seqNo = minCached.Sequence()
+	}
 	for {
 		// get the minPartial from proposedPartials.
 		minPartial := pr.proposedDeleteMin()
@@ -102,7 +106,13 @@ func (pr *partialReminder) restorePartials(tracker CommandTracker) {
 		// update the proposedNo map at the same time.
 		delete(pr.proposedNo, minPartial.Sequence())
 
+		// reset the tracker for commands.
 		tracker.Del(minPartial.CommandDigest())
+
+		// update the expected sequence number.
+		if minPartial.Sequence() < pr.seqNo {
+			pr.seqNo = minPartial.Sequence()
+		}
 	}
 }
 

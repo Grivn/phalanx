@@ -32,6 +32,9 @@ type sequencePool struct {
 	// duration indicates the network quality in synchronous consensus.
 	duration time.Duration
 
+	// isRestored indicates sequence-pool status, and we won't initiate reminder with priori data if it has been restored.
+	isRestored bool
+
 	// logger is used to print logs.
 	logger external.Logger
 }
@@ -44,13 +47,14 @@ func NewSequencePool(author uint64, n int, rotation int, duration time.Duration,
 	}
 
 	return &sequencePool{
-		author:    author,
-		reminders: reminders,
-		commands:  make(map[string]*protos.Command),
-		tracker:   NewCommandTracker(n),
-		rotation:  rotation,
-		duration:  duration,
-		logger:    logger,
+		author:     author,
+		reminders:  reminders,
+		commands:   make(map[string]*protos.Command),
+		tracker:    NewCommandTracker(n),
+		rotation:   rotation,
+		duration:   duration,
+		isRestored: false,
+		logger:     logger,
 	}
 }
 
@@ -72,10 +76,17 @@ func (sp *sequencePool) InsertCommand(command *protos.Command) {
 
 // RestorePartials is used to prepare the status of validator of Partials.
 func (sp *sequencePool) RestorePartials() {
+	sp.mutex.Lock()
+	defer sp.mutex.Unlock()
+
 	for _, reminder := range sp.reminders {
 		// restore the Partials in each reminder.
 		reminder.restorePartials(sp.tracker)
 	}
+
+	// open restored status, which means current cluster has just found invalid partial batch,
+	// the priori-batch might be untrusted.
+	sp.isRestored = true
 }
 
 // VerifyPartials is used to verify the Partials in partial order batch.
@@ -122,7 +133,15 @@ func (sp *sequencePool) SetStablePartials(pBatch *protos.PartialOrderBatch) erro
 	defer sp.mutex.Unlock()
 
 	if pBatch == nil {
-		sp.logger.Infof("set stable partial batch: nil partial order")
+		sp.logger.Infof("replica %d set stable nil batch, ignore it", sp.author)
+		return nil
+	}
+
+	if len(pBatch.Partials) == 0 {
+		// we receive a blank partial batch, which means the priori batch could be trusted,
+		// so we can close the restored status and generate batch according to the priori one.
+		sp.isRestored = false
+		sp.logger.Infof("replica %d set stable a blank partial batch, close restored status", sp.author)
 		return nil
 	}
 
@@ -144,15 +163,24 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 	defer sp.mutex.Unlock()
 	pBatch := protos.NewPartialOrderBatch(sp.author)
 
+	if sp.isRestored {
+		sp.logger.Infof("replica %d has just restored sequence-pool, generate a blank priori-batch", sp.author)
+		return pBatch, nil
+	}
+
 	if priori == nil {
-		sp.logger.Debugf("replica %d do not have a priority block, trying genesis generation", sp.author)
+		sp.logger.Debugf("replica %d do not have a priori-batch, trying to generate genesis batch", sp.author)
 	} else {
-		// initiate the reminder to avoid duplicated partial orders.
-		for id, reminder := range sp.reminders {
-			proposedNo := priori.ProposedNos[id]
-			reminder.pullInitiation(proposedNo)
-			pBatch.ProposedNos[id] = proposedNo
-			sp.logger.Debugf("replica %d initiate reminder status, replica %d, proposedNo %d", sp.author, id, proposedNo)
+		if len(priori.Partials) == 0 {
+			sp.logger.Debugf("replica %d have a blank priori-batch, trying to generate self-dependent batch", sp.author)
+		} else {
+			// initiate the reminder to avoid duplicated partial orders.
+			for id, reminder := range sp.reminders {
+				proposedNo := priori.ProposedNos[id]
+				reminder.pullInitiation(proposedNo)
+				pBatch.ProposedNos[id] = proposedNo
+				sp.logger.Debugf("replica %d initiate reminder status, replica %d, proposedNo %d", sp.author, id, proposedNo)
+			}
 		}
 	}
 
@@ -202,6 +230,10 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 		sp.logger.Infof("payload generation: replica %d sequence %d digest %s", pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
 	}
 
+	// for replica who has generated a partial batch, which should be a trusted batch for itself,
+	// before next phalanx-restoring, current node could find a trusted priori-batch,
+	// so that we should close the restored status and initiate the reminder with the priori-batch.
+	sp.isRestored = false
 	return pBatch, nil
 }
 

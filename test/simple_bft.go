@@ -87,6 +87,7 @@ func cluster(sendC chan *bftMessage, bftCs map[uint64]chan *bftMessage, closeC c
 
 func (replica *replica) run() {
 	replica.logger.Infof("[%d] running bft consensus", replica.author)
+	replica.phalanx.Restore()
 
 	go replica.bftListener()
 
