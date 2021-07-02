@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"math/rand"
+	"time"
 
 	"github.com/Grivn/phalanx/common/protos"
 
@@ -58,7 +59,7 @@ func GenerateRandTransaction(size int) *protos.Transaction {
 
 func GenerateTransaction(payload []byte) *protos.Transaction {
 	return &protos.Transaction{
-		Hash:    CalculatePayloadHash(payload, 0),
+		Hash:    CalculatePayloadHash(payload, time.Now().UnixNano()),
 		Payload: payload,
 	}
 }

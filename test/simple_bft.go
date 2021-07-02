@@ -135,7 +135,15 @@ func (replica *replica) propose() *bftMessage {
 		return nil
 	}
 
-	pBatch, err := replica.phalanx.MakeProposal()
+	block := replica.cache[replica.sequence]
+
+	var pBatch *protos.PartialOrderBatch
+	var err error
+	if block != nil {
+		pBatch, err = replica.phalanx.MakeProposal(block.pBatch)
+	} else {
+		pBatch, err = replica.phalanx.MakeProposal(nil)
+	}
 	if err != nil {
 		return nil
 	}

@@ -51,6 +51,33 @@ func newPartialReminder(author uint64, n int, id uint64) *partialReminder {
 	}
 }
 
+// pullInitiation is used to initiate the reminder to avoid duplicated partial orders.
+func (pr *partialReminder) pullInitiation(proposedNo uint64) {
+	if pr.seqNo == proposedNo+1 {
+		return
+	}
+
+	for {
+		minPartial := pr.cacheDeleteMin()
+
+		if minPartial == nil {
+			break
+		}
+
+		if minPartial.Sequence() <= proposedNo {
+			// update the proposedNo
+			pr.proposedNo[minPartial.Sequence()] = true
+
+			// record the QC into proposedPartials map
+			pr.proposedPartials.ReplaceOrInsert(minPartial)
+			continue
+		}
+
+		pr.cachedPartials.ReplaceOrInsert(minPartial)
+	}
+	pr.seqNo = proposedNo+1
+}
+
 // restorePartials is used to restore the partial order from proposedPartials and remove these seqNo from proposedNo.
 func (pr *partialReminder) restorePartials(tracker CommandTracker) {
 	// here, we would like to restore the partial order which have a larger seqNo than the stable one in proposedPartials, which means
@@ -93,7 +120,11 @@ func (pr *partialReminder) insertPartial(pOrder *protos.PartialOrder) error {
 		return fmt.Errorf("proposed seqNo: received seqNo %d", pOrder.Sequence())
 	}
 
-	pr.cachedPartials.ReplaceOrInsert(pOrder)
+	if pOrder.Sequence() < pr.seqNo {
+		pr.proposedPartials.ReplaceOrInsert(pOrder)
+	} else {
+		pr.cachedPartials.ReplaceOrInsert(pOrder)
+	}
 	return nil
 }
 

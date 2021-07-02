@@ -20,7 +20,7 @@ type PartialManager interface {
 	RestorePartials()
 
 	// PullPartials is used to pull the partial order from sync-tree to generate consensus proposal.
-	PullPartials() (*protos.PartialOrderBatch, error)
+	PullPartials(priori *protos.PartialOrderBatch) (*protos.PartialOrderBatch, error)
 
 	// VerifyPartials is used to verify the partial order batch.
 	// 1) the command a partial order refer to should be combined in batch.
