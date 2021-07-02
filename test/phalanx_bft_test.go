@@ -34,7 +34,7 @@ func TestPhalanx(t *testing.T) {
 		id := uint64(i+1)
 		exec := mocks.NewSimpleExecutor(id, mocks.NewRawLogger())
 		phx[id] = phalanx.NewPhalanxProvider(n, id, types.DefaultLogRotation, types.DefaultTimeDuration,
-			exec, net, mocks.NewRawLoggerFile("node-"+strconv.Itoa(i+1)))
+			exec, net, mocks.NewRawLogger())
 	}
 
 	for i:=0; i<n; i++ {

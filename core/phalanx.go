@@ -1,8 +1,6 @@
 package phalanx
 
 import (
-	"github.com/Grivn/phalanx/common/mocks"
-	"strconv"
 	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -24,13 +22,24 @@ type phalanxImpl struct {
 }
 
 func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, exec external.ExecutionService, network external.NetworkService, logger external.Logger) *phalanxImpl {
+	// initiate key pairs.
 	_ = crypto.SetKeys()
 
-	seq := sequencepool.NewSequencePool(author, n, size, duration, mocks.NewRawLoggerFile("phalanx-spool_node"+strconv.Itoa(int(author))+"_"))
+	// initiate phalanx logger.
+	mLogs, err := newPLogger(logger, true, author)
+	if err != nil {
+		logger.Errorf("Generate Phalanx Logger Failed: %s", err)
+		return nil
+	}
 
-	exe := executor.NewExecutor(author, n, exec, mocks.NewRawLoggerFile("phalanx-exe_node"+strconv.Itoa(int(author))+"_"))
+	// initiate sequence pool.
+	seq := sequencepool.NewSequencePool(author, n, size, duration, mLogs.sequencePoolLog)
 
-	mgr := logmanager.NewLogManager(n, author, seq, network, mocks.NewRawLoggerFile("phalanx-logs_node"+strconv.Itoa(int(author))+"_"))
+	// initiate log manager.
+	mgr := logmanager.NewLogManager(n, author, seq, network, mLogs.logManagerLog)
+
+	// initiate executor.
+	exe := executor.NewExecutor(author, n, exec, mLogs.executorLog)
 
 	return &phalanxImpl{
 		logManager:   mgr,
