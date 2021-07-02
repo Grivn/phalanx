@@ -11,14 +11,17 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// CalculateFault calculates the upper fault amount in byzantine system with n nodes.
 func CalculateFault(n int) int {
 	return (n-1)/3
 }
 
+// CalculateQuorum calculates the quorum legal committee for byzantine system.
 func CalculateQuorum(n int) int {
 	return n-CalculateFault(n)
 }
 
+// CalculateOneCorrect calculates the lowest amount for set with at least one trusted node in byzantine system.
 func CalculateOneCorrect(n int) int {
 	return CalculateFault(n)+1
 }

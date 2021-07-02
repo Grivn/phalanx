@@ -13,6 +13,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
+// GenerateCommand generates command with given transaction list.
 func GenerateCommand(txs []*protos.Transaction) *protos.Command {
 	var hashList []string
 	for _, tx := range txs {
