@@ -1,15 +1,12 @@
 package phalanx
 
 import (
-	"io"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-
-	nested "github.com/antonfisher/nested-logrus-formatter"
-	"github.com/sirupsen/logrus"
 )
 
 type moduleLogger struct {
@@ -19,7 +16,7 @@ type moduleLogger struct {
 }
 
 func newPLogger(logger external.Logger, divided bool, author uint64) (*moduleLogger, error) {
-	// print phalanx logs in one file.
+	// print phalanx logs in system file.
 	if !divided {
 		return &moduleLogger{
 			logManagerLog:   logger,
@@ -37,20 +34,8 @@ func newPLogger(logger external.Logger, divided bool, author uint64) (*moduleLog
 	}
 
 	return &moduleLogger{
-		logManagerLog:   generateLogger(logDir+"/log-manager"),
-		sequencePoolLog: generateLogger(logDir+"/sequence-pool"),
-		executorLog:     generateLogger(logDir+"/executor"),
+		logManagerLog:   types.NewRawLoggerFile(logDir+"/log-manager"),
+		sequencePoolLog: types.NewRawLoggerFile(logDir+"/sequence-pool"),
+		executorLog:     types.NewRawLoggerFile(logDir+"/executor"),
 	}, nil
-}
-
-func generateLogger(name string) external.Logger {
-	log := logrus.New()
-	writer, err := os.OpenFile(name+".log", os.O_WRONLY|os.O_CREATE, 0755)
-	if err != nil {
-		panic(err)
-	}
-	log.SetLevel(logrus.DebugLevel)
-	log.SetFormatter(&nested.Formatter{NoColors: true})
-	log.SetOutput(io.MultiWriter(writer))
-	return log
 }

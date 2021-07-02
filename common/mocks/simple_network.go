@@ -1,12 +1,14 @@
 package mocks
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
+
 	"github.com/gogo/protobuf/proto"
-	"math/rand"
-	"time"
 )
 
 type SimpleNetwork struct {
@@ -15,8 +17,8 @@ type SimpleNetwork struct {
 	logger   external.Logger
 }
 
-func NewSimpleNetwork(networkC map[uint64]chan *protos.ConsensusMessage, async bool) *SimpleNetwork {
-	return &SimpleNetwork{async: async, networkC: networkC, logger: NewRawLogger()}
+func NewSimpleNetwork(networkC map[uint64]chan *protos.ConsensusMessage, logger external.Logger, async bool) *SimpleNetwork {
+	return &SimpleNetwork{async: async, networkC: networkC, logger: logger}
 }
 
 func (net *SimpleNetwork) BroadcastPCM(message *protos.ConsensusMessage) {
