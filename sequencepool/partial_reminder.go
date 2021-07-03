@@ -228,7 +228,7 @@ func (pr *partialReminder) verify(author uint64, remotePartial *protos.PartialOr
 	}
 
 	// the signature of QC should be valid.
-	if err := crypto.VerifyProofCerts(types.StringToBytes(remotePartial.Digest()), remotePartial.QC, pr.quorum); err != nil {
+	if err := crypto.VerifyProofCerts(types.StringToBytes(remotePartial.PreOrderDigest()), remotePartial.QC, pr.quorum); err != nil {
 		return fmt.Errorf("invalid QC signature: %s", err)
 	}
 

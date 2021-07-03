@@ -19,7 +19,7 @@ type Block struct {
 }
 
 func (block Block) Format() string {
-	return fmt.Sprintf("<digest %s, txCoount %d>", block.CommandD, len(block.TxList))
+	return fmt.Sprintf("[Block: digest %s, txCoount %d, trusted-timestamp %d]", block.CommandD, len(block.TxList), block.Timestamp)
 }
 
 // SortableBlocks is a slice of Block to sort.

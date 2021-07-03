@@ -59,8 +59,8 @@ message PreOrder {
   uint64 Author = 2;
   // Sequence indicates the order of current log.
   uint64 Sequence = 3;
-  // BatchDigest is the digest of tx-batch which is the content of current log.
-  string BatchDigest = 4;
+  // CommandDigest is the digest of command which is the content of current log.
+  string CommandDigest = 4;
   // Timestamp indicates the time when current node generated such a log.
   int64 Timestamp = 5;
 }

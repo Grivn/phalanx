@@ -26,6 +26,7 @@ type collectionRule struct {
 }
 
 func newCollectRule(author uint64, n int, recorder *commandRecorder, logger external.Logger) *collectionRule {
+	logger.Infof("[%d] initiate partial order collector, replica count %d", author, n)
 	return &collectionRule{
 		author:     author,
 		oneCorrect: types.CalculateOneCorrect(n),
@@ -36,14 +37,14 @@ func newCollectRule(author uint64, n int, recorder *commandRecorder, logger exte
 }
 
 func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) {
-	collect.logger.Infof("replica %d collect partial order for replica %d sequence %d digest %s", collect.author, pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
+	collect.logger.Infof("[%d] collect partial order: %s", collect.author, pOrder.Format())
 
 	// find the digest for current command the partial order refers to.
 	commandD := pOrder.CommandDigest()
 
 	// check if current command has been committed or not.
 	if collect.recorder.isCommitted(commandD) {
-		collect.logger.Debugf("replica %d has already committed command %s, ignore it", collect.author, commandD)
+		collect.logger.Debugf("[%d] committed command %s, ignore it", collect.author, commandD)
 		return
 	}
 
@@ -52,7 +53,7 @@ func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) {
 
 	if info.pOrderCount() >= collect.quorum {
 		// for one command, we only need to collect the partial orders from quorum replicas, ignore the redundant partial order.
-		collect.logger.Infof("replica %d has collected partial orders from quorum replicas for command %s, ignore it", collect.author, commandD)
+		collect.logger.Debugf("[%d] command %s in quorum sequenced status, ignore it", collect.author, commandD)
 		return
 	}
 	info.pOrderAppend(pOrder)
@@ -62,11 +63,11 @@ func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) {
 	case collect.oneCorrect:
 		// current command has reached correct sequenced status.
 		collect.recorder.correctStatus(commandD)
-		collect.logger.Infof("replica %d has collected at least one correct partial order for command %s", collect.author, commandD)
+		collect.logger.Infof("[%d] found correct sequenced command %s", collect.author, commandD)
 	case collect.quorum:
 		// current command has reached quorum sequenced status.
 		sort.Sort(info.timestamps)
 		collect.recorder.quorumStatus(commandD)
-		collect.logger.Infof("replica %d has collected quorum partial order for command %s", collect.author, commandD)
+		collect.logger.Infof("[%d] found quorum sequenced command %s", collect.author, commandD)
 	}
 }

@@ -40,6 +40,7 @@ type logManager struct {
 }
 
 func NewLogManager(n int, author uint64, sp internal.SequencePool, sender external.NetworkService, logger external.Logger) *logManager {
+	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
 	subs := make(map[uint64]*subInstance)
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
@@ -87,7 +88,7 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 	mgr.aggMap[pre.Digest] = protos.NewPartialOrder(pre)
 	mgr.aggMap[pre.Digest].QC.Certs[mgr.author] = signature
 
-	mgr.logger.Infof("replica %d generated a pre-order, sequence %d, hash %s", mgr.author, pre.Sequence, pre.Digest)
+	mgr.logger.Infof("[%d] generate pre-order %s", mgr.author, pre.Format())
 
 	cm, err := protos.PackPreOrder(pre)
 	if err != nil {
@@ -103,7 +104,7 @@ func (mgr *logManager) ProcessVote(vote *protos.Vote) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	mgr.logger.Debugf("replica %d received votes for %s from replica %d", mgr.author, vote.Digest, vote.Author)
+	mgr.logger.Debugf("[%d] receive vote %s", mgr.author, vote.Format())
 
 	// check the existence of order message
 	// here, we should make sure that there is a valid pre-order for us which we have ever assigned.
@@ -125,8 +126,7 @@ func (mgr *logManager) ProcessVote(vote *protos.Vote) error {
 
 	// check the quorum size for proof-certs
 	if len(pOrder.QC.Certs) == mgr.quorum {
-		mgr.logger.Debugf("replica %d find quorum votes for pre-log sequence %d hash %s, generate quorum order",
-			mgr.author, pOrder.PreOrder.Sequence, pOrder.PreOrder.Digest)
+		mgr.logger.Debugf("[%d] found quorum votes for pre-order %s, generate quorum order", mgr.author, pOrder.PreOrderDigest())
 		delete(mgr.aggMap, vote.Digest)
 
 		cm, err := protos.PackPartialOrder(pOrder)
@@ -137,7 +137,7 @@ func (mgr *logManager) ProcessVote(vote *protos.Vote) error {
 		return nil
 	}
 
-	mgr.logger.Debugf("replica %d aggregated vote for %s, has %d, need %d", mgr.author, vote.Digest, len(pOrder.QC.Certs), mgr.quorum)
+	mgr.logger.Debugf("[%d] aggregate vote for %s, need %d, has %d", mgr.author, pOrder.PreOrderDigest(), mgr.quorum, len(pOrder.QC.Certs))
 	return nil
 }
 

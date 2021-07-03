@@ -7,5 +7,5 @@ const (
 	DefaultTimeDuration = 2 * time.Millisecond
 
 	// DefaultLogRotation is the default log rotation for proposal generation.
-	DefaultLogRotation int = 10
+	DefaultLogRotation int = 50
 )

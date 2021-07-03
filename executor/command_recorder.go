@@ -1,8 +1,15 @@
 package executor
 
-import "github.com/Grivn/phalanx/common/protos"
+import (
+	"fmt"
+	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/external"
+)
 
 type commandRecorder struct {
+	// author indicates the identifier of current node.
+	author uint64
+
 	// mapRaw is a map for tracking the command content.
 	mapRaw map[string]*protos.Command
 
@@ -20,15 +27,26 @@ type commandRecorder struct {
 
 	// mapCmt is a map for commands which have already been committed.
 	mapCmt map[string]bool
+
+	// todo reduce the check-time for the command pairs with potential natural order, mapPri & mapWat.
+
+	// mapPri the potential priori relation recorder to update the mapWat at the same time the priori command committed.
+	mapPri map[string][]string
+
+	// logger is used to print logs.
+	logger external.Logger
 }
 
-func newCommandRecorder() *commandRecorder {
+func newCommandRecorder(author uint64, logger external.Logger) *commandRecorder {
 	return &commandRecorder{
+		author: author,
 		mapRaw: make(map[string]*protos.Command),
 		mapCmd: make(map[string]*commandInfo),
 		mapCSC: make(map[string]bool),
 		mapQSC: make(map[string]bool),
 		mapCmt: make(map[string]bool),
+		mapPri: make(map[string][]string),
+		logger: logger,
 	}
 }
 
@@ -65,9 +83,11 @@ func (recorder *commandRecorder) readCSCInfos() []*commandInfo {
 }
 
 func (recorder *commandRecorder) readQSCInfos() []*commandInfo {
-	// when we try to read one quorum sequenced command from recorder, we should check the pri-command at first:
-	// 1) remove the committed commands from their pri-command waiting list;
-	// 2) append the command to the returned value, if we do not need to wait for any pri-command commitment.
+	// when we try to read one quorum sequenced command from recorder, we should check the pri-command at first to make
+	// sure there isn't any potential pri-command.
+	//
+	// here, the commands with potential priori are removed from QSC map temporarily, so that the commands in QSC map
+	// always have a nil pri-command list.
 
 	var commandInfos []*commandInfo
 	for digest := range recorder.mapQSC {
@@ -76,17 +96,11 @@ func (recorder *commandRecorder) readQSCInfos() []*commandInfo {
 		}
 
 		qCommandInfo := recorder.readCommandInfo(digest)
-
-		// check if one pri-command has been committed or not.
-		for priDigest := range qCommandInfo.priCmd {
-			if recorder.isCommitted(priDigest) {
-				qCommandInfo.prioriCommit(priDigest)
-			}
-		}
+		commandInfos = append(commandInfos, qCommandInfo)
 
 		// check if all the pri-commands have been committed.
-		if qCommandInfo.prioriFinished() {
-			commandInfos = append(commandInfos, recorder.readCommandInfo(digest))
+		if !qCommandInfo.prioriFinished() {
+			panic(fmt.Sprintf("[%d] unfinished priori command, %s", recorder.author, qCommandInfo.format()))
 		}
 	}
 	return commandInfos
@@ -108,10 +122,39 @@ func (recorder *commandRecorder) committedStatus(commandD string) {
 	delete(recorder.mapQSC, commandD)
 	delete(recorder.mapCmd, commandD)
 	delete(recorder.mapRaw, commandD)
+
+	recorder.prioriCommit(commandD)
 }
 
 //==================================== get command status =============================================
 
 func (recorder *commandRecorder) isCommitted(commandD string) bool {
 	return recorder.mapCmt[commandD]
+}
+
+//=========================== commands with potential byzantine order =================================
+
+func (recorder *commandRecorder) potentialByz(info *commandInfo) {
+	delete(recorder.mapQSC, info.curCmd)
+	for priori  := range info.priCmd {
+		recorder.mapPri[priori] = append(recorder.mapPri[priori], info.curCmd)
+	}
+}
+
+func (recorder *commandRecorder) prioriCommit(commandD string) {
+	afterList, ok := recorder.mapPri[commandD]
+	if !ok {
+		return
+	}
+
+	for _, digest := range afterList {
+		waitingInfo := recorder.readCommandInfo(digest)
+		waitingInfo.prioriCommit(commandD)
+		recorder.logger.Debugf("[%d] %s committed potential pri-command %s", recorder.author, waitingInfo.format(), commandD)
+
+		if waitingInfo.prioriFinished() {
+			recorder.logger.Debugf("[%d] %s finished potential priori", recorder.author, waitingInfo.format())
+			recorder.mapQSC[waitingInfo.curCmd] = true
+		}
+	}
 }
