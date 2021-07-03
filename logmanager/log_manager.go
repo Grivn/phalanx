@@ -13,6 +13,28 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
+// todo for each node, we should make a checkpoint every K interval
+// NOTE: an environment that a client cannot be byzantine
+// 1) current node has finished the checkpoint when we have committed all the previous K commands;
+// 2) all the nodes have finished the checkpoint.
+//
+// for current node checkpoint processor, in local log manager:
+// 1) at first, we should make sure all the K commands reach quorum sequenced status in order rule;
+// 2) second, if one execution need a pri-command and we have never proposed it yet, we should propose such a
+//    command at first;
+//
+// for other nodes checkpoint processor, in remote log manager:
+// 1) record the commands the remote node proposed and the execution status for them;
+// 2) for pre-order exceeding checkpoint, we should cache them temporarily.
+//
+// the checkpoint message:
+// 1) for current node, send checkpoint when it has finished the checkpoint;
+// 2) for cluster, finish the checkpoint when quorum of them have done;
+// 3) for one node, we could continue processing pre-order when cluster has reached checkpoint and the certain node
+//    who send the pre-order has also finished it.
+//
+// perhaps, we could implement a command pool and fetch-missing process.
+
 type logManager struct {
 	// mutex is used to deal with the concurrent problems of log-manager.
 	mutex sync.Mutex
