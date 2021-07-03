@@ -37,6 +37,7 @@ type commitmentRule struct {
 }
 
 func newCommitmentRule(author uint64, n int, recorder *commandRecorder, logger external.Logger) *commitmentRule {
+	logger.Infof("[%d] initiate free will committee, replica count %d", author, n)
 	democracy := make(map[uint64]*btree.BTree)
 	for i:=0; i<n; i++ {
 		democracy[uint64(i+1)] = btree.New(2)
@@ -59,10 +60,12 @@ func (cr *commitmentRule) freeWill(executionInfos []*commandInfo) []types.Block 
 		return nil
 	}
 
-	// free will: init the raw data for democracy committee.
+	// free will: init the democracy committee with raw data.
 	for _, eInfo := range executionInfos {
+		cr.logger.Debugf("[%d] execution info %s", cr.author, eInfo.format())
 		for _, pOrder := range eInfo.pOrders {
 			cr.democracy[pOrder.Author()].ReplaceOrInsert(pOrder)
+			cr.logger.Debugf("[%d]    collected partial order %s", cr.author, pOrder.Format())
 		}
 	}
 
@@ -106,6 +109,7 @@ func (cr *commitmentRule) generateConcurrentC() []string {
 	for digest, count := range counter {
 		if count >= cr.oneCorrect {
 			concurrentC = append(concurrentC, digest)
+			cr.logger.Debugf("[%d] put command %s into concurrent set", cr.author, digest)
 		}
 	}
 
@@ -115,6 +119,7 @@ func (cr *commitmentRule) generateConcurrentC() []string {
 	if len(concurrentC) == 0 {
 		for digest := range counter {
 			concurrentC = append(concurrentC, digest)
+			cr.logger.Debugf("[%d] put command %d into concurrent set", cr.author, digest)
 		}
 	}
 	return concurrentC
@@ -138,7 +143,7 @@ func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.Blo
 			block.TxList = rawCommand.Content
 			block.HashList = rawCommand.HashList
 		}
-		cr.logger.Infof("replica %d generate block: %s", cr.author, block.Format())
+		cr.logger.Infof("[%d] generate block %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.
 		cr.recorder.committedStatus(info.curCmd)

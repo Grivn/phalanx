@@ -59,7 +59,7 @@ func VerifyProofCerts(digest types.Hash, pc *protos.QuorumCert, quorum int) erro
 
 // CheckDigest is used to check the correctness of digest
 func CheckDigest(pre *protos.PreOrder) error {
-	payload, err := proto.Marshal(&protos.PreOrder{Author: pre.Author, Sequence: pre.Sequence, BatchDigest: pre.BatchDigest, Timestamp: pre.Timestamp})
+	payload, err := proto.Marshal(&protos.PreOrder{Author: pre.Author, Sequence: pre.Sequence, CommandDigest: pre.CommandDigest, Timestamp: pre.Timestamp})
 	if err != nil {
 		return err
 	}

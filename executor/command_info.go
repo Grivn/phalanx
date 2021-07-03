@@ -1,6 +1,10 @@
 package executor
 
-import "github.com/Grivn/phalanx/common/protos"
+import (
+	"fmt"
+
+	"github.com/Grivn/phalanx/common/protos"
+)
 
 // sortableTimestamps is a sortable slice for free will trusted timestamp generation.
 type sortableTimestamps []int64
@@ -28,6 +32,10 @@ func newCmdInfo(commandD string) *commandInfo {
 		priCmd:  make(map[string]bool),
 		pOrders: nil,
 	}
+}
+
+func (info *commandInfo) format() string {
+	return fmt.Sprintf("[CommandInfo: command %s, order-count %d]", info.curCmd, len(info.pOrders))
 }
 
 func (info *commandInfo) pOrderAppend(pOrder *protos.PartialOrder) {

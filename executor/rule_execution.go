@@ -29,6 +29,7 @@ type executionRule struct {
 }
 
 func newExecutionRule(author uint64, n int, recorder *commandRecorder, logger external.Logger) *executionRule {
+	logger.Infof("[%d] initiate natural order handler, replica count %d", author, n)
 	return &executionRule{
 		author:     author,
 		n:          n,
@@ -68,15 +69,15 @@ func (er *executionRule) naturalOrder() []*commandInfo {
 func (er *executionRule) priCheck(qInfo *commandInfo, cCommandInfos []*commandInfo) bool {
 	valid := true
 
-	// init democracy btree map
-	filter := make(map[uint64]*btree.BTree)
+	// init partial wills map for each participant.
+	pWills := make(map[uint64]*btree.BTree)
 	for i:=0; i<er.n; i++ {
-		filter[uint64(i+1)] = btree.New(2)
+		pWills[uint64(i+1)] = btree.New(2)
 	}
 
 	// put the partial order into it.
 	for _, pOrder := range qInfo.pOrders {
-		filter[pOrder.Author()].ReplaceOrInsert(pOrder)
+		pWills[pOrder.Author()].ReplaceOrInsert(pOrder)
 	}
 
 	// pri-command rule:
@@ -89,20 +90,20 @@ func (er *executionRule) priCheck(qInfo *commandInfo, cCommandInfos []*commandIn
 	// if the amount of replica with property-priori is no less than f+1, we regard c2 as c1's pri-command.
 	for _, cInfo := range cCommandInfos {
 		for _, pOrder := range cInfo.pOrders {
-			filter[pOrder.Author()].ReplaceOrInsert(pOrder)
+			pWills[pOrder.Author()].ReplaceOrInsert(pOrder)
 		}
 
 		count := 0
-		for _, will := range filter {
-			item := will.Min()
+		for _, pWill := range pWills {
+			item := pWill.Min()
 
 			if item == nil {
 				continue
 			}
 
-			orderWill := item.(*protos.PartialOrder)
+			pOrder := item.(*protos.PartialOrder)
 
-			if orderWill.Digest() == cInfo.curCmd {
+			if pOrder.CommandDigest() == cInfo.curCmd {
 				count++
 			}
 		}
@@ -110,10 +111,11 @@ func (er *executionRule) priCheck(qInfo *commandInfo, cCommandInfos []*commandIn
 		if count >= er.oneCorrect {
 			valid = false
 			qInfo.prioriRecord(cInfo.curCmd)
+			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, cInfo.format(), qInfo.format())
 		}
 
 		for _, pOrder := range cInfo.pOrders {
-			filter[pOrder.Author()].Delete(pOrder)
+			pWills[pOrder.Author()].Delete(pOrder)
 		}
 	}
 

@@ -75,7 +75,7 @@ func (si *subInstance) processPreOrder(pre *protos.PreOrder) error {
 func (si *subInstance) processPartial(pOrder *protos.PartialOrder) error {
 	si.logger.Infof("replica %d received a partial order message", si.author)
 
-	if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.Digest()), pOrder.QC, si.quorum); err != nil {
+	if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, si.quorum); err != nil {
 		return fmt.Errorf("invalid order: %s", err)
 	}
 

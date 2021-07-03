@@ -1,6 +1,7 @@
 package protos
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -36,6 +37,19 @@ func PackPartialOrder(qc *PartialOrder) (*ConsensusMessage, error) {
 	}
 	return NewConsensusMessage(MessageType_QUORUM_CERT, qc.Author(), 0, payload), nil
 }
+
+//=============================== Pre-Order ===============================================
+
+func (m *PreOrder) Format() string {
+	return fmt.Sprintf("[PreOrder: author %d, sequence %d, digest %s, command %s]", m.Author, m.Sequence, m.Digest, m.CommandDigest)
+}
+
+//=============================== Vote ====================================================
+
+func (m *Vote) Format() string {
+	return fmt.Sprintf("[Vote: author %d, vote-digest %s]", m.Author, m.Digest)
+}
+
 //=============================== Partial Order ===============================================
 
 func (m *PartialOrder) Less(item btree.Item) bool {
@@ -47,12 +61,12 @@ func (m *PartialOrder) Author() uint64 {
 	return m.PreOrder.Author
 }
 
-func (m *PartialOrder) Digest() string {
+func (m *PartialOrder) PreOrderDigest() string {
 	return m.PreOrder.Digest
 }
 
 func (m *PartialOrder) CommandDigest() string {
-	return m.PreOrder.BatchDigest
+	return m.PreOrder.CommandDigest
 }
 
 func (m *PartialOrder) Sequence() uint64 {
@@ -61,6 +75,10 @@ func (m *PartialOrder) Sequence() uint64 {
 
 func (m *PartialOrder) Timestamp() int64 {
 	return m.PreOrder.Timestamp
+}
+
+func (m *PartialOrder) Format() string {
+	return fmt.Sprintf("[PartialOrder: author %d, sequence %d, command %s]", m.Author(), m.Sequence(), m.CommandDigest())
 }
 
 //=============================== Partial Order Batch ===============================================
@@ -91,7 +109,7 @@ func NewPartialOrder(pre *PreOrder) *PartialOrder {
 }
 
 func NewPreOrder(author uint64, sequence uint64, command *Command) *PreOrder {
-	return &PreOrder{Author: author, Sequence: sequence, BatchDigest: command.Digest, Timestamp: time.Now().UnixNano()}
+	return &PreOrder{Author: author, Sequence: sequence, CommandDigest: command.Digest, Timestamp: time.Now().UnixNano()}
 }
 
 func NewPartialOrderBatch(author uint64) *PartialOrderBatch {

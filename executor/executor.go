@@ -26,7 +26,7 @@ type executorImpl struct {
 
 // NewExecutor is used to generator an executor for phalanx.
 func NewExecutor(author uint64, n int, exec external.ExecutionService, logger external.Logger) *executorImpl {
-	recorder := newCommandRecorder()
+	recorder := newCommandRecorder(author, logger)
 	return &executorImpl{
 		rules:    newOrderRule(author, n, recorder, logger),
 		recorder: recorder,

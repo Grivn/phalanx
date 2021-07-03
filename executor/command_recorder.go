@@ -1,8 +1,14 @@
 package executor
 
-import "github.com/Grivn/phalanx/common/protos"
+import (
+	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/external"
+)
 
 type commandRecorder struct {
+	// author indicates the identifier of current node.
+	author uint64
+
 	// mapRaw is a map for tracking the command content.
 	mapRaw map[string]*protos.Command
 
@@ -20,15 +26,28 @@ type commandRecorder struct {
 
 	// mapCmt is a map for commands which have already been committed.
 	mapCmt map[string]bool
+
+	// todo reduce the check-time for the command pairs with potential natural order, mapPri & mapWat.
+
+	// mapPri the potential priori relation recorder to update the mapWat at the same time the priori command committed.
+	mapPri map[string]map[string]bool
+
+	// mapWat the commands at the first time reach quorum sequenced status found a potential priori command.
+	mapWat map[string]*commandInfo
+
+	// logger is used to print logs.
+	logger external.Logger
 }
 
-func newCommandRecorder() *commandRecorder {
+func newCommandRecorder(author uint64, logger external.Logger) *commandRecorder {
 	return &commandRecorder{
+		author: author,
 		mapRaw: make(map[string]*protos.Command),
 		mapCmd: make(map[string]*commandInfo),
 		mapCSC: make(map[string]bool),
 		mapQSC: make(map[string]bool),
 		mapCmt: make(map[string]bool),
+		logger: logger,
 	}
 }
 
@@ -76,17 +95,22 @@ func (recorder *commandRecorder) readQSCInfos() []*commandInfo {
 		}
 
 		qCommandInfo := recorder.readCommandInfo(digest)
+		recorder.logger.Infof("[%d] check quorum sequenced info %s", recorder.author, qCommandInfo.format())
 
 		// check if one pri-command has been committed or not.
 		for priDigest := range qCommandInfo.priCmd {
 			if recorder.isCommitted(priDigest) {
+				recorder.logger.Debugf("[%d]    committed priori command %d", recorder.author, priDigest)
 				qCommandInfo.prioriCommit(priDigest)
 			}
 		}
 
 		// check if all the pri-commands have been committed.
 		if qCommandInfo.prioriFinished() {
+			recorder.logger.Debugf("[%d]    finished priori command", recorder.author)
 			commandInfos = append(commandInfos, recorder.readCommandInfo(digest))
+		} else {
+			recorder.logger.Debugf("[%d]    unfinished priori command", recorder.author)
 		}
 	}
 	return commandInfos
