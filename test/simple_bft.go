@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Grivn/phalanx/common/protos"
 	"sync"
+	"time"
 
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/core"
@@ -97,9 +98,22 @@ func (replica *replica) run() {
 }
 
 func (replica *replica) runningProposal() {
+	timerC := make(chan bool)
+	go func() {
+		time.Sleep(500*time.Millisecond)
+		timerC <- true
+	}()
 	for {
 		select {
 		case <-replica.closeC:
+			return
+		case <-timerC:
+			replica.sequence++
+			replica.aggMap[replica.sequence] = 0
+			pBatch := &protos.PartialOrderBatch{}
+			prop := &bftMessage{from: replica.author, to: 0, typ: proposal, sequence: replica.sequence, digest: types.CalculateBatchHash(pBatch), pBatch: pBatch}
+			replica.logger.Infof("[%d] generate proposal sequence %d, hash %s", replica.author, prop.sequence, prop.digest)
+			replica.sendC <- prop
 			return
 		default:
 			prop := replica.propose()

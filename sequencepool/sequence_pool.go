@@ -133,7 +133,7 @@ func (sp *sequencePool) SetStablePartials(pBatch *protos.PartialOrderBatch) erro
 	defer sp.mutex.Unlock()
 
 	if pBatch == nil {
-		sp.logger.Infof("replica %d set stable nil batch, ignore it", sp.author)
+		sp.logger.Infof("[%d] set stable nil batch, ignore it", sp.author)
 		return nil
 	}
 
@@ -141,12 +141,12 @@ func (sp *sequencePool) SetStablePartials(pBatch *protos.PartialOrderBatch) erro
 		// we receive a blank partial batch, which means the priori batch could be trusted,
 		// so we can close the restored status and generate batch according to the priori one.
 		sp.isRestored = false
-		sp.logger.Infof("replica %d set stable a blank partial batch, close restored status", sp.author)
+		sp.logger.Infof("[%d] set stable a blank partial batch, close restored status", sp.author)
 		return nil
 	}
 
 	for _, pOrder := range pBatch.Partials {
-		sp.logger.Debugf("replica %d set stable, replica %d, sequence %d, digest %s", sp.author, pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
+		sp.logger.Debugf("[%d] set stable %s", sp.author, pOrder.Format())
 		if err := sp.reminders[pOrder.Author()].setStablePartial(pOrder); err != nil {
 			return fmt.Errorf("stable partial order failed: %s", err)
 		}
@@ -164,22 +164,22 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 	pBatch := protos.NewPartialOrderBatch(sp.author)
 
 	if sp.isRestored {
-		sp.logger.Infof("replica %d has just restored sequence-pool, generate a blank priori-batch", sp.author)
+		sp.logger.Infof("[%d] just restored sequence-pool, generate a blank priori-batch", sp.author)
 		return pBatch, nil
 	}
 
 	if priori == nil {
-		sp.logger.Debugf("replica %d do not have a priori-batch, trying to generate genesis batch", sp.author)
+		sp.logger.Debugf("[%d] do not have a priori-batch, trying to generate genesis batch", sp.author)
 	} else {
 		if len(priori.Partials) == 0 {
-			sp.logger.Debugf("replica %d have a blank priori-batch, trying to generate self-dependent batch", sp.author)
+			sp.logger.Debugf("[%d] have a blank priori-batch, trying to generate self-dependent batch", sp.author)
 		} else {
 			// initiate the reminder to avoid duplicated partial orders.
 			for id, reminder := range sp.reminders {
 				proposedNo := priori.ProposedNos[id]
 				reminder.pullInitiation(proposedNo)
 				pBatch.ProposedNos[id] = proposedNo
-				sp.logger.Debugf("replica %d initiate reminder status, replica %d, proposedNo %d", sp.author, id, proposedNo)
+				sp.logger.Debugf("[%d] initiate reminder status, replica %d, proposedNo %d", sp.author, id, proposedNo)
 			}
 		}
 	}
@@ -199,6 +199,7 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 				// collect the redundant partial order directly for batch generation.
 				if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
 					pBatch.Append(pOrder)
+					sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
 					continue
 				}
 
@@ -206,6 +207,7 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 				// 1) try to find the command of current partial order in partial batch.
 				if _, ok := pBatch.Commands[pOrder.CommandDigest()]; ok {
 					pBatch.Append(pOrder)
+					sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
 					break
 				}
 				// 2) try to find the command of current partial order in local command reminder.
@@ -215,6 +217,7 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 				} else {
 					pBatch.Commands[pOrder.CommandDigest()] = command
 					pBatch.Append(pOrder)
+					sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
 				}
 				break
 			}
@@ -224,10 +227,6 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 	if len(pBatch.Partials) == 0 {
 		// we cannot find any valid partial order the generate batch, return failure message
 		return nil, errors.New("failed to generate a batch, no valid partial order")
-	}
-
-	for _, pOrder := range pBatch.Partials {
-		sp.logger.Infof("payload generation: replica %d sequence %d digest %s", pOrder.Author(), pOrder.Sequence(), pOrder.CommandDigest())
 	}
 
 	// for replica who has generated a partial batch, which should be a trusted batch for itself,

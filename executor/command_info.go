@@ -24,6 +24,9 @@ type commandInfo struct {
 
 	// timestamps is used to record the timestamp of partial orders.
 	timestamps sortableTimestamps
+
+	// trusted indicates if we have checked the potential priori command for it.
+	trusted bool
 }
 
 func newCmdInfo(commandD string) *commandInfo {
@@ -31,6 +34,7 @@ func newCmdInfo(commandD string) *commandInfo {
 		curCmd:  commandD,
 		priCmd:  make(map[string]bool),
 		pOrders: nil,
+		trusted: false,
 	}
 }
 

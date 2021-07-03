@@ -58,7 +58,13 @@ func (er *executionRule) naturalOrder() []*commandInfo {
 	// check the quorum sequenced command to make sure all the commands in correct sequenced status cannot become
 	// the pri-command of it.
 	for _, qInfo := range qCommandInfos {
+		if qInfo.trusted {
+			// we have selected all the potential priori commands.
+			execution = append(execution, qInfo)
+			continue
+		}
 		if er.priCheck(qInfo, cCommandInfos) {
+			// there isn't any potential priori command.
 			execution = append(execution, qInfo)
 		}
 	}
@@ -117,6 +123,13 @@ func (er *executionRule) priCheck(qInfo *commandInfo, cCommandInfos []*commandIn
 		for _, pOrder := range cInfo.pOrders {
 			pWills[pOrder.Author()].Delete(pOrder)
 		}
+	}
+
+	// we have selected all the potential priori commands.
+	qInfo.trusted = true
+
+	if !valid {
+		er.recorder.potentialByz(qInfo)
 	}
 
 	return valid

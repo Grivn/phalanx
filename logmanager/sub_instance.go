@@ -42,7 +42,7 @@ type subInstance struct {
 }
 
 func newSubInstance(author, id uint64, sp internal.SequencePool, sender external.NetworkService, logger external.Logger) *subInstance {
-	logger.Infof("replica %d init the sub instance of order for replica %d", author, id)
+	logger.Infof("[%d] initiate the sub instance of order for replica %d", author, id)
 	return &subInstance{
 		author:   author,
 		id:       id,
@@ -55,7 +55,7 @@ func newSubInstance(author, id uint64, sp internal.SequencePool, sender external
 }
 
 func (si *subInstance) processPreOrder(pre *protos.PreOrder) error {
-	si.logger.Infof("replica %d received a pre-order message from replica %d, sequence %d, hash %s", si.author, pre.Author, pre.Sequence, pre.Digest)
+	si.logger.Infof("[%d] received a pre-order %s", si.author, pre.Format())
 
 	ev := &event.BtreeEvent{EventType: event.BTreeEventPreOrder, Sequence: pre.Sequence, Digest: pre.Digest, Event: pre}
 
@@ -73,7 +73,7 @@ func (si *subInstance) processPreOrder(pre *protos.PreOrder) error {
 }
 
 func (si *subInstance) processPartial(pOrder *protos.PartialOrder) error {
-	si.logger.Infof("replica %d received a partial order message", si.author)
+	si.logger.Infof("[%d] received a partial order %s", si.author, pOrder.Format())
 
 	if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, si.quorum); err != nil {
 		return fmt.Errorf("invalid order: %s", err)
@@ -95,7 +95,7 @@ func (si *subInstance) processBTree() error {
 	switch ev.EventType {
 	case event.BTreeEventPreOrder:
 		if ev.Sequence != si.sequence {
-			si.logger.Debugf("replica %d needs sequence %d for replica %d", si.author, si.sequence, si.id)
+			si.logger.Debugf("[%d] sub-instance for node %d needs sequence %d", si.author, si.id, si.sequence)
 			return nil
 		}
 
@@ -110,7 +110,7 @@ func (si *subInstance) processBTree() error {
 
 		// generate and send vote to the pre-order author
 		vote := &protos.Vote{Author: si.author, Digest: pre.Digest, Certification: sig}
-		si.logger.Infof("replica %d has voted on sequence %d for replica %d, hash %s", si.author, si.sequence, si.id, vote.Digest)
+		si.logger.Infof("[%d] voted %s for %s", si.author, vote.Format(), pre.Format())
 
 		cm, err := protos.PackVote(vote, pre.Author)
 		if err != nil {
@@ -122,12 +122,12 @@ func (si *subInstance) processBTree() error {
 		return nil
 
 	case event.BTreeEventOrder:
-		si.logger.Infof("replica %d process partial order event", si.author)
+		si.logger.Infof("[%d] process partial order event", si.author)
 
 		pOrder := ev.Event.(*protos.PartialOrder)
 
 		if err := si.sp.InsertPartialOrder(pOrder); err != nil {
-			si.logger.Errorf("insert failed: %s", err)
+			si.logger.Errorf("[%d] insert failed: %s", si.author, err)
 		}
 
 		si.recorder.Delete(ev)

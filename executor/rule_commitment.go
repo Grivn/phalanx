@@ -109,7 +109,7 @@ func (cr *commitmentRule) generateConcurrentC() []string {
 	for digest, count := range counter {
 		if count >= cr.oneCorrect {
 			concurrentC = append(concurrentC, digest)
-			cr.logger.Debugf("[%d] put command %s into concurrent set", cr.author, digest)
+			cr.logger.Debugf("[%d] concurrent command set append %s", cr.author, digest)
 		}
 	}
 
@@ -119,7 +119,7 @@ func (cr *commitmentRule) generateConcurrentC() []string {
 	if len(concurrentC) == 0 {
 		for digest := range counter {
 			concurrentC = append(concurrentC, digest)
-			cr.logger.Debugf("[%d] put command %d into concurrent set", cr.author, digest)
+			cr.logger.Debugf("[%d] concurrent command set append %s", cr.author, digest)
 		}
 	}
 	return concurrentC
