@@ -13,6 +13,7 @@ type moduleLogger struct {
 	logManagerLog   external.Logger
 	sequencePoolLog external.Logger
 	executorLog     external.Logger
+	testLog         external.Logger
 }
 
 func newPLogger(logger external.Logger, divided bool, author uint64) (*moduleLogger, error) {
@@ -22,6 +23,7 @@ func newPLogger(logger external.Logger, divided bool, author uint64) (*moduleLog
 			logManagerLog:   logger,
 			sequencePoolLog: logger,
 			executorLog:     logger,
+			testLog:         logger,
 		}, nil
 	}
 
@@ -37,5 +39,6 @@ func newPLogger(logger external.Logger, divided bool, author uint64) (*moduleLog
 		logManagerLog:   types.NewRawLoggerFile(logDir+"/log-manager"),
 		sequencePoolLog: types.NewRawLoggerFile(logDir+"/sequence-pool"),
 		executorLog:     types.NewRawLoggerFile(logDir+"/executor"),
+		testLog:         types.NewRawLoggerFile(logDir+"/test-client"),
 	}, nil
 }

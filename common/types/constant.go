@@ -8,4 +8,7 @@ const (
 
 	// DefaultLogRotation is the default log rotation for proposal generation.
 	DefaultLogRotation int = 50
+
+	// TestBatchSize is used for phalanx test network
+	TestBatchSize int = 1
 )

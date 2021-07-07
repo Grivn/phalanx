@@ -1,7 +1,6 @@
 package test
 
 import (
-	"math/rand"
 	"os"
 	"strconv"
 	"testing"
@@ -21,6 +20,8 @@ func TestPhalanx(t *testing.T) {
 
 	nc := make(map[uint64]chan *protos.ConsensusMessage)
 
+	cc := make(map[uint64]chan *protos.Command)
+
 	closeC := make(chan bool)
 
 	phx := make(map[uint64]phalanx.Provider)
@@ -28,8 +29,9 @@ func TestPhalanx(t *testing.T) {
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 		nc[id] = make(chan *protos.ConsensusMessage)
+		cc[id] = make(chan *protos.Command)
 	}
-	net := mocks.NewSimpleNetwork(nc, types.NewRawLogger(), async)
+	net := mocks.NewSimpleNetwork(nc, cc, types.NewRawLogger(), async)
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
@@ -40,7 +42,7 @@ func TestPhalanx(t *testing.T) {
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		go phalanxListener(phx[id], nc[id], closeC)
+		go phalanxListener(phx[id], nc[id], cc[id], closeC)
 	}
 
 	replicas := make(map[uint64]*replica)
@@ -56,30 +58,39 @@ func TestPhalanx(t *testing.T) {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	count := 5000
-	for i:=0; i<count; i++ {
-		go commandSender(phx)
+	perCount := 10000
+	clientNum := 4
+	for c:=0; c<clientNum; c++ {
+		for i:=0; i<perCount; i++ {
+			go transactionSender(uint64(c+1), phx)
+			//go commandSender(uint64(c+1), uint64(i+1), phx)
+		}
 	}
 
 	time.Sleep(3000 * time.Second)
 }
 
-func phalanxListener(phx phalanx.Provider, net chan *protos.ConsensusMessage, closeC chan bool) {
+func phalanxListener(phx phalanx.Provider, net chan *protos.ConsensusMessage, cmd chan *protos.Command, closeC chan bool) {
 	for {
 		select {
 		case message := <-net:
 			phx.ProcessConsensusMessage(message)
+		case command := <-cmd:
+			go phx.ProcessCommand(command)
 		case <-closeC:
 			return
 		}
 	}
 }
 
-func commandSender(phx map[uint64]phalanx.Provider) {
-	i := rand.Int()%10
-	time.Sleep(time.Duration(i) * time.Millisecond)
+func transactionSender(sender uint64, phx map[uint64]phalanx.Provider) {
+	tx := types.GenerateRandTransaction(1)
 
-	command := types.GenerateRandCommand(200, 5)
+	go phx[sender].ProcessTransaction(tx)
+}
+
+func commandSender(sender, seqNo uint64, phx map[uint64]phalanx.Provider) {
+	command := types.GenerateRandCommand(sender, seqNo, 1, 1)
 
 	for _, p := range phx {
 		go p.ProcessCommand(command)

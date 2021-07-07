@@ -10,4 +10,10 @@ type NetworkService interface {
 
 	// UnicastPCM is used to send the message to the target node.
 	UnicastPCM(message *protos.ConsensusMessage)
+
+	TestSender
+}
+
+type TestSender interface {
+	BroadcastCommand(command *protos.Command)
 }

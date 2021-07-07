@@ -14,7 +14,7 @@ var size = 100
 
 func BenchmarkNewPhalanxProvider3(b *testing.B) {
 	_ = crypto.SetKeys()
-	command := types.GenerateRandCommand(count, size)
+	command := types.GenerateRandCommand(1, 1, count, size)
 	b.ResetTimer()
 	for i:=0; i<b.N; i++ {
 		_, _ = crypto.PrivSign(types.StringToBytes(command.Digest), 1)
@@ -24,7 +24,7 @@ func BenchmarkNewPhalanxProvider3(b *testing.B) {
 
 func BenchmarkNewPhalanxProvider4(b *testing.B) {
 	_ = crypto.SetKeys()
-	command := types.GenerateRandCommand(count, size)
+	command := types.GenerateRandCommand(1, 1, count, size)
 	sig, _ := crypto.PrivSign(types.StringToBytes(command.Digest), 1)
 	b.ResetTimer()
 	for i:=0; i<b.N; i++ {

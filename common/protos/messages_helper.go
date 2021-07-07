@@ -41,7 +41,11 @@ func PackPartialOrder(qc *PartialOrder) (*ConsensusMessage, error) {
 //=============================== Command ===============================================
 
 func (m *Command) Less(item btree.Item) bool {
-	return m.SeqNo < (item.(*Command)).SeqNo
+	return m.Sequence < (item.(*Command)).Sequence
+}
+
+func (m *Command) Format() string {
+	return fmt.Sprintf("[Command: client %d, sequence %d, digest %s]", m.Author, m.Sequence, m.Digest)
 }
 
 //=============================== Pre-Order ===============================================

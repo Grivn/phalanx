@@ -2,6 +2,7 @@ package logmanager
 
 import (
 	"fmt"
+	"github.com/google/btree"
 	"sync"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -35,8 +36,69 @@ type logManager struct {
 	// sender is used to send consensus message into network.
 	sender external.NetworkService
 
+	// clients is used to track the commands send from them.
+	clients map[uint64]*clientInfo
+
+	//
+	commandC chan *protos.Command
+
+	//
+	closeC chan bool
+
 	// logger is used to print logs.
 	logger external.Logger
+}
+
+type clientInfo struct {
+	// mutex
+	mutex sync.Mutex
+
+	// author
+	author uint64
+
+	// id
+	id uint64
+
+	// proposedNo
+	proposedNo uint64
+
+	// commands
+	commands *btree.BTree
+
+	// commandC
+	commandC chan *protos.Command
+
+	// logger
+	logger external.Logger
+}
+
+func newClient(author, id uint64, commandC chan *protos.Command, logger external.Logger) *clientInfo {
+	logger.Infof("[%d] initiate manager for client %d", author, id)
+	return &clientInfo{author: author, id: id, proposedNo: uint64(0), commands: btree.New(2), commandC: commandC, logger: logger}
+}
+
+func (client *clientInfo) append(command *protos.Command) {
+	client.logger.Debugf("[%d] received command %s", client.author, command.Format())
+	client.commands.ReplaceOrInsert(command)
+}
+
+func (client *clientInfo) minCommand() *protos.Command {
+	item := client.commands.Min()
+	if item == nil {
+		return nil
+	}
+
+	command, ok := item.(*protos.Command)
+	if !ok {
+		return nil
+	}
+
+	if command.Sequence == client.proposedNo+1 {
+		client.commands.Delete(item)
+		client.proposedNo++
+		return command
+	}
+	return nil
 }
 
 func NewLogManager(n int, author uint64, sp internal.SequencePool, sender external.NetworkService, logger external.Logger) *logManager {
@@ -53,6 +115,9 @@ func NewLogManager(n int, author uint64, sp internal.SequencePool, sender extern
 		sequence: uint64(0),
 		aggMap:   make(map[string]*protos.PartialOrder),
 		subs:     subs,
+		clients:  make(map[uint64]*clientInfo),
+		commandC: make(chan *protos.Command),
+		closeC:   make(chan bool),
 		sender:   sender,
 		logger:   logger,
 	}
@@ -62,11 +127,28 @@ func NewLogManager(n int, author uint64, sp internal.SequencePool, sender extern
 //                 Processor for Local Logs
 //===============================================================
 
-// ProcessCommand is used to process command received from clients.
-// We would like to assign a sequence number for such a command and generate a pre-order message.
 func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
+
+	client, ok := mgr.clients[command.Author]
+	if !ok {
+		client = newClient(mgr.author, command.Author, mgr.commandC, mgr.logger)
+		mgr.clients[command.Author] = client
+	}
+	client.append(command)
+
+	return mgr.tryGeneratePreOrder(command.Author)
+}
+
+// generatePreOrder is used to process command received from clients.
+// We would like to assign a sequence number for such a command and generate a pre-order message.
+func (mgr *logManager) tryGeneratePreOrder(id uint64) error {
+	command := mgr.clients[id].minCommand()
+
+	if command == nil {
+		return nil
+	}
 
 	mgr.sequence++
 
@@ -95,7 +177,7 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 		return fmt.Errorf("generate consensus message error: %s", err)
 	}
 	mgr.sender.BroadcastPCM(cm)
-	return nil
+	return mgr.tryGeneratePreOrder(id)
 }
 
 // ProcessVote is used to process the vote message from others.

@@ -14,13 +14,15 @@ import (
 )
 
 // GenerateCommand generates command with given transaction list.
-func GenerateCommand(txs []*protos.Transaction) *protos.Command {
+func GenerateCommand(author uint64, seqNo uint64, txs []*protos.Transaction) *protos.Command {
 	var hashList []string
 	for _, tx := range txs {
 		hashList = append(hashList, tx.Hash)
 	}
 	command := &protos.Command{
-		Content: txs,
+		Author:   author,
+		Sequence: seqNo,
+		Content:  txs,
 		HashList: hashList,
 	}
 	payload, err := proto.Marshal(command)
@@ -31,7 +33,7 @@ func GenerateCommand(txs []*protos.Transaction) *protos.Command {
 	return command
 }
 
-func GenerateRandCommand(count, size int) *protos.Command {
+func GenerateRandCommand(author uint64, seqNo uint64, count, size int) *protos.Command {
 	tList := make([]*protos.Transaction, count)
 	hList := make([]string, count)
 
@@ -42,7 +44,7 @@ func GenerateRandCommand(count, size int) *protos.Command {
 		hList[i] = tx.Hash
 	}
 
-	command := &protos.Command{Content: tList, HashList: hList}
+	command := &protos.Command{Author: author, Sequence: seqNo, Content: tList, HashList: hList}
 	payload, err := proto.Marshal(command)
 	if err != nil {
 		panic(err)

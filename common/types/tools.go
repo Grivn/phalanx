@@ -45,7 +45,7 @@ func NewRawLoggerFile(path string) *logrus.Logger {
 		panic(err)
 	}
 	log.SetLevel(logrus.DebugLevel)
-	//log.SetReportCaller(true)
+	log.SetReportCaller(true)
 	log.SetFormatter(formatter(false))
 	log.SetOutput(io.MultiWriter(writer))
 	return log
