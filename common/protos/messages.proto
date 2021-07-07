@@ -16,12 +16,33 @@ message Transaction {
 
 // Command is the thing we receive from others.
 message Command {
+  uint64 Author = 1;
+  uint64 Sequence = 2;
   // Digest indicates the identifier for current command.
-  string Digest = 1;
+  string Digest = 3;
   // Content indicates the instructions in current command.
-  repeated Transaction Content = 2;
+  repeated Transaction Content = 4;
   // HashList is the list of instructions in current command.
-  repeated string HashList = 3;
+  repeated string HashList = 5;
+}
+
+// PreCommand
+message PreCommand {
+  string Digest = 1;
+  uint64 Author = 2;
+  uint64 SeqNo = 3;
+}
+
+// VoteCommand
+message VoteCommand {
+  uint64 Author = 1;
+  string Digest = 2;
+}
+
+// DecideCommand
+message DecideCommand {
+  PreCommand PreCommand = 1;
+  Command Command = 2;
 }
 
 //======================================================
@@ -30,9 +51,12 @@ message Command {
 
 // MessageType indicates the type of messages.
 enum MessageType {
-  PRE_ORDER = 0;
-  VOTE = 1;
-  QUORUM_CERT = 2;
+  PRE_COMMAND = 0;
+  VOTE_COMMAND = 1;
+  DECIDE_COMMAND = 2;
+  PRE_ORDER = 3;
+  VOTE = 4;
+  QUORUM_CERT = 5;
 }
 
 // ConsensusMessage is the raw consensus messages in real network.

@@ -38,6 +38,12 @@ func PackPartialOrder(qc *PartialOrder) (*ConsensusMessage, error) {
 	return NewConsensusMessage(MessageType_QUORUM_CERT, qc.Author(), 0, payload), nil
 }
 
+//=============================== Command ===============================================
+
+func (m *Command) Less(item btree.Item) bool {
+	return m.SeqNo < (item.(*Command)).SeqNo
+}
+
 //=============================== Pre-Order ===============================================
 
 func (m *PreOrder) Format() string {
