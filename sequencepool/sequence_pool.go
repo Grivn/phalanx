@@ -76,28 +76,7 @@ func (sp *sequencePool) InsertPartialOrder(pOrder *protos.PartialOrder) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
-	if pOrder.Sequence() > sp.readyNo {
-		sp.pointers[pOrder.Sequence()] = append(sp.pointers[pOrder.Sequence()], pOrder.Author())
-
-		for {
-			proposed, ok := sp.pointers[sp.readyNo+1]
-
-			if !ok {
-				// not found pointers on the next No., break.
-				break
-			}
-
-			if len(proposed) < sp.quorum {
-				sp.logger.Debugf("[%d] pending on sequence %d, needs %d, has %d", sp.author, sp.readyNo+1, sp.quorum, len(proposed))
-				break
-			}
-
-			sp.readyNo++
-			sp.logger.Infof("[%d] ready on sequence %d", sp.author, sp.readyNo)
-			delete(sp.pointers, sp.readyNo)
-		}
-	}
-
+	sp.readyPointer(pOrder)
 	return sp.reminders[pOrder.Author()].insertPartial(pOrder)
 }
 
@@ -185,9 +164,34 @@ func (sp *sequencePool) SetStablePartials(pBatch *protos.PartialOrderBatch) erro
 		if err := sp.reminders[pOrder.Author()].setStablePartial(pOrder); err != nil {
 			return fmt.Errorf("stable partial order failed: %s", err)
 		}
+		sp.readyPointer(pOrder)
 	}
 
 	return nil
+}
+
+func (sp *sequencePool) readyPointer(pOrder *protos.PartialOrder) {
+	if pOrder.Sequence() > sp.readyNo {
+		sp.pointers[pOrder.Sequence()] = append(sp.pointers[pOrder.Sequence()], pOrder.Author())
+
+		for {
+			proposed, ok := sp.pointers[sp.readyNo+1]
+
+			if !ok {
+				// not found pointers on the next No., break.
+				break
+			}
+
+			if len(proposed) < sp.quorum {
+				sp.logger.Debugf("[%d] pending on sequence %d, needs %d, has %d", sp.author, sp.readyNo+1, sp.quorum, len(proposed))
+				break
+			}
+
+			sp.readyNo++
+			sp.logger.Infof("[%d] ready on sequence %d", sp.author, sp.readyNo)
+			delete(sp.pointers, sp.readyNo)
+		}
+	}
 }
 
 // PullPartials is used to pull the Partials from b-tree to generate consensus proposal.
