@@ -58,16 +58,28 @@ func TestPhalanx(t *testing.T) {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	perCount := 2000
-	clientNum := 4
-	for c:=0; c<clientNum; c++ {
-		for i:=0; i<perCount; i++ {
-			go transactionSender(uint64(c+1), phx)
-			//go commandSender(uint64(c+1), uint64(i+1), phx)
-		}
-	}
+	num := 2000
+	client := 4
+	transactionSendInstance(num, client, phx)
+	//commandSendInstance(num, client, phx)
 
 	time.Sleep(3000 * time.Second)
+}
+
+func transactionSendInstance(num, client int, phx map[uint64]phalanx.Provider) {
+	for c:=0; c<client; c++ {
+		for i:=0; i<num; i++ {
+			go transactionSender(uint64(c+1), phx)
+		}
+	}
+}
+
+func commandSendInstance(num, client int, phx map[uint64]phalanx.Provider) {
+	for c:=0; c<client; c++ {
+		for i:=0; i<num; i++ {
+			go commandSender(uint64(c+1), uint64(i+1), phx)
+		}
+	}
 }
 
 func phalanxListener(phx phalanx.Provider, net chan *protos.ConsensusMessage, cmd chan *protos.Command, closeC chan bool) {
