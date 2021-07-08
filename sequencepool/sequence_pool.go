@@ -3,6 +3,7 @@ package sequencepool
 import (
 	"errors"
 	"fmt"
+	"github.com/Grivn/phalanx/common/types"
 	"sync"
 	"time"
 
@@ -16,6 +17,9 @@ type sequencePool struct {
 
 	// author indicates the identifier for current participate.
 	author uint64
+
+	// quorum indicates the legal size for bft.
+	quorum int
 
 	// reminders would store the proof for each node.
 	reminders map[uint64]*partialReminder
@@ -35,6 +39,12 @@ type sequencePool struct {
 	// isRestored indicates sequence-pool status, and we won't initiate reminder with priori data if it has been restored.
 	isRestored bool
 
+	//
+	pointers map[uint64][]uint64
+
+	//
+	readyNo uint64
+
 	// logger is used to print logs.
 	logger external.Logger
 }
@@ -48,12 +58,15 @@ func NewSequencePool(author uint64, n int, rotation int, duration time.Duration,
 
 	return &sequencePool{
 		author:     author,
+		quorum:     types.CalculateQuorum(n),
 		reminders:  reminders,
 		commands:   make(map[string]*protos.Command),
 		tracker:    NewCommandTracker(n),
 		rotation:   rotation,
 		duration:   duration,
 		isRestored: false,
+		pointers:   make(map[uint64][]uint64),
+		readyNo:    uint64(0),
 		logger:     logger,
 	}
 }
@@ -62,6 +75,28 @@ func NewSequencePool(author uint64, n int, rotation int, duration time.Duration,
 func (sp *sequencePool) InsertPartialOrder(pOrder *protos.PartialOrder) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
+
+	if pOrder.Sequence() > sp.readyNo {
+		sp.pointers[pOrder.Sequence()] = append(sp.pointers[pOrder.Sequence()], pOrder.Author())
+
+		for {
+			proposed, ok := sp.pointers[sp.readyNo+1]
+
+			if !ok {
+				// not found pointers on the next No., break.
+				break
+			}
+
+			if len(proposed) < sp.quorum {
+				sp.logger.Debugf("[%d] pending on sequence %d, needs %d, has %d", sp.author, sp.readyNo+1, sp.quorum, len(proposed))
+				break
+			}
+
+			sp.readyNo++
+			sp.logger.Infof("[%d] ready on sequence %d", sp.author, sp.readyNo)
+			delete(sp.pointers, sp.readyNo)
+		}
+	}
 
 	return sp.reminders[pOrder.Author()].insertPartial(pOrder)
 }
@@ -163,6 +198,10 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 	defer sp.mutex.Unlock()
 	pBatch := protos.NewPartialOrderBatch(sp.author)
 
+	for _, reminder := range sp.reminders {
+		pBatch.ProposedNos[reminder.id] = reminder.seqNo-1
+	}
+
 	if sp.isRestored {
 		sp.logger.Infof("[%d] just restored sequence-pool, generate a blank priori-batch", sp.author)
 		return pBatch, nil
@@ -192,6 +231,12 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 				// existence of partial order:
 				// cannot find partial order info, continue for next replica's partial order.
 				if pOrder == nil {
+					break
+				}
+
+				if pOrder.Sequence() > sp.readyNo {
+					reminder.backPartial(pOrder)
+					sp.logger.Debugf("[%d] sequence %d not ready", sp.author, pOrder.Sequence())
 					break
 				}
 

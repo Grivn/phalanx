@@ -58,7 +58,7 @@ func TestPhalanx(t *testing.T) {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	perCount := 10000
+	perCount := 2000
 	clientNum := 4
 	for c:=0; c<clientNum; c++ {
 		for i:=0; i<perCount; i++ {
