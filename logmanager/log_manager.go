@@ -65,6 +65,9 @@ type clientInfo struct {
 	// commands
 	commands *btree.BTree
 
+	// receiveC
+	receiveC chan *protos.Command
+
 	// commandC
 	commandC chan *protos.Command
 
@@ -74,12 +77,24 @@ type clientInfo struct {
 
 func newClient(author, id uint64, commandC chan *protos.Command, logger external.Logger) *clientInfo {
 	logger.Infof("[%d] initiate manager for client %d", author, id)
-	return &clientInfo{author: author, id: id, proposedNo: uint64(0), commands: btree.New(2), commandC: commandC, logger: logger}
+	return &clientInfo{author: author, id: id, proposedNo: uint64(0), commands: btree.New(2), receiveC: make(chan *protos.Command, 1000), commandC: commandC, logger: logger}
 }
 
 func (client *clientInfo) append(command *protos.Command) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
 	client.logger.Debugf("[%d] received command %s", client.author, command.Format())
 	client.commands.ReplaceOrInsert(command)
+
+	for {
+		c := client.minCommand()
+
+		if c == nil {
+			break
+		}
+		client.commandC <- c
+	}
 }
 
 func (client *clientInfo) minCommand() *protos.Command {
@@ -123,6 +138,17 @@ func NewLogManager(n int, author uint64, sp internal.SequencePool, sender extern
 	}
 }
 
+func (mgr *logManager) Run() {
+	for {
+		select {
+		case <-mgr.closeC:
+			return
+		case c := <-mgr.commandC:
+			_ = mgr.tryGeneratePreOrder(c)
+		}
+	}
+}
+
 //===============================================================
 //                 Processor for Local Logs
 //===============================================================
@@ -136,19 +162,17 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 		client = newClient(mgr.author, command.Author, mgr.commandC, mgr.logger)
 		mgr.clients[command.Author] = client
 	}
-	client.append(command)
 
-	return mgr.tryGeneratePreOrder(command.Author)
+	go client.append(command)
+
+	return nil
 }
 
 // generatePreOrder is used to process command received from clients.
 // We would like to assign a sequence number for such a command and generate a pre-order message.
-func (mgr *logManager) tryGeneratePreOrder(id uint64) error {
-	command := mgr.clients[id].minCommand()
-
-	if command == nil {
-		return nil
-	}
+func (mgr *logManager) tryGeneratePreOrder(command *protos.Command) error {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
 
 	mgr.sequence++
 
@@ -177,7 +201,7 @@ func (mgr *logManager) tryGeneratePreOrder(id uint64) error {
 		return fmt.Errorf("generate consensus message error: %s", err)
 	}
 	mgr.sender.BroadcastPCM(cm)
-	return mgr.tryGeneratePreOrder(id)
+	return nil
 }
 
 // ProcessVote is used to process the vote message from others.

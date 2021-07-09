@@ -11,6 +11,9 @@ type executorImpl struct {
 	// mutex is used to deal with the concurrent problems of executor.
 	mutex sync.Mutex
 
+	// author indicates the identifier of current node.
+	author uint64
+
 	// seqNo is used to track the sequence number for blocks.
 	seqNo uint64
 
@@ -28,6 +31,7 @@ type executorImpl struct {
 func NewExecutor(author uint64, n int, exec external.ExecutionService, logger external.Logger) *executorImpl {
 	recorder := newCommandRecorder(author, logger)
 	return &executorImpl{
+		author:   author,
 		rules:    newOrderRule(author, n, recorder, logger),
 		recorder: recorder,
 		exec:     exec,

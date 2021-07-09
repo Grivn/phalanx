@@ -44,6 +44,8 @@ func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, 
 	// initiate executor.
 	exe := executor.NewExecutor(author, n, exec, mLogs.executorLog)
 
+	go mgr.Run()
+
 	return &phalanxImpl{
 		logManager:   mgr,
 		sequencePool: seq,

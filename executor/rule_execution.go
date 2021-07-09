@@ -109,12 +109,12 @@ func (er *executionRule) priCheck(qInfo *commandInfo, cCommandInfos []*commandIn
 
 			pOrder := item.(*protos.PartialOrder)
 
-			if pOrder.CommandDigest() == cInfo.curCmd {
+			if pOrder.CommandDigest() == qInfo.curCmd {
 				count++
 			}
 		}
 
-		if count >= er.oneCorrect {
+		if count < er.oneCorrect {
 			valid = false
 			qInfo.prioriRecord(cInfo.curCmd)
 			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, cInfo.format(), qInfo.format())

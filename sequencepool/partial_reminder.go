@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 
@@ -228,9 +227,9 @@ func (pr *partialReminder) verify(author uint64, remotePartial *protos.PartialOr
 	}
 
 	// the signature of QC should be valid.
-	if err := crypto.VerifyProofCerts(types.StringToBytes(remotePartial.PreOrderDigest()), remotePartial.QC, pr.quorum); err != nil {
-		return fmt.Errorf("invalid QC signature: %s", err)
-	}
+	//if err := crypto.VerifyProofCerts(types.StringToBytes(remotePartial.PreOrderDigest()), remotePartial.QC, pr.quorum); err != nil {
+	//	return fmt.Errorf("invalid QC signature: %s", err)
+	//}
 
 	return nil
 }

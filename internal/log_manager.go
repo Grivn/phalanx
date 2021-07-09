@@ -3,6 +3,8 @@ package internal
 import "github.com/Grivn/phalanx/common/protos"
 
 type LogManager interface {
+	Run()
+
 	LocalLog
 	RemoteLog
 }

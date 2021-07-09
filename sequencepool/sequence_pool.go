@@ -164,7 +164,7 @@ func (sp *sequencePool) SetStablePartials(pBatch *protos.PartialOrderBatch) erro
 		if err := sp.reminders[pOrder.Author()].setStablePartial(pOrder); err != nil {
 			return fmt.Errorf("stable partial order failed: %s", err)
 		}
-		sp.readyPointer(pOrder)
+		//sp.readyPointer(pOrder)
 	}
 
 	return nil
@@ -211,15 +211,21 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 		return pBatch, nil
 	}
 
+	initID := uint64(1)
 	if priori == nil {
 		sp.logger.Debugf("[%d] do not have a priori-batch, trying to generate genesis batch", sp.author)
 	} else {
 		if len(priori.Partials) == 0 {
 			sp.logger.Debugf("[%d] have a blank priori-batch, trying to generate self-dependent batch", sp.author)
 		} else {
+			minNo := priori.ProposedNos[initID]
 			// initiate the reminder to avoid duplicated partial orders.
 			for id, reminder := range sp.reminders {
 				proposedNo := priori.ProposedNos[id]
+				if proposedNo < minNo {
+					minNo = proposedNo
+					initID = id
+				}
 				reminder.pullInitiation(proposedNo)
 				pBatch.ProposedNos[id] = proposedNo
 				sp.logger.Debugf("[%d] initiate reminder status, replica %d, proposedNo %d", sp.author, id, proposedNo)
@@ -228,6 +234,7 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 	}
 
 	for i:=0; i<sp.rotation; i++ {
+		success := false
 		for _, reminder := range sp.reminders {
 			for {
 				pOrder := reminder.pullPartial()
@@ -247,6 +254,7 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 				// redundancy of partial order:
 				// collect the redundant partial order directly for batch generation.
 				if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
+					success = true
 					pBatch.Append(pOrder)
 					sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
 					continue
@@ -255,6 +263,7 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 				// existence of command:
 				// 1) try to find the command of current partial order in partial batch.
 				if _, ok := pBatch.Commands[pOrder.CommandDigest()]; ok {
+					success = true
 					pBatch.Append(pOrder)
 					sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
 					break
@@ -265,11 +274,15 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 					reminder.backPartial(pOrder)
 				} else {
 					pBatch.Commands[pOrder.CommandDigest()] = command
+					success = true
 					pBatch.Append(pOrder)
 					sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
 				}
 				break
 			}
+		}
+		if !success {
+			break
 		}
 	}
 

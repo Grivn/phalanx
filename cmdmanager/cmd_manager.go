@@ -38,7 +38,7 @@ func (cmd *cmdManager) ProcessTransaction(tx *protos.Transaction) {
 	if len(cmd.txSet) == cmd.commandSize {
 		cmd.seqNo++
 		command := types.GenerateCommand(cmd.author, cmd.seqNo, cmd.txSet)
-		//command := types.GenerateCommand(cmd.author, (cmd.seqNo-1)*4+cmd.interval, cmd.txSet)
+		//command := types.GenerateCommand(uint64(1), (cmd.seqNo-1)*4+cmd.interval, cmd.txSet)
 		cmd.sender.BroadcastCommand(command)
 		cmd.logger.Infof("[%d] generate command %s", cmd.author, command.Format())
 		cmd.txSet = nil
