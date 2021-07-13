@@ -43,6 +43,10 @@ func (ei *executorImpl) CommitPartials(pBatch *protos.PartialOrderBatch) error {
 	ei.mutex.Lock()
 	defer ei.mutex.Unlock()
 
+	//if ei.author != uint64(1) {
+	//	return nil
+	//}
+
 	if pBatch == nil {
 		// nil partial order batch means we should skip the current commitment attempt.
 		return nil

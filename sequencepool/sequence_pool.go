@@ -253,12 +253,12 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 
 				// redundancy of partial order:
 				// collect the redundant partial order directly for batch generation.
-				if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
-					success = true
-					pBatch.Append(pOrder)
-					sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
-					continue
-				}
+				//if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
+				//	success = true
+				//	pBatch.Append(pOrder)
+				//	sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
+				//	continue
+				//}
 
 				// existence of command:
 				// 1) try to find the command of current partial order in partial batch.

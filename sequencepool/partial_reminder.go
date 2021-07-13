@@ -223,7 +223,7 @@ func (pr *partialReminder) verify(author uint64, remotePartial *protos.PartialOr
 
 	// the No of remotePartial should be sequentially increased.
 	if pr.proposedNo[remotePartial.Sequence()] {
-		return fmt.Errorf("proposed seqNo: reminder-ID %d, received seqNo %d", pr.id, remotePartial.Sequence())
+		//return fmt.Errorf("proposed seqNo: reminder-ID %d, received seqNo %d", pr.id, remotePartial.Sequence())
 	}
 
 	// the signature of QC should be valid.

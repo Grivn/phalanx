@@ -58,25 +58,27 @@ func TestPhalanx(t *testing.T) {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	num := 10000
+	num := 1000
 	client := n
-	transactionSendInstance(num, client, phx)
-	//commandSendInstance(num, client, phx)
+	//transactionSendInstance(num, client, phx)
+	commandSendInstance(num, client, phx)
 
 	time.Sleep(3000 * time.Second)
 }
 
 func transactionSendInstance(num, client int, phx map[uint64]phalanx.Provider) {
-	for c:=0; c<client; c++ {
-		for i:=0; i<num; i++ {
+	for i:=0; i<num; i++ {
+		time.Sleep(2*time.Microsecond)
+		for c:=0; c<client; c++ {
 			go transactionSender(uint64(c+1), phx)
 		}
 	}
 }
 
 func commandSendInstance(num, client int, phx map[uint64]phalanx.Provider) {
-	for c:=0; c<client; c++ {
-		for i:=0; i<num; i++ {
+	for i:=0; i<num; i++ {
+		time.Sleep(2*time.Microsecond)
+		for c:=0; c<client; c++ {
 			go commandSender(uint64(c+1), uint64(i+1), phx)
 		}
 	}
@@ -102,7 +104,6 @@ func transactionSender(sender uint64, phx map[uint64]phalanx.Provider) {
 }
 
 func commandSender(sender, seqNo uint64, phx map[uint64]phalanx.Provider) {
-	time.Sleep(200*time.Microsecond)
 	command := types.GenerateRandCommand(sender, seqNo, 1, 1)
 
 	for _, p := range phx {
