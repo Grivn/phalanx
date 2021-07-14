@@ -94,17 +94,14 @@ func (er *executionRule) priorityCheck(qInfo *commandInfo, checkInfos []*command
 		}
 
 		if count < er.oneCorrect {
-			if er.recorder.isLeaf(qInfo.curCmd) {
+			helper := newScanner(er.recorder, checkInfo, qInfo.curCmd)
+			if helper.scan() {
 				er.logger.Debugf("[%d] priority command depend on self %s", er.author, qInfo.format())
 				continue
 			}
 
 			qInfo.prioriRecord(checkInfo)
 			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, checkInfo.format(), qInfo.format())
-
-			if checkInfo.pOrderCount() < er.quorum {
-				er.recorder.recordLeaf(checkInfo.curCmd)
-			}
 		}
 	}
 	// we have selected all the potential priori commands.
@@ -112,7 +109,6 @@ func (er *executionRule) priorityCheck(qInfo *commandInfo, checkInfos []*command
 
 	if len(qInfo.priCmd) > 0 {
 		er.recorder.potentialByz(qInfo)
-		er.recorder.removeLeaf(qInfo.curCmd)
 		return false
 	}
 

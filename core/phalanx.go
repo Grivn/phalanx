@@ -42,7 +42,7 @@ func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, 
 	mgr := logmanager.NewLogManager(n, author, seq, network, mLogs.logManagerLog)
 
 	// initiate executor.
-	exe := executor.NewExecutor(author, n, exec, mLogs.executorLog)
+	exe := executor.NewExecutor(author, n, mgr, exec, mLogs.executorLog)
 
 	go mgr.Run()
 
@@ -50,7 +50,7 @@ func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, 
 		logManager:   mgr,
 		sequencePool: seq,
 		executor:     exe,
-		cmdManager:   cmdmanager.NewTestReceiver(author, types.TestBatchSize, network, mLogs.testLog),
+		cmdManager:   cmdmanager.NewTestReceiver(n, author, types.TestBatchSize, network, mLogs.testLog),
 		logger:       logger,
 	}
 }

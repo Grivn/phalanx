@@ -1,7 +1,6 @@
 package sequencepool
 
 import (
-	"errors"
 	"fmt"
 	"github.com/Grivn/phalanx/common/types"
 	"sync"
@@ -40,7 +39,7 @@ type sequencePool struct {
 	isRestored bool
 
 	//
-	pointers map[uint64][]uint64
+	pointers map[uint64]int
 
 	//
 	readyNo uint64
@@ -65,7 +64,7 @@ func NewSequencePool(author uint64, n int, rotation int, duration time.Duration,
 		rotation:   rotation,
 		duration:   duration,
 		isRestored: false,
-		pointers:   make(map[uint64][]uint64),
+		pointers:   make(map[uint64]int),
 		readyNo:    uint64(0),
 		logger:     logger,
 	}
@@ -76,6 +75,7 @@ func (sp *sequencePool) InsertPartialOrder(pOrder *protos.PartialOrder) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
+	sp.logger.Infof("[%d] insert partial order %s", sp.author, pOrder.Format())
 	sp.readyPointer(pOrder)
 	return sp.reminders[pOrder.Author()].insertPartial(pOrder)
 }
@@ -172,18 +172,12 @@ func (sp *sequencePool) SetStablePartials(pBatch *protos.PartialOrderBatch) erro
 
 func (sp *sequencePool) readyPointer(pOrder *protos.PartialOrder) {
 	if pOrder.Sequence() > sp.readyNo {
-		sp.pointers[pOrder.Sequence()] = append(sp.pointers[pOrder.Sequence()], pOrder.Author())
+		sp.pointers[pOrder.Sequence()]++
 
 		for {
-			proposed, ok := sp.pointers[sp.readyNo+1]
-
-			if !ok {
-				// not found pointers on the next No., break.
-				break
-			}
-
-			if len(proposed) < sp.quorum {
-				sp.logger.Debugf("[%d] pending on sequence %d, needs %d, has %d", sp.author, sp.readyNo+1, sp.quorum, len(proposed))
+			seqNp := sp.pointers[sp.readyNo+1]
+			if seqNp < sp.quorum {
+				sp.logger.Debugf("[%d] pending on sequence %d, needs %d, has %d", sp.author, sp.readyNo+1, sp.quorum, seqNp)
 				break
 			}
 
@@ -196,8 +190,6 @@ func (sp *sequencePool) readyPointer(pOrder *protos.PartialOrder) {
 
 // PullPartials is used to pull the Partials from b-tree to generate consensus proposal.
 func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.PartialOrderBatch, error) {
-	time.Sleep(sp.duration)
-
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 	pBatch := protos.NewPartialOrderBatch(sp.author)
@@ -286,10 +278,10 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 		}
 	}
 
-	if len(pBatch.Partials) == 0 {
-		// we cannot find any valid partial order the generate batch, return failure message
-		return nil, errors.New("failed to generate a batch, no valid partial order")
-	}
+	//if len(pBatch.Partials) == 0 {
+	//	// we cannot find any valid partial order the generate batch, return failure message
+	//	return nil, errors.New("failed to generate a batch, no valid partial order")
+	//}
 
 	// for replica who has generated a partial batch, which should be a trusted batch for itself,
 	// before next phalanx-restoring, current node could find a trusted priori-batch,

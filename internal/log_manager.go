@@ -4,7 +4,7 @@ import "github.com/Grivn/phalanx/common/protos"
 
 type LogManager interface {
 	Run()
-
+	Committed(author uint64, seqNo uint64)
 	LocalLog
 	RemoteLog
 }

@@ -140,6 +140,8 @@ func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.Blo
 		// try to fetch the raw command to fulfill the block.
 		rawCommand := cr.recorder.readCommandRaw(info.curCmd)
 		if rawCommand != nil {
+			block.Author = rawCommand.Author
+			block.CmdSeq = rawCommand.Sequence
 			block.TxList = rawCommand.Content
 			block.HashList = rawCommand.HashList
 		}

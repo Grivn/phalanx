@@ -57,6 +57,11 @@ func newSubInstance(author, id uint64, sp internal.SequencePool, sender external
 func (si *subInstance) processPreOrder(pre *protos.PreOrder) error {
 	si.logger.Infof("[%d] received a pre-order %s", si.author, pre.Format())
 
+	if si.sequence > pre.Sequence {
+		si.logger.Errorf("[%d] already voted on %d for replica %d", si.author, pre.Sequence, si.id)
+		return nil
+	}
+
 	ev := &event.BtreeEvent{EventType: event.BTreeEventPreOrder, Sequence: pre.Sequence, Digest: pre.Digest, Event: pre}
 
 	if si.recorder.Has(ev) {
@@ -80,7 +85,11 @@ func (si *subInstance) processPartial(pOrder *protos.PartialOrder) error {
 	}
 
 	ev := &event.BtreeEvent{EventType: event.BTreeEventOrder, Sequence: pOrder.PreOrder.Sequence, Digest: pOrder.PreOrder.Digest, Event: pOrder}
-	si.recorder.ReplaceOrInsert(ev)
+	item := si.recorder.ReplaceOrInsert(ev)
+	if item != nil {
+		ev := item.(*event.BtreeEvent)
+		si.logger.Infof("%v", ev)
+	}
 
 	return si.processBTree()
 }
@@ -117,8 +126,6 @@ func (si *subInstance) processBTree() error {
 			return fmt.Errorf("generate consensus message error: %s", err)
 		}
 		si.sender.UnicastPCM(cm)
-
-		si.sequence++
 		return nil
 
 	case event.BTreeEventOrder:
@@ -131,6 +138,7 @@ func (si *subInstance) processBTree() error {
 		}
 
 		si.recorder.Delete(ev)
+		si.sequence++
 
 		if err := si.processBTree(); err != nil {
 			return err

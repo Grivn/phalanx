@@ -58,10 +58,10 @@ func TestPhalanx(t *testing.T) {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	num := 1000
-	client := n
-	//transactionSendInstance(num, client, phx)
-	commandSendInstance(num, client, phx)
+	num := 100
+	client := 128
+	transactionSendInstance(num, client, phx)
+	//commandSendInstance(num, client, phx)
 
 	time.Sleep(3000 * time.Second)
 }

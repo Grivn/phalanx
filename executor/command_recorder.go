@@ -3,7 +3,6 @@ package executor
 import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
-	"sync"
 )
 
 type commandRecorder struct {
@@ -40,8 +39,11 @@ type commandRecorder struct {
 
 	// logger is used to print logs.
 	logger external.Logger
+}
 
-	wg sync.WaitGroup
+type forestGroup struct {
+	components map[string]bool
+	leaves     map[string]bool
 }
 
 func newCommandRecorder(author uint64, logger external.Logger) *commandRecorder {
@@ -186,7 +188,6 @@ func (recorder *commandRecorder) prioriCommit(commandD string) {
 			recorder.logger.Debugf("[%d] %s finished potential priori", recorder.author, waitingInfo.format())
 			recorder.mapQSC[waitingInfo.curCmd] = true
 			delete(recorder.mapWat, waitingInfo.curCmd)
-			recorder.recordLeaf(waitingInfo.curCmd)
 		}
 	}
 }
@@ -213,12 +214,19 @@ func (scanner *scanner) scan() bool {
 }
 
 func (scanner *scanner) selfDependency(priInfo *commandInfo) {
-	if priInfo == nil {
+	if scanner.sDependent == true {
 		return
 	}
-	for digest := range priInfo.priCmd {
-		if digest == scanner.sDigest {
+
+	if !scanner.recorder.mapWat[priInfo.curCmd] {
+		if priInfo.curCmd == scanner.sDigest {
 			scanner.sDependent = true
+		}
+		return
+	}
+
+	for digest := range priInfo.priCmd {
+		if scanner.sDependent == true {
 			return
 		}
 		scanner.selfDependency(scanner.recorder.readCommandInfo(digest))
@@ -227,14 +235,23 @@ func (scanner *scanner) selfDependency(priInfo *commandInfo) {
 
 //===================================================================
 
-func (recorder *commandRecorder) isLeaf(commandD string) bool {
-	return recorder.mapLeaf[commandD]
-}
-
-func (recorder *commandRecorder) recordLeaf(commandD string) {
-	recorder.mapLeaf[commandD] = true
-}
-
-func (recorder *commandRecorder) removeLeaf(commandD string) {
-	delete(recorder.mapLeaf, commandD)
-}
+//func (recorder *commandRecorder) isLeaf(commandD string) bool {
+//	return recorder.mapLeaf[commandD]
+//}
+//
+//func (recorder *commandRecorder) recordLeaf(commandD string) {
+//	recorder.mapLeaf[commandD] = true
+//}
+//
+//func (recorder *commandRecorder) removeLeaf(commandD string) {
+//	delete(recorder.mapLeaf, commandD)
+//}
+//
+//func (recorder *commandRecorder) getForest(digest string) *forestGroup {
+//	forest, ok := recorder.mapNode[digest]
+//	if !ok {
+//		forest = &forestGroup{components: make(map[string]bool), leaves: make(map[string]bool)}
+//		recorder.mapNode[digest] = forest
+//	}
+//	return forest
+//}

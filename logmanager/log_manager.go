@@ -2,7 +2,6 @@ package logmanager
 
 import (
 	"fmt"
-	"github.com/google/btree"
 	"sync"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -37,7 +36,7 @@ type logManager struct {
 	sender external.NetworkService
 
 	// clients is used to track the commands send from them.
-	clients map[uint64]*clientInfo
+	clients map[uint64]*clientInstance
 
 	//
 	commandC chan *protos.Command
@@ -47,73 +46,6 @@ type logManager struct {
 
 	// logger is used to print logs.
 	logger external.Logger
-}
-
-type clientInfo struct {
-	// mutex
-	mutex sync.Mutex
-
-	// author
-	author uint64
-
-	// id
-	id uint64
-
-	// proposedNo
-	proposedNo uint64
-
-	// commands
-	commands *btree.BTree
-
-	// receiveC
-	receiveC chan *protos.Command
-
-	// commandC
-	commandC chan *protos.Command
-
-	// logger
-	logger external.Logger
-}
-
-func newClient(author, id uint64, commandC chan *protos.Command, logger external.Logger) *clientInfo {
-	logger.Infof("[%d] initiate manager for client %d", author, id)
-	return &clientInfo{author: author, id: id, proposedNo: uint64(0), commands: btree.New(2), receiveC: make(chan *protos.Command, 1000), commandC: commandC, logger: logger}
-}
-
-func (client *clientInfo) append(command *protos.Command) {
-	client.mutex.Lock()
-	defer client.mutex.Unlock()
-
-	client.logger.Debugf("[%d] received command %s", client.author, command.Format())
-	client.commands.ReplaceOrInsert(command)
-
-	for {
-		c := client.minCommand()
-
-		if c == nil {
-			break
-		}
-		client.commandC <- c
-	}
-}
-
-func (client *clientInfo) minCommand() *protos.Command {
-	item := client.commands.Min()
-	if item == nil {
-		return nil
-	}
-
-	command, ok := item.(*protos.Command)
-	if !ok {
-		return nil
-	}
-
-	if command.Sequence == client.proposedNo+1 {
-		client.commands.Delete(item)
-		client.proposedNo++
-		return command
-	}
-	return nil
 }
 
 func NewLogManager(n int, author uint64, sp internal.SequencePool, sender external.NetworkService, logger external.Logger) *logManager {
@@ -130,7 +62,7 @@ func NewLogManager(n int, author uint64, sp internal.SequencePool, sender extern
 		sequence: uint64(0),
 		aggMap:   make(map[string]*protos.PartialOrder),
 		subs:     subs,
-		clients:  make(map[uint64]*clientInfo),
+		clients:  make(map[uint64]*clientInstance),
 		commandC: make(chan *protos.Command),
 		closeC:   make(chan bool),
 		sender:   sender,
@@ -147,6 +79,13 @@ func (mgr *logManager) Run() {
 			_ = mgr.tryGeneratePreOrder(c)
 		}
 	}
+}
+
+func (mgr *logManager) Committed(author uint64, seqNo uint64) {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	go mgr.clients[author].commit(seqNo)
 }
 
 //===============================================================
