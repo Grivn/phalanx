@@ -1,6 +1,8 @@
 package phalanx
 
 import (
+	"github.com/Grivn/phalanx/cmdmanager"
+	"github.com/Grivn/phalanx/common/types"
 	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -18,6 +20,7 @@ type phalanxImpl struct {
 	logManager   internal.LogManager
 	executor     internal.Executor
 	sequencePool internal.SequencePool
+	cmdManager   internal.TestReceiver
 	logger       external.Logger
 }
 
@@ -39,14 +42,21 @@ func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, 
 	mgr := logmanager.NewLogManager(n, author, seq, network, mLogs.logManagerLog)
 
 	// initiate executor.
-	exe := executor.NewExecutor(author, n, exec, mLogs.executorLog)
+	exe := executor.NewExecutor(author, n, mgr, exec, mLogs.executorLog)
+
+	go mgr.Run()
 
 	return &phalanxImpl{
 		logManager:   mgr,
 		sequencePool: seq,
 		executor:     exe,
+		cmdManager:   cmdmanager.NewTestReceiver(n, author, types.TestBatchSize, network, mLogs.testLog),
 		logger:       logger,
 	}
+}
+
+func (phi *phalanxImpl) ProcessTransaction(tx *protos.Transaction) {
+	phi.cmdManager.ProcessTransaction(tx)
 }
 
 // ProcessCommand is used to process the commands from clients.

@@ -6,12 +6,19 @@ func NewMockMinimalNetworkService(ctrl *gomock.Controller) *MockNetworkService {
 	mock := NewMockNetworkService(ctrl)
 	mock.EXPECT().BroadcastPCM(gomock.Any()).AnyTimes()
 	mock.EXPECT().UnicastPCM(gomock.Any()).AnyTimes()
+	mock.EXPECT().BroadcastCommand(gomock.Any()).AnyTimes()
 	return mock
 }
 
 func NewMockMinimalExecutionService(ctrl *gomock.Controller) *MockExecutionService {
 	mock := NewMockExecutionService(ctrl)
 	mock.EXPECT().CommandExecution(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	return mock
+}
+
+func NewMockMinimalTestSender(ctrl *gomock.Controller) *MockTestSender {
+	mock := NewMockTestSender(ctrl)
+	mock.EXPECT().BroadcastCommand(gomock.Any()).AnyTimes()
 	return mock
 }
 

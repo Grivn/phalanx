@@ -25,11 +25,20 @@ func (rule *orderRule) processPartialOrder(pOrder *protos.PartialOrder) []types.
 	// order rule 1: collection rule, collect the partial order.
 	rule.collect.collectPartials(pOrder)
 
-	// order rule 2: execution rule, select commands to execute with natural order.
-	executionList := rule.execute.naturalOrder()
+	var blocks []types.Block
+	for {
+		// order rule 2: execution rule, select commands to execute with natural order.
+		executionList := rule.execute.naturalOrder()
 
-	// order rule 3: commitment rule, generate ordered blocks with free will.
-	blocks := rule.commit.freeWill(executionList)
+		if len(executionList) == 0 {
+			// there isn't an executable sequenced command.
+			break
+		}
+
+		// order rule 3: commitment rule, generate ordered blocks with free will.
+		blocks = append(blocks, rule.commit.freeWill(executionList)...)
+	}
+
 
 	return blocks
 }

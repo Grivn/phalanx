@@ -35,6 +35,15 @@ type logManager struct {
 	// sender is used to send consensus message into network.
 	sender external.NetworkService
 
+	// clients is used to track the commands send from them.
+	clients map[uint64]*clientInstance
+
+	//
+	commandC chan *protos.Command
+
+	//
+	closeC chan bool
+
 	// logger is used to print logs.
 	logger external.Logger
 }
@@ -53,18 +62,54 @@ func NewLogManager(n int, author uint64, sp internal.SequencePool, sender extern
 		sequence: uint64(0),
 		aggMap:   make(map[string]*protos.PartialOrder),
 		subs:     subs,
+		clients:  make(map[uint64]*clientInstance),
+		commandC: make(chan *protos.Command),
+		closeC:   make(chan bool),
 		sender:   sender,
 		logger:   logger,
 	}
+}
+
+func (mgr *logManager) Run() {
+	for {
+		select {
+		case <-mgr.closeC:
+			return
+		case c := <-mgr.commandC:
+			_ = mgr.tryGeneratePreOrder(c)
+		}
+	}
+}
+
+func (mgr *logManager) Committed(author uint64, seqNo uint64) {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	go mgr.clients[author].commit(seqNo)
 }
 
 //===============================================================
 //                 Processor for Local Logs
 //===============================================================
 
-// ProcessCommand is used to process command received from clients.
-// We would like to assign a sequence number for such a command and generate a pre-order message.
 func (mgr *logManager) ProcessCommand(command *protos.Command) error {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	client, ok := mgr.clients[command.Author]
+	if !ok {
+		client = newClient(mgr.author, command.Author, mgr.commandC, mgr.logger)
+		mgr.clients[command.Author] = client
+	}
+
+	go client.append(command)
+
+	return nil
+}
+
+// generatePreOrder is used to process command received from clients.
+// We would like to assign a sequence number for such a command and generate a pre-order message.
+func (mgr *logManager) tryGeneratePreOrder(command *protos.Command) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 

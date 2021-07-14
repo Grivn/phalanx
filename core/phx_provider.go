@@ -8,6 +8,11 @@ type Provider interface {
 	Generator
 	Validator
 	Executor
+	TestReceiver
+}
+
+type TestReceiver interface {
+	ProcessTransaction(tx *protos.Transaction)
 }
 
 // Communicator is used to process messages from network.

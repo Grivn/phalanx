@@ -1,8 +1,8 @@
 package sequencepool
 
 import (
-	"errors"
 	"fmt"
+	"github.com/Grivn/phalanx/common/types"
 	"sync"
 	"time"
 
@@ -16,6 +16,9 @@ type sequencePool struct {
 
 	// author indicates the identifier for current participate.
 	author uint64
+
+	// quorum indicates the legal size for bft.
+	quorum int
 
 	// reminders would store the proof for each node.
 	reminders map[uint64]*partialReminder
@@ -35,6 +38,12 @@ type sequencePool struct {
 	// isRestored indicates sequence-pool status, and we won't initiate reminder with priori data if it has been restored.
 	isRestored bool
 
+	//
+	pointers map[uint64]int
+
+	//
+	readyNo uint64
+
 	// logger is used to print logs.
 	logger external.Logger
 }
@@ -48,12 +57,15 @@ func NewSequencePool(author uint64, n int, rotation int, duration time.Duration,
 
 	return &sequencePool{
 		author:     author,
+		quorum:     types.CalculateQuorum(n),
 		reminders:  reminders,
 		commands:   make(map[string]*protos.Command),
 		tracker:    NewCommandTracker(n),
 		rotation:   rotation,
 		duration:   duration,
 		isRestored: false,
+		pointers:   make(map[uint64]int),
+		readyNo:    uint64(0),
 		logger:     logger,
 	}
 }
@@ -63,6 +75,8 @@ func (sp *sequencePool) InsertPartialOrder(pOrder *protos.PartialOrder) error {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
+	sp.logger.Infof("[%d] insert partial order %s", sp.author, pOrder.Format())
+	sp.readyPointer(pOrder)
 	return sp.reminders[pOrder.Author()].insertPartial(pOrder)
 }
 
@@ -150,33 +164,60 @@ func (sp *sequencePool) SetStablePartials(pBatch *protos.PartialOrderBatch) erro
 		if err := sp.reminders[pOrder.Author()].setStablePartial(pOrder); err != nil {
 			return fmt.Errorf("stable partial order failed: %s", err)
 		}
+		//sp.readyPointer(pOrder)
 	}
 
 	return nil
 }
 
+func (sp *sequencePool) readyPointer(pOrder *protos.PartialOrder) {
+	if pOrder.Sequence() > sp.readyNo {
+		sp.pointers[pOrder.Sequence()]++
+
+		for {
+			seqNp := sp.pointers[sp.readyNo+1]
+			if seqNp < sp.quorum {
+				sp.logger.Debugf("[%d] pending on sequence %d, needs %d, has %d", sp.author, sp.readyNo+1, sp.quorum, seqNp)
+				break
+			}
+
+			sp.readyNo++
+			sp.logger.Infof("[%d] ready on sequence %d", sp.author, sp.readyNo)
+			delete(sp.pointers, sp.readyNo)
+		}
+	}
+}
+
 // PullPartials is used to pull the Partials from b-tree to generate consensus proposal.
 func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.PartialOrderBatch, error) {
-	time.Sleep(sp.duration)
-
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 	pBatch := protos.NewPartialOrderBatch(sp.author)
+
+	for _, reminder := range sp.reminders {
+		pBatch.ProposedNos[reminder.id] = reminder.seqNo-1
+	}
 
 	if sp.isRestored {
 		sp.logger.Infof("[%d] just restored sequence-pool, generate a blank priori-batch", sp.author)
 		return pBatch, nil
 	}
 
+	initID := uint64(1)
 	if priori == nil {
 		sp.logger.Debugf("[%d] do not have a priori-batch, trying to generate genesis batch", sp.author)
 	} else {
 		if len(priori.Partials) == 0 {
 			sp.logger.Debugf("[%d] have a blank priori-batch, trying to generate self-dependent batch", sp.author)
 		} else {
+			minNo := priori.ProposedNos[initID]
 			// initiate the reminder to avoid duplicated partial orders.
 			for id, reminder := range sp.reminders {
 				proposedNo := priori.ProposedNos[id]
+				if proposedNo < minNo {
+					minNo = proposedNo
+					initID = id
+				}
 				reminder.pullInitiation(proposedNo)
 				pBatch.ProposedNos[id] = proposedNo
 				sp.logger.Debugf("[%d] initiate reminder status, replica %d, proposedNo %d", sp.author, id, proposedNo)
@@ -185,6 +226,7 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 	}
 
 	for i:=0; i<sp.rotation; i++ {
+		success := false
 		for _, reminder := range sp.reminders {
 			for {
 				pOrder := reminder.pullPartial()
@@ -195,17 +237,25 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 					break
 				}
 
+				if pOrder.Sequence() > sp.readyNo {
+					reminder.backPartial(pOrder)
+					sp.logger.Debugf("[%d] sequence %d not ready", sp.author, pOrder.Sequence())
+					break
+				}
+
 				// redundancy of partial order:
 				// collect the redundant partial order directly for batch generation.
-				if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
-					pBatch.Append(pOrder)
-					sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
-					continue
-				}
+				//if sp.tracker.IsQuorum(pOrder.CommandDigest()) {
+				//	success = true
+				//	pBatch.Append(pOrder)
+				//	sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
+				//	continue
+				//}
 
 				// existence of command:
 				// 1) try to find the command of current partial order in partial batch.
 				if _, ok := pBatch.Commands[pOrder.CommandDigest()]; ok {
+					success = true
 					pBatch.Append(pOrder)
 					sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
 					break
@@ -216,18 +266,22 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 					reminder.backPartial(pOrder)
 				} else {
 					pBatch.Commands[pOrder.CommandDigest()] = command
+					success = true
 					pBatch.Append(pOrder)
 					sp.logger.Infof("[%d] collect partial order %s", sp.author, pOrder.Format())
 				}
 				break
 			}
 		}
+		if !success {
+			break
+		}
 	}
 
-	if len(pBatch.Partials) == 0 {
-		// we cannot find any valid partial order the generate batch, return failure message
-		return nil, errors.New("failed to generate a batch, no valid partial order")
-	}
+	//if len(pBatch.Partials) == 0 {
+	//	// we cannot find any valid partial order the generate batch, return failure message
+	//	return nil, errors.New("failed to generate a batch, no valid partial order")
+	//}
 
 	// for replica who has generated a partial batch, which should be a trusted batch for itself,
 	// before next phalanx-restoring, current node could find a trusted priori-batch,

@@ -1,11 +1,8 @@
 package executor
 
 import (
-	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-
-	"github.com/google/btree"
 )
 
 type executionRule struct {
@@ -43,14 +40,17 @@ func newExecutionRule(author uint64, n int, recorder *commandRecorder, logger ex
 func (er *executionRule) naturalOrder() []*commandInfo {
 	// here, we would like to check the natural order for quorum sequenced commands.
 	var execution []*commandInfo
-	cCommandInfos := er.recorder.readCSCInfos()
+
 	qCommandInfos := er.recorder.readQSCInfos()
+	potentialInfos := append(er.recorder.readCSCInfos(), er.recorder.readWatInfos()...)
 
 	// natural order 1:
 	// there isn't any command which has reached correct sequenced status, which means no one could be the pri-command
 	// for one command which has reached quorum sequenced status and finished execution for its pri-commands.
-	if len(cCommandInfos) == 0 {
-		execution = append(execution, qCommandInfos...)
+	if len(potentialInfos) == 0 {
+		for _, qInfo := range qCommandInfos {
+			execution = append(execution, qInfo)
+		}
 		return execution
 	}
 
@@ -63,7 +63,7 @@ func (er *executionRule) naturalOrder() []*commandInfo {
 			execution = append(execution, qInfo)
 			continue
 		}
-		if er.priCheck(qInfo, cCommandInfos) {
+		if er.priorityCheck(qInfo, potentialInfos) {
 			// there isn't any potential priori command.
 			execution = append(execution, qInfo)
 		}
@@ -72,65 +72,45 @@ func (er *executionRule) naturalOrder() []*commandInfo {
 	return execution
 }
 
-func (er *executionRule) priCheck(qInfo *commandInfo, cCommandInfos []*commandInfo) bool {
-	valid := true
+func (er *executionRule) priorityCheck(qInfo *commandInfo, checkInfos []*commandInfo) bool {
+	qPointers := make(map[uint64]uint64)
 
-	// init partial wills map for each participant.
-	pWills := make(map[uint64]*btree.BTree)
-	for i:=0; i<er.n; i++ {
-		pWills[uint64(i+1)] = btree.New(2)
-	}
-
-	// put the partial order into it.
+	// initiate the pointer for quorum replicas.
 	for _, pOrder := range qInfo.pOrders {
-		pWills[pOrder.Author()].ReplaceOrInsert(pOrder)
+		qPointers[pOrder.Author()] = pOrder.Sequence()
 	}
 
-	// pri-command rule:
-	//
-	// c1: quorum sequenced command
-	// c2: correct sequenced command
-	// property-priori: c1, c2 belong to replica's collected partial order list
-	//                  and c2<-c1
-	//
-	// if the amount of replica with property-priori is no less than f+1, we regard c2 as c1's pri-command.
-	for _, cInfo := range cCommandInfos {
-		for _, pOrder := range cInfo.pOrders {
-			pWills[pOrder.Author()].ReplaceOrInsert(pOrder)
+	for _, checkInfo := range checkInfos {
+		count := 0
+
+		for id, seq := range qPointers {
+			pOrder, ok := checkInfo.pOrders[id]
+			if !ok || pOrder.Sequence() < seq {
+				count++
+			}
+			if count == er.oneCorrect {
+				break
+			}
 		}
 
-		count := 0
-		for _, pWill := range pWills {
-			item := pWill.Min()
-
-			if item == nil {
+		if count < er.oneCorrect {
+			helper := newScanner(er.recorder, checkInfo, qInfo.curCmd)
+			if helper.scan() {
+				er.logger.Debugf("[%d] priority command depend on self %s", er.author, qInfo.format())
 				continue
 			}
 
-			pOrder := item.(*protos.PartialOrder)
-
-			if pOrder.CommandDigest() == cInfo.curCmd {
-				count++
-			}
-		}
-
-		if count >= er.oneCorrect {
-			valid = false
-			qInfo.prioriRecord(cInfo.curCmd)
-			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, cInfo.format(), qInfo.format())
-		}
-
-		for _, pOrder := range cInfo.pOrders {
-			pWills[pOrder.Author()].Delete(pOrder)
+			qInfo.prioriRecord(checkInfo)
+			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, checkInfo.format(), qInfo.format())
 		}
 	}
-
 	// we have selected all the potential priori commands.
 	qInfo.trusted = true
 
-	if !valid {
+	if len(qInfo.priCmd) > 0 {
 		er.recorder.potentialByz(qInfo)
+		return false
 	}
 
-	return valid
+	return true
 }

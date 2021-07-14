@@ -12,6 +12,8 @@ func NewBlock(commandD string, txList []*protos.Transaction, hashList []string, 
 }
 
 type Block struct {
+	Author    uint64
+	CmdSeq    uint64
 	CommandD  string
 	TxList    []*protos.Transaction
 	HashList  []string
@@ -19,7 +21,7 @@ type Block struct {
 }
 
 func (block Block) Format() string {
-	return fmt.Sprintf("[Block: digest %s, txCoount %d, trusted-timestamp %d]", block.CommandD, len(block.TxList), block.Timestamp)
+	return fmt.Sprintf("[Block: Author %d, CmdSeq %d, txCount %d, trusted-timestamp %d, digest %s]", block.Author, block.CmdSeq, len(block.TxList), block.Timestamp, block.CommandD)
 }
 
 // SortableBlocks is a slice of Block to sort.
