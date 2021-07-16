@@ -12,7 +12,7 @@ type InsertManager interface {
 	InsertPartialOrder(pOrder *protos.PartialOrder) error
 
 	// InsertCommand could insert command into the command recorder.
-	InsertCommand(command *protos.Command)
+	InsertCommand(command *protos.PCommand)
 }
 
 type PartialManager interface {

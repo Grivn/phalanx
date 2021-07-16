@@ -21,7 +21,7 @@ func NewSimpleExecutor(author uint64, logger external.Logger) external.Execution
 	}
 }
 
-func (exe *executor) CommandExecution(commandD string, txs []*protos.Transaction, seqNo uint64, timestamp int64) {
+func (exe *executor) CommandExecution(commandD string, txs []*protos.PTransaction, seqNo uint64, timestamp int64) {
 	var list []string
 
 	list = append(list, exe.hash)
@@ -31,5 +31,5 @@ func (exe *executor) CommandExecution(commandD string, txs []*protos.Transaction
 
 	exe.count += len(txs)
 	exe.hash = types.CalculateListHash(list, 0)
-	exe.logger.Infof("Author %d, Block Number %d, total len %d, Hash: %s, from Command %s", exe.author, seqNo, exe.count, exe.hash, commandD)
+	exe.logger.Infof("Author %d, Block Number %d, total len %d, Hash: %s, from PCommand %s", exe.author, seqNo, exe.count, exe.hash, commandD)
 }

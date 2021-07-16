@@ -14,12 +14,12 @@ import (
 )
 
 // GenerateCommand generates command with given transaction list.
-func GenerateCommand(author uint64, seqNo uint64, txs []*protos.Transaction) *protos.Command {
+func GenerateCommand(author uint64, seqNo uint64, txs []*protos.PTransaction) *protos.PCommand {
 	var hashList []string
 	for _, tx := range txs {
 		hashList = append(hashList, tx.Hash)
 	}
-	command := &protos.Command{
+	command := &protos.PCommand{
 		Author:   author,
 		Sequence: seqNo,
 		Content:  txs,
@@ -33,8 +33,8 @@ func GenerateCommand(author uint64, seqNo uint64, txs []*protos.Transaction) *pr
 	return command
 }
 
-func GenerateRandCommand(author uint64, seqNo uint64, count, size int) *protos.Command {
-	tList := make([]*protos.Transaction, count)
+func GenerateRandCommand(author uint64, seqNo uint64, count, size int) *protos.PCommand {
+	tList := make([]*protos.PTransaction, count)
 	hList := make([]string, count)
 
 	for i:=0; i<count; i++ {
@@ -44,7 +44,7 @@ func GenerateRandCommand(author uint64, seqNo uint64, count, size int) *protos.C
 		hList[i] = tx.Hash
 	}
 
-	command := &protos.Command{Author: author, Sequence: seqNo, Content: tList, HashList: hList}
+	command := &protos.PCommand{Author: author, Sequence: seqNo, Content: tList, HashList: hList}
 	payload, err := proto.Marshal(command)
 	if err != nil {
 		panic(err)
@@ -54,21 +54,21 @@ func GenerateRandCommand(author uint64, seqNo uint64, count, size int) *protos.C
 	return command
 }
 
-func GenerateRandTransaction(size int) *protos.Transaction {
+func GenerateRandTransaction(size int) *protos.PTransaction {
 	payload := make([]byte, size)
 	rand.Read(payload)
 	return GenerateTransaction(payload)
 }
 
-func GenerateTransaction(payload []byte) *protos.Transaction {
-	return &protos.Transaction{
+func GenerateTransaction(payload []byte) *protos.PTransaction {
+	return &protos.PTransaction{
 		Hash:    CalculatePayloadHash(payload, time.Now().UnixNano()),
 		Payload: payload,
 	}
 }
 
 // GetHash returns the TransactionHash
-func GetHash(tx *protos.Transaction) string {
+func GetHash(tx *protos.PTransaction) string {
 	if tx.Hash == "" {
 		tx.Hash = CalculatePayloadHash(tx.Payload, 0)
 	}

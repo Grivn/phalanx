@@ -13,16 +13,16 @@ import (
 
 type SimpleNetwork struct {
 	async    bool
-	networkC map[uint64]chan *protos.ConsensusMessage
-	commandC map[uint64]chan *protos.Command
+	networkC map[uint64]chan *protos.PConsensusMessage
+	commandC map[uint64]chan *protos.PCommand
 	logger   external.Logger
 }
 
-func NewSimpleNetwork(networkC map[uint64]chan *protos.ConsensusMessage, commandC map[uint64]chan *protos.Command, logger external.Logger, async bool) *SimpleNetwork {
+func NewSimpleNetwork(networkC map[uint64]chan *protos.PConsensusMessage, commandC map[uint64]chan *protos.PCommand, logger external.Logger, async bool) *SimpleNetwork {
 	return &SimpleNetwork{async: async, networkC: networkC, commandC: commandC, logger: logger}
 }
 
-func (net *SimpleNetwork) BroadcastPCM(message *protos.ConsensusMessage) {
+func (net *SimpleNetwork) BroadcastPCM(message *protos.PConsensusMessage) {
 	if net.async {
 		// NOTE: phalanx itself could be running in a asynchronous network environment.
 		i := rand.Int()%10
@@ -32,11 +32,11 @@ func (net *SimpleNetwork) BroadcastPCM(message *protos.ConsensusMessage) {
 	go net.broadcast(message)
 }
 
-func (net *SimpleNetwork) UnicastPCM(message *protos.ConsensusMessage) {
+func (net *SimpleNetwork) UnicastPCM(message *protos.PConsensusMessage) {
 	go net.unicast(message)
 }
 
-func (net *SimpleNetwork) BroadcastCommand(command *protos.Command) {
+func (net *SimpleNetwork) BroadcastCommand(command *protos.PCommand) {
 	if net.async {
 		// NOTE: phalanx itself could be running in a asynchronous network environment.
 		i := rand.Int()%10
@@ -46,23 +46,23 @@ func (net *SimpleNetwork) BroadcastCommand(command *protos.Command) {
 	go net.sendCommand(command)
 }
 
-func (net *SimpleNetwork) broadcast(message *protos.ConsensusMessage) {
+func (net *SimpleNetwork) broadcast(message *protos.PConsensusMessage) {
 	for _, ch := range net.networkC {
 		ch <- message
 	}
 }
 
-func (net *SimpleNetwork) sendCommand(command *protos.Command) {
+func (net *SimpleNetwork) sendCommand(command *protos.PCommand) {
 	for _, ch := range net.commandC {
 		ch <- command
 	}
 }
 
-func (net *SimpleNetwork) unicast(message *protos.ConsensusMessage) {
+func (net *SimpleNetwork) unicast(message *protos.PConsensusMessage) {
 	net.networkC[message.To] <- message
 }
 
-func SimpleListener(mgr internal.LogManager, net chan *protos.ConsensusMessage, closeC chan bool) {
+func SimpleListener(mgr internal.LogManager, net chan *protos.PConsensusMessage, closeC chan bool) {
 	for {
 		select {
 		case msg := <-net:
@@ -84,7 +84,7 @@ func SimpleListener(mgr internal.LogManager, net chan *protos.ConsensusMessage, 
 				panic(err)
 			}
 			case protos.MessageType_VOTE:
-				vote := &protos.Vote{}
+				vote := &protos.PVote{}
 				if err := proto.Unmarshal(msg.Payload, vote); err != nil {
 					panic(err)
 				}

@@ -59,26 +59,26 @@ func (MessageType) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_4dc296cbfe5ffcd5, []int{0}
 }
 
-// Transaction is a structure for one instruction.
-type Transaction struct {
+// PTransaction is a structure for one instruction.
+type PTransaction struct {
 	// Hash is the identifier.
 	Hash string `protobuf:"bytes,1,opt,name=Hash,proto3" json:"Hash,omitempty"`
 	// Payload is the instruction content.
 	Payload []byte `protobuf:"bytes,2,opt,name=Payload,proto3" json:"Payload,omitempty"`
 }
 
-func (m *Transaction) Reset()         { *m = Transaction{} }
-func (m *Transaction) String() string { return proto.CompactTextString(m) }
-func (*Transaction) ProtoMessage()    {}
-func (*Transaction) Descriptor() ([]byte, []int) {
+func (m *PTransaction) Reset()         { *m = PTransaction{} }
+func (m *PTransaction) String() string { return proto.CompactTextString(m) }
+func (*PTransaction) ProtoMessage()    {}
+func (*PTransaction) Descriptor() ([]byte, []int) {
 	return fileDescriptor_4dc296cbfe5ffcd5, []int{0}
 }
-func (m *Transaction) XXX_Unmarshal(b []byte) error {
+func (m *PTransaction) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Transaction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *PTransaction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Transaction.Marshal(b, m, deterministic)
+		return xxx_messageInfo_PTransaction.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalTo(b)
@@ -88,56 +88,56 @@ func (m *Transaction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return b[:n], nil
 	}
 }
-func (m *Transaction) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Transaction.Merge(m, src)
+func (m *PTransaction) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PTransaction.Merge(m, src)
 }
-func (m *Transaction) XXX_Size() int {
+func (m *PTransaction) XXX_Size() int {
 	return m.Size()
 }
-func (m *Transaction) XXX_DiscardUnknown() {
-	xxx_messageInfo_Transaction.DiscardUnknown(m)
+func (m *PTransaction) XXX_DiscardUnknown() {
+	xxx_messageInfo_PTransaction.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Transaction proto.InternalMessageInfo
+var xxx_messageInfo_PTransaction proto.InternalMessageInfo
 
-func (m *Transaction) GetHash() string {
+func (m *PTransaction) GetHash() string {
 	if m != nil {
 		return m.Hash
 	}
 	return ""
 }
 
-func (m *Transaction) GetPayload() []byte {
+func (m *PTransaction) GetPayload() []byte {
 	if m != nil {
 		return m.Payload
 	}
 	return nil
 }
 
-// Command is the thing we receive from others.
-type Command struct {
+// PCommand is the thing we receive from others.
+type PCommand struct {
 	Author   uint64 `protobuf:"varint,1,opt,name=Author,proto3" json:"Author,omitempty"`
 	Sequence uint64 `protobuf:"varint,2,opt,name=Sequence,proto3" json:"Sequence,omitempty"`
 	// Digest indicates the identifier for current command.
 	Digest string `protobuf:"bytes,3,opt,name=Digest,proto3" json:"Digest,omitempty"`
 	// Content indicates the instructions in current command.
-	Content []*Transaction `protobuf:"bytes,4,rep,name=Content,proto3" json:"Content,omitempty"`
+	Content []*PTransaction `protobuf:"bytes,4,rep,name=Content,proto3" json:"Content,omitempty"`
 	// HashList is the list of instructions in current command.
 	HashList []string `protobuf:"bytes,5,rep,name=HashList,proto3" json:"HashList,omitempty"`
 }
 
-func (m *Command) Reset()         { *m = Command{} }
-func (m *Command) String() string { return proto.CompactTextString(m) }
-func (*Command) ProtoMessage()    {}
-func (*Command) Descriptor() ([]byte, []int) {
+func (m *PCommand) Reset()         { *m = PCommand{} }
+func (m *PCommand) String() string { return proto.CompactTextString(m) }
+func (*PCommand) ProtoMessage()    {}
+func (*PCommand) Descriptor() ([]byte, []int) {
 	return fileDescriptor_4dc296cbfe5ffcd5, []int{1}
 }
-func (m *Command) XXX_Unmarshal(b []byte) error {
+func (m *PCommand) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Command) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *PCommand) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Command.Marshal(b, m, deterministic)
+		return xxx_messageInfo_PCommand.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalTo(b)
@@ -147,47 +147,47 @@ func (m *Command) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *Command) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Command.Merge(m, src)
+func (m *PCommand) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PCommand.Merge(m, src)
 }
-func (m *Command) XXX_Size() int {
+func (m *PCommand) XXX_Size() int {
 	return m.Size()
 }
-func (m *Command) XXX_DiscardUnknown() {
-	xxx_messageInfo_Command.DiscardUnknown(m)
+func (m *PCommand) XXX_DiscardUnknown() {
+	xxx_messageInfo_PCommand.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Command proto.InternalMessageInfo
+var xxx_messageInfo_PCommand proto.InternalMessageInfo
 
-func (m *Command) GetAuthor() uint64 {
+func (m *PCommand) GetAuthor() uint64 {
 	if m != nil {
 		return m.Author
 	}
 	return 0
 }
 
-func (m *Command) GetSequence() uint64 {
+func (m *PCommand) GetSequence() uint64 {
 	if m != nil {
 		return m.Sequence
 	}
 	return 0
 }
 
-func (m *Command) GetDigest() string {
+func (m *PCommand) GetDigest() string {
 	if m != nil {
 		return m.Digest
 	}
 	return ""
 }
 
-func (m *Command) GetContent() []*Transaction {
+func (m *PCommand) GetContent() []*PTransaction {
 	if m != nil {
 		return m.Content
 	}
 	return nil
 }
 
-func (m *Command) GetHashList() []string {
+func (m *PCommand) GetHashList() []string {
 	if m != nil {
 		return m.HashList
 	}
@@ -311,7 +311,7 @@ func (m *VoteCommand) GetDigest() string {
 // DecideCommand
 type DecideCommand struct {
 	PreCommand *PreCommand `protobuf:"bytes,1,opt,name=PreCommand,proto3" json:"PreCommand,omitempty"`
-	Command    *Command    `protobuf:"bytes,2,opt,name=Command,proto3" json:"Command,omitempty"`
+	Command    *PCommand   `protobuf:"bytes,2,opt,name=Command,proto3" json:"Command,omitempty"`
 }
 
 func (m *DecideCommand) Reset()         { *m = DecideCommand{} }
@@ -354,15 +354,15 @@ func (m *DecideCommand) GetPreCommand() *PreCommand {
 	return nil
 }
 
-func (m *DecideCommand) GetCommand() *Command {
+func (m *DecideCommand) GetCommand() *PCommand {
 	if m != nil {
 		return m.Command
 	}
 	return nil
 }
 
-// ConsensusMessage is the raw consensus messages in real network.
-type ConsensusMessage struct {
+// PConsensusMessage is the raw consensus messages in real network.
+type PConsensusMessage struct {
 	// MessageType indicates the message type which could be used in unmarshal process.
 	Type MessageType `protobuf:"varint,1,opt,name=Type,proto3,enum=protos.MessageType" json:"Type,omitempty"`
 	// From is the sender of current message.
@@ -373,18 +373,18 @@ type ConsensusMessage struct {
 	Payload []byte `protobuf:"bytes,4,opt,name=Payload,proto3" json:"Payload,omitempty"`
 }
 
-func (m *ConsensusMessage) Reset()         { *m = ConsensusMessage{} }
-func (m *ConsensusMessage) String() string { return proto.CompactTextString(m) }
-func (*ConsensusMessage) ProtoMessage()    {}
-func (*ConsensusMessage) Descriptor() ([]byte, []int) {
+func (m *PConsensusMessage) Reset()         { *m = PConsensusMessage{} }
+func (m *PConsensusMessage) String() string { return proto.CompactTextString(m) }
+func (*PConsensusMessage) ProtoMessage()    {}
+func (*PConsensusMessage) Descriptor() ([]byte, []int) {
 	return fileDescriptor_4dc296cbfe5ffcd5, []int{5}
 }
-func (m *ConsensusMessage) XXX_Unmarshal(b []byte) error {
+func (m *PConsensusMessage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *ConsensusMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *PConsensusMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_ConsensusMessage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_PConsensusMessage.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalTo(b)
@@ -394,40 +394,40 @@ func (m *ConsensusMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, er
 		return b[:n], nil
 	}
 }
-func (m *ConsensusMessage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ConsensusMessage.Merge(m, src)
+func (m *PConsensusMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PConsensusMessage.Merge(m, src)
 }
-func (m *ConsensusMessage) XXX_Size() int {
+func (m *PConsensusMessage) XXX_Size() int {
 	return m.Size()
 }
-func (m *ConsensusMessage) XXX_DiscardUnknown() {
-	xxx_messageInfo_ConsensusMessage.DiscardUnknown(m)
+func (m *PConsensusMessage) XXX_DiscardUnknown() {
+	xxx_messageInfo_PConsensusMessage.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ConsensusMessage proto.InternalMessageInfo
+var xxx_messageInfo_PConsensusMessage proto.InternalMessageInfo
 
-func (m *ConsensusMessage) GetType() MessageType {
+func (m *PConsensusMessage) GetType() MessageType {
 	if m != nil {
 		return m.Type
 	}
 	return MessageType_PRE_COMMAND
 }
 
-func (m *ConsensusMessage) GetFrom() uint64 {
+func (m *PConsensusMessage) GetFrom() uint64 {
 	if m != nil {
 		return m.From
 	}
 	return 0
 }
 
-func (m *ConsensusMessage) GetTo() uint64 {
+func (m *PConsensusMessage) GetTo() uint64 {
 	if m != nil {
 		return m.To
 	}
 	return 0
 }
 
-func (m *ConsensusMessage) GetPayload() []byte {
+func (m *PConsensusMessage) GetPayload() []byte {
 	if m != nil {
 		return m.Payload
 	}
@@ -562,9 +562,9 @@ func (m *Certification) GetSignatures() [][]byte {
 	return nil
 }
 
-// Vote is generated by the replica who has received pre-ordering message to determine
+// PVote is generated by the replica who has received pre-ordering message to determine
 // the pre-ordering message valid or not.
-type Vote struct {
+type PVote struct {
 	// Author indicates the identifier of current node who has generated vote message.
 	Author uint64 `protobuf:"varint,1,opt,name=Author,proto3" json:"Author,omitempty"`
 	// Digest indicates the identifier of pre-ordering message which we have voted for.
@@ -573,18 +573,18 @@ type Vote struct {
 	Certification *Certification `protobuf:"bytes,3,opt,name=Certification,proto3" json:"Certification,omitempty"`
 }
 
-func (m *Vote) Reset()         { *m = Vote{} }
-func (m *Vote) String() string { return proto.CompactTextString(m) }
-func (*Vote) ProtoMessage()    {}
-func (*Vote) Descriptor() ([]byte, []int) {
+func (m *PVote) Reset()         { *m = PVote{} }
+func (m *PVote) String() string { return proto.CompactTextString(m) }
+func (*PVote) ProtoMessage()    {}
+func (*PVote) Descriptor() ([]byte, []int) {
 	return fileDescriptor_4dc296cbfe5ffcd5, []int{8}
 }
-func (m *Vote) XXX_Unmarshal(b []byte) error {
+func (m *PVote) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Vote) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *PVote) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Vote.Marshal(b, m, deterministic)
+		return xxx_messageInfo_PVote.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalTo(b)
@@ -594,57 +594,57 @@ func (m *Vote) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *Vote) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Vote.Merge(m, src)
+func (m *PVote) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PVote.Merge(m, src)
 }
-func (m *Vote) XXX_Size() int {
+func (m *PVote) XXX_Size() int {
 	return m.Size()
 }
-func (m *Vote) XXX_DiscardUnknown() {
-	xxx_messageInfo_Vote.DiscardUnknown(m)
+func (m *PVote) XXX_DiscardUnknown() {
+	xxx_messageInfo_PVote.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Vote proto.InternalMessageInfo
+var xxx_messageInfo_PVote proto.InternalMessageInfo
 
-func (m *Vote) GetAuthor() uint64 {
+func (m *PVote) GetAuthor() uint64 {
 	if m != nil {
 		return m.Author
 	}
 	return 0
 }
 
-func (m *Vote) GetDigest() string {
+func (m *PVote) GetDigest() string {
 	if m != nil {
 		return m.Digest
 	}
 	return ""
 }
 
-func (m *Vote) GetCertification() *Certification {
+func (m *PVote) GetCertification() *Certification {
 	if m != nil {
 		return m.Certification
 	}
 	return nil
 }
 
-// QuorumCert contains the signatures generated by participates which could verify the validation of current message.
-type QuorumCert struct {
+// PQuorumCert contains the signatures generated by participates which could verify the validation of current message.
+type PQuorumCert struct {
 	// Certs are the signatures generated by others.
 	Certs map[uint64]*Certification `protobuf:"bytes,1,rep,name=Certs,proto3" json:"Certs,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (m *QuorumCert) Reset()         { *m = QuorumCert{} }
-func (m *QuorumCert) String() string { return proto.CompactTextString(m) }
-func (*QuorumCert) ProtoMessage()    {}
-func (*QuorumCert) Descriptor() ([]byte, []int) {
+func (m *PQuorumCert) Reset()         { *m = PQuorumCert{} }
+func (m *PQuorumCert) String() string { return proto.CompactTextString(m) }
+func (*PQuorumCert) ProtoMessage()    {}
+func (*PQuorumCert) Descriptor() ([]byte, []int) {
 	return fileDescriptor_4dc296cbfe5ffcd5, []int{9}
 }
-func (m *QuorumCert) XXX_Unmarshal(b []byte) error {
+func (m *PQuorumCert) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QuorumCert) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *PQuorumCert) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QuorumCert.Marshal(b, m, deterministic)
+		return xxx_messageInfo_PQuorumCert.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalTo(b)
@@ -654,19 +654,19 @@ func (m *QuorumCert) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *QuorumCert) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QuorumCert.Merge(m, src)
+func (m *PQuorumCert) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PQuorumCert.Merge(m, src)
 }
-func (m *QuorumCert) XXX_Size() int {
+func (m *PQuorumCert) XXX_Size() int {
 	return m.Size()
 }
-func (m *QuorumCert) XXX_DiscardUnknown() {
-	xxx_messageInfo_QuorumCert.DiscardUnknown(m)
+func (m *PQuorumCert) XXX_DiscardUnknown() {
+	xxx_messageInfo_PQuorumCert.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QuorumCert proto.InternalMessageInfo
+var xxx_messageInfo_PQuorumCert proto.InternalMessageInfo
 
-func (m *QuorumCert) GetCerts() map[uint64]*Certification {
+func (m *PQuorumCert) GetCerts() map[uint64]*Certification {
 	if m != nil {
 		return m.Certs
 	}
@@ -679,7 +679,7 @@ type PartialOrder struct {
 	// PreOrder is the message we would like to send a quorum certification.
 	PreOrder *PreOrder `protobuf:"bytes,1,opt,name=PreOrder,proto3" json:"PreOrder,omitempty"`
 	// QC is a proof for current partial order.
-	QC *QuorumCert `protobuf:"bytes,2,opt,name=QC,proto3" json:"QC,omitempty"`
+	QC *PQuorumCert `protobuf:"bytes,2,opt,name=QC,proto3" json:"QC,omitempty"`
 }
 
 func (m *PartialOrder) Reset()         { *m = PartialOrder{} }
@@ -722,7 +722,7 @@ func (m *PartialOrder) GetPreOrder() *PreOrder {
 	return nil
 }
 
-func (m *PartialOrder) GetQC() *QuorumCert {
+func (m *PartialOrder) GetQC() *PQuorumCert {
 	if m != nil {
 		return m.QC
 	}
@@ -736,7 +736,7 @@ type PartialOrderBatch struct {
 	// Partials are the collected partial orders.
 	Partials []*PartialOrder `protobuf:"bytes,2,rep,name=Partials,proto3" json:"Partials,omitempty"`
 	// Commands are the commands which partial orders refer to.
-	Commands map[string]*Command `protobuf:"bytes,3,rep,name=Commands,proto3" json:"Commands,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Commands map[string]*PCommand `protobuf:"bytes,3,rep,name=Commands,proto3" json:"Commands,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// ProposedNo indicates the latest proposed sequence number for each node.
 	ProposedNos map[uint64]uint64 `protobuf:"bytes,4,rep,name=ProposedNos,proto3" json:"ProposedNos,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
 }
@@ -788,7 +788,7 @@ func (m *PartialOrderBatch) GetPartials() []*PartialOrder {
 	return nil
 }
 
-func (m *PartialOrderBatch) GetCommands() map[string]*Command {
+func (m *PartialOrderBatch) GetCommands() map[string]*PCommand {
 	if m != nil {
 		return m.Commands
 	}
@@ -804,78 +804,78 @@ func (m *PartialOrderBatch) GetProposedNos() map[uint64]uint64 {
 
 func init() {
 	proto.RegisterEnum("protos.MessageType", MessageType_name, MessageType_value)
-	proto.RegisterType((*Transaction)(nil), "protos.Transaction")
-	proto.RegisterType((*Command)(nil), "protos.Command")
+	proto.RegisterType((*PTransaction)(nil), "protos.PTransaction")
+	proto.RegisterType((*PCommand)(nil), "protos.PCommand")
 	proto.RegisterType((*PreCommand)(nil), "protos.PreCommand")
 	proto.RegisterType((*VoteCommand)(nil), "protos.VoteCommand")
 	proto.RegisterType((*DecideCommand)(nil), "protos.DecideCommand")
-	proto.RegisterType((*ConsensusMessage)(nil), "protos.ConsensusMessage")
+	proto.RegisterType((*PConsensusMessage)(nil), "protos.PConsensusMessage")
 	proto.RegisterType((*PreOrder)(nil), "protos.PreOrder")
 	proto.RegisterType((*Certification)(nil), "protos.Certification")
-	proto.RegisterType((*Vote)(nil), "protos.Vote")
-	proto.RegisterType((*QuorumCert)(nil), "protos.QuorumCert")
-	proto.RegisterMapType((map[uint64]*Certification)(nil), "protos.QuorumCert.CertsEntry")
+	proto.RegisterType((*PVote)(nil), "protos.PVote")
+	proto.RegisterType((*PQuorumCert)(nil), "protos.PQuorumCert")
+	proto.RegisterMapType((map[uint64]*Certification)(nil), "protos.PQuorumCert.CertsEntry")
 	proto.RegisterType((*PartialOrder)(nil), "protos.PartialOrder")
 	proto.RegisterType((*PartialOrderBatch)(nil), "protos.PartialOrderBatch")
-	proto.RegisterMapType((map[string]*Command)(nil), "protos.PartialOrderBatch.CommandsEntry")
+	proto.RegisterMapType((map[string]*PCommand)(nil), "protos.PartialOrderBatch.CommandsEntry")
 	proto.RegisterMapType((map[uint64]uint64)(nil), "protos.PartialOrderBatch.ProposedNosEntry")
 }
 
 func init() { proto.RegisterFile("messages.proto", fileDescriptor_4dc296cbfe5ffcd5) }
 
 var fileDescriptor_4dc296cbfe5ffcd5 = []byte{
-	// 756 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0xcd, 0x6e, 0xd3, 0x4a,
-	0x14, 0x8e, 0x7f, 0xd2, 0x26, 0xc7, 0x49, 0xea, 0x3b, 0xb7, 0xf7, 0xca, 0x8a, 0x20, 0x8a, 0x2c,
-	0x50, 0x43, 0x81, 0x82, 0xd2, 0x0d, 0xa2, 0x02, 0xa9, 0x75, 0x82, 0x40, 0x6a, 0x9a, 0x64, 0x9a,
-	0x76, 0x5b, 0x4c, 0x32, 0xb4, 0x16, 0x8d, 0x27, 0xf5, 0xd8, 0x48, 0x79, 0x0b, 0xc4, 0x92, 0x15,
-	0x8f, 0xc3, 0xb2, 0x4b, 0x96, 0xa8, 0x7d, 0x0f, 0x84, 0x3c, 0x1e, 0xdb, 0x93, 0xfe, 0x08, 0x75,
-	0xe5, 0x39, 0x67, 0xce, 0xf9, 0xbe, 0xf3, 0xf3, 0xd9, 0x86, 0xda, 0x94, 0x30, 0xe6, 0x1e, 0x13,
-	0xb6, 0x31, 0x0b, 0x68, 0x48, 0xd1, 0x12, 0x7f, 0x30, 0x7b, 0x0b, 0x8c, 0x51, 0xe0, 0xfa, 0xcc,
-	0x1d, 0x87, 0x1e, 0xf5, 0x11, 0x02, 0xfd, 0xad, 0xcb, 0x4e, 0x2c, 0xa5, 0xa9, 0xb4, 0xca, 0x98,
-	0x9f, 0x91, 0x05, 0xcb, 0x03, 0x77, 0x7e, 0x4a, 0xdd, 0x89, 0xa5, 0x36, 0x95, 0x56, 0x05, 0xa7,
-	0xa6, 0xfd, 0x5d, 0x81, 0x65, 0x87, 0x4e, 0xa7, 0xae, 0x3f, 0x41, 0xff, 0xc3, 0xd2, 0x76, 0x14,
-	0x9e, 0xd0, 0x80, 0xe7, 0xea, 0x58, 0x58, 0xa8, 0x0e, 0xa5, 0x7d, 0x72, 0x16, 0x11, 0x7f, 0x4c,
-	0x78, 0xba, 0x8e, 0x33, 0x3b, 0xce, 0xe9, 0x78, 0xc7, 0x84, 0x85, 0x96, 0xc6, 0xf9, 0x84, 0x85,
-	0x9e, 0xc6, 0xb0, 0x7e, 0x48, 0xfc, 0xd0, 0xd2, 0x9b, 0x5a, 0xcb, 0x68, 0xff, 0x9b, 0x54, 0xcd,
-	0x36, 0xa4, 0x5a, 0x71, 0x1a, 0x13, 0x53, 0xc4, 0x85, 0xee, 0x7a, 0x2c, 0xb4, 0x8a, 0x4d, 0xad,
-	0x55, 0xc6, 0x99, 0x6d, 0x63, 0x80, 0x41, 0x40, 0xa4, 0x22, 0x05, 0xa1, 0xb2, 0x40, 0x98, 0x17,
-	0xaf, 0x2e, 0x14, 0xbf, 0x0a, 0xc5, 0x7d, 0x72, 0xb6, 0x47, 0x79, 0x7d, 0x3a, 0x4e, 0x0c, 0xfb,
-	0x15, 0x18, 0x87, 0x34, 0x24, 0x7f, 0xeb, 0x3c, 0x27, 0x53, 0x65, 0x32, 0xdb, 0x87, 0x6a, 0x87,
-	0x8c, 0xbd, 0x49, 0x06, 0xd0, 0x96, 0x6b, 0xe4, 0x20, 0x46, 0x1b, 0xa5, 0x1d, 0xe7, 0x37, 0x58,
-	0xee, 0xe4, 0x51, 0x36, 0x79, 0x8e, 0x6e, 0xb4, 0x57, 0xd2, 0x84, 0x34, 0x3a, 0xbd, 0xb7, 0xe7,
-	0x60, 0x3a, 0xd4, 0x67, 0xc4, 0x67, 0x11, 0xeb, 0x25, 0x2a, 0x40, 0x6b, 0xa0, 0x8f, 0xe6, 0x33,
-	0xc2, 0xc9, 0x6a, 0xf9, 0x78, 0xc5, 0x75, 0x7c, 0x85, 0x79, 0x40, 0x2c, 0x88, 0x37, 0x01, 0x9d,
-	0x8a, 0xb9, 0xf0, 0x33, 0xaa, 0x81, 0x3a, 0x4a, 0x47, 0xa2, 0x8e, 0xa8, 0x2c, 0x10, 0x7d, 0x51,
-	0x20, 0xdf, 0x14, 0x28, 0x0d, 0x02, 0xd2, 0x0f, 0x26, 0x24, 0xb8, 0xf3, 0xf0, 0x65, 0xe5, 0x68,
-	0x57, 0x94, 0xf3, 0x00, 0xaa, 0xa2, 0x3d, 0x01, 0xa9, 0x73, 0xc8, 0x45, 0x27, 0xba, 0x07, 0xe5,
-	0x91, 0x37, 0x25, 0x2c, 0x74, 0xa7, 0x33, 0xab, 0xd8, 0x54, 0x5a, 0x1a, 0xce, 0x1d, 0xf6, 0x33,
-	0xa8, 0x3a, 0x24, 0x08, 0xbd, 0x8f, 0xde, 0xd8, 0xe5, 0xe2, 0x6f, 0x00, 0xec, 0x7b, 0xc7, 0xbe,
-	0x1b, 0x46, 0x01, 0x61, 0x96, 0xd2, 0xd4, 0x5a, 0x15, 0x2c, 0x79, 0x6c, 0x06, 0x7a, 0xbc, 0xf7,
-	0xbb, 0x2e, 0x1c, 0x6d, 0x5d, 0x21, 0xe2, 0xdd, 0x18, 0xed, 0xff, 0xb2, 0x8d, 0xc9, 0x97, 0x78,
-	0x31, 0xd6, 0xfe, 0xaa, 0x00, 0x0c, 0x23, 0x1a, 0x44, 0xd3, 0xd8, 0x8f, 0x36, 0xa1, 0x18, 0x3f,
-	0x93, 0xf2, 0x8c, 0xf6, 0xfd, 0x14, 0x23, 0x0f, 0xe1, 0x70, 0xac, 0xeb, 0x87, 0xc1, 0x1c, 0x27,
-	0xb1, 0xf5, 0x3e, 0x40, 0xee, 0x44, 0x26, 0x68, 0x9f, 0xc8, 0x5c, 0xd4, 0x1e, 0x1f, 0xd1, 0x63,
-	0x28, 0x7e, 0x76, 0x4f, 0x23, 0x22, 0xa4, 0x74, 0x4b, 0x61, 0x49, 0xcc, 0x4b, 0xf5, 0x85, 0x62,
-	0xbf, 0x87, 0xca, 0xc0, 0x0d, 0x42, 0xcf, 0x3d, 0x4d, 0x56, 0xfb, 0x24, 0x5f, 0xb3, 0xd0, 0xaf,
-	0x29, 0xe9, 0x97, 0xfb, 0x71, 0x2e, 0x04, 0x1b, 0xd4, 0xa1, 0x23, 0xb8, 0xd0, 0xf5, 0x06, 0xb0,
-	0x3a, 0x74, 0xec, 0xdf, 0x2a, 0xfc, 0x23, 0x53, 0xec, 0xb8, 0xe1, 0xf8, 0xe4, 0xd6, 0xc9, 0x3f,
-	0x87, 0x92, 0x08, 0x66, 0x96, 0xca, 0x07, 0xb3, 0x9a, 0xf1, 0x4b, 0x20, 0x38, 0x8b, 0x42, 0x0e,
-	0x94, 0x84, 0x56, 0x98, 0xa5, 0xf1, 0x8c, 0xb5, 0x9b, 0x32, 0x38, 0x6d, 0xfa, 0x4a, 0x89, 0xa1,
-	0x66, 0x89, 0x68, 0x17, 0x8c, 0x41, 0x40, 0x67, 0x94, 0x91, 0xc9, 0x1e, 0x65, 0xe2, 0x5b, 0xb5,
-	0x7e, 0x3b, 0x8e, 0x14, 0x9c, 0x40, 0xc9, 0xe9, 0xf5, 0xdd, 0x4c, 0xd3, 0xd7, 0x17, 0x55, 0x4e,
-	0x16, 0xf5, 0x70, 0x71, 0x51, 0xd7, 0xde, 0xf9, 0x7c, 0x45, 0xf5, 0xd7, 0x60, 0x5e, 0xa5, 0xbb,
-	0x61, 0xf3, 0xab, 0x32, 0xa0, 0x2e, 0xe5, 0xaf, 0xfb, 0x60, 0x48, 0x5f, 0x03, 0xb4, 0x02, 0xc6,
-	0x00, 0x77, 0x8f, 0x9c, 0x7e, 0xaf, 0xb7, 0xbd, 0xd7, 0x31, 0x0b, 0xc8, 0x84, 0xca, 0x61, 0x7f,
-	0x94, 0x7b, 0x14, 0x84, 0xa0, 0xd6, 0xe9, 0x3a, 0xef, 0x3a, 0xb9, 0x4f, 0x45, 0x55, 0x28, 0xc7,
-	0x69, 0x7d, 0xdc, 0xe9, 0x62, 0x53, 0x43, 0x25, 0xd0, 0xe3, 0x24, 0x53, 0x8f, 0xf1, 0x86, 0x07,
-	0x7d, 0x7c, 0xd0, 0x3b, 0x72, 0xba, 0x78, 0x64, 0x16, 0x77, 0xac, 0x1f, 0x17, 0x0d, 0xe5, 0xfc,
-	0xa2, 0xa1, 0xfc, 0xba, 0x68, 0x28, 0x5f, 0x2e, 0x1b, 0x85, 0xf3, 0xcb, 0x46, 0xe1, 0xe7, 0x65,
-	0xa3, 0xf0, 0x21, 0xf9, 0x55, 0x6d, 0xfe, 0x09, 0x00, 0x00, 0xff, 0xff, 0x59, 0xee, 0x8d, 0xcf,
-	0xc3, 0x06, 0x00, 0x00,
+	// 761 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0x4b, 0x6f, 0xd3, 0x4c,
+	0x14, 0x8d, 0x1f, 0x69, 0x93, 0xeb, 0x24, 0x9f, 0x3b, 0xed, 0x87, 0xac, 0x08, 0x59, 0x91, 0x41,
+	0x34, 0x2a, 0x28, 0xa0, 0xc0, 0x02, 0xf1, 0x92, 0x5a, 0x27, 0x08, 0xa4, 0xa6, 0x71, 0xa6, 0x69,
+	0xb7, 0x95, 0x49, 0x86, 0xd6, 0xa2, 0xf1, 0xa4, 0x1e, 0x07, 0x29, 0xfc, 0x0a, 0x16, 0xac, 0x58,
+	0xf2, 0x6b, 0x58, 0x76, 0xc9, 0x12, 0xb5, 0x3f, 0x04, 0xe4, 0xf1, 0x6b, 0x92, 0xb6, 0x42, 0x5d,
+	0xc5, 0x73, 0xe7, 0x9c, 0x7b, 0xee, 0xe3, 0xd8, 0x81, 0xda, 0x84, 0x30, 0xe6, 0x1e, 0x13, 0xd6,
+	0x9a, 0x06, 0x34, 0xa4, 0x68, 0x85, 0xff, 0x30, 0xeb, 0x15, 0x54, 0x9c, 0x61, 0xe0, 0xfa, 0xcc,
+	0x1d, 0x85, 0x1e, 0xf5, 0x11, 0x02, 0xf5, 0x9d, 0xcb, 0x4e, 0x0c, 0xa9, 0x21, 0x35, 0xcb, 0x98,
+	0x3f, 0x23, 0x03, 0x56, 0x1d, 0x77, 0x7e, 0x4a, 0xdd, 0xb1, 0x21, 0x37, 0xa4, 0x66, 0x05, 0xa7,
+	0x47, 0xeb, 0x87, 0x04, 0x25, 0xc7, 0xa6, 0x93, 0x89, 0xeb, 0x8f, 0xd1, 0x1d, 0x58, 0xd9, 0x9e,
+	0x85, 0x27, 0x34, 0xe0, 0x64, 0x15, 0x27, 0x27, 0x54, 0x87, 0xd2, 0x3e, 0x39, 0x9b, 0x11, 0x7f,
+	0x44, 0x38, 0x5f, 0xc5, 0xd9, 0x39, 0xe2, 0x74, 0xbc, 0x63, 0xc2, 0x42, 0x43, 0xe1, 0x82, 0xc9,
+	0x09, 0xb5, 0x60, 0xd5, 0xa6, 0x7e, 0x48, 0xfc, 0xd0, 0x50, 0x1b, 0x4a, 0x53, 0x6b, 0x6f, 0xc4,
+	0x75, 0xb3, 0x96, 0x58, 0x2d, 0x4e, 0x41, 0x91, 0x46, 0x54, 0xea, 0xae, 0xc7, 0x42, 0xa3, 0xd8,
+	0x50, 0x9a, 0x65, 0x9c, 0x9d, 0x2d, 0x0c, 0xe0, 0x04, 0x44, 0xa8, 0x32, 0x51, 0x94, 0x16, 0x14,
+	0xf3, 0xea, 0xe5, 0x85, 0xea, 0x37, 0xa0, 0xb8, 0x4f, 0xce, 0xf6, 0x28, 0x2f, 0x50, 0xc5, 0xf1,
+	0xc1, 0x7a, 0x0d, 0xda, 0x21, 0x0d, 0xc9, 0xbf, 0x5a, 0xcf, 0xc5, 0x64, 0x51, 0xcc, 0xa2, 0x50,
+	0xed, 0x90, 0x91, 0x37, 0xce, 0x12, 0xb4, 0xc5, 0x1a, 0x79, 0x12, 0xad, 0x8d, 0xb2, 0x96, 0xb3,
+	0x1b, 0x2c, 0x76, 0xb2, 0x15, 0xcd, 0x28, 0x26, 0xc8, 0x9c, 0xa0, 0x67, 0x84, 0x14, 0x9e, 0x02,
+	0xac, 0x2f, 0xb0, 0xe6, 0xd8, 0xd4, 0x67, 0xc4, 0x67, 0x33, 0xd6, 0x8b, 0xad, 0x80, 0x36, 0x41,
+	0x1d, 0xce, 0xa7, 0x84, 0xcb, 0xd5, 0xda, 0xeb, 0x29, 0x3b, 0xb9, 0x8e, 0xae, 0x30, 0x07, 0x44,
+	0xa6, 0x78, 0x1b, 0xd0, 0x49, 0x32, 0x19, 0xfe, 0x8c, 0x6a, 0x20, 0x0f, 0xd3, 0xa1, 0xc8, 0x43,
+	0x2a, 0x9a, 0x44, 0x5d, 0x34, 0xc9, 0xf7, 0xc8, 0x24, 0x01, 0xe9, 0x07, 0x63, 0x12, 0xdc, 0x7a,
+	0xfc, 0xa2, 0x79, 0x94, 0x25, 0xf3, 0xdc, 0x87, 0x6a, 0xd2, 0x5f, 0x92, 0x52, 0xe5, 0x29, 0x17,
+	0x83, 0xe8, 0x2e, 0x94, 0x87, 0xde, 0x84, 0xb0, 0xd0, 0x9d, 0x4c, 0x8d, 0x62, 0x43, 0x6a, 0x2a,
+	0x38, 0x0f, 0x58, 0x8f, 0xa1, 0x6a, 0x93, 0x20, 0xf4, 0x3e, 0x7a, 0x23, 0x97, 0xbf, 0x00, 0x26,
+	0xc0, 0xbe, 0x77, 0xec, 0xbb, 0xe1, 0x2c, 0x20, 0xcc, 0x90, 0x1a, 0x4a, 0xb3, 0x82, 0x85, 0x88,
+	0x15, 0x42, 0xd1, 0x89, 0x56, 0x7f, 0xdb, 0x9d, 0xa3, 0x97, 0x4b, 0x4a, 0xbc, 0x1d, 0xad, 0xfd,
+	0x7f, 0x3a, 0xf6, 0x85, 0x4b, 0xbc, 0x88, 0xb5, 0xbe, 0x49, 0xa0, 0x39, 0x83, 0x19, 0x0d, 0x66,
+	0x93, 0xe8, 0x02, 0x3d, 0x83, 0x62, 0xf4, 0x1b, 0x17, 0xa8, 0xb5, 0xcd, 0x6c, 0xf3, 0x39, 0x86,
+	0x27, 0x64, 0x5d, 0x3f, 0x0c, 0xe6, 0x38, 0x06, 0xd7, 0xfb, 0x00, 0x79, 0x10, 0xe9, 0xa0, 0x7c,
+	0x22, 0xf3, 0xa4, 0xfa, 0xe8, 0x11, 0x3d, 0x84, 0xe2, 0x67, 0xf7, 0x74, 0x46, 0x12, 0x3f, 0xdd,
+	0x50, 0x5a, 0x8c, 0x79, 0x21, 0x3f, 0x97, 0x2c, 0x17, 0x2a, 0x8e, 0x1b, 0x84, 0x9e, 0x7b, 0x1a,
+	0x6f, 0xf7, 0x51, 0xbe, 0xe9, 0xc4, 0xc4, 0xba, 0x60, 0x62, 0x1e, 0xc7, 0xb9, 0x17, 0xee, 0x81,
+	0x3c, 0xb0, 0x13, 0xad, 0xf5, 0x6b, 0x3a, 0xc0, 0xf2, 0xc0, 0xb6, 0xfe, 0xc8, 0xb0, 0x26, 0x6a,
+	0xec, 0xb8, 0xe1, 0xe8, 0xe4, 0xc6, 0xe1, 0x3f, 0x81, 0x52, 0x02, 0x66, 0x86, 0xbc, 0xf4, 0xe1,
+	0x10, 0x92, 0xe0, 0x0c, 0x85, 0x6c, 0x28, 0x25, 0x7e, 0x61, 0x86, 0xc2, 0x19, 0x9b, 0xd7, 0x31,
+	0xb8, 0x6c, 0x2b, 0x45, 0xc6, 0x53, 0xcd, 0x88, 0x68, 0x17, 0x34, 0x27, 0xa0, 0x53, 0xca, 0xc8,
+	0x78, 0x8f, 0xb2, 0xe4, 0x93, 0xb5, 0x75, 0x73, 0x1e, 0x01, 0x1c, 0xa7, 0x12, 0xe9, 0xf5, 0x5e,
+	0xe6, 0xeb, 0xab, 0x9b, 0x2a, 0xc7, 0x9b, 0x7a, 0xb0, 0xb8, 0xa9, 0xab, 0x6f, 0x7e, 0xbe, 0xa4,
+	0xfa, 0x1b, 0xd0, 0x97, 0xf5, 0xae, 0xd9, 0xfd, 0x86, 0x98, 0x51, 0x15, 0xf8, 0x5b, 0x3e, 0x68,
+	0xc2, 0x27, 0x01, 0xfd, 0x07, 0x9a, 0x83, 0xbb, 0x47, 0x76, 0xbf, 0xd7, 0xdb, 0xde, 0xeb, 0xe8,
+	0x05, 0xa4, 0x43, 0xe5, 0xb0, 0x3f, 0xcc, 0x23, 0x12, 0x42, 0x50, 0xeb, 0x74, 0xed, 0xf7, 0x9d,
+	0x3c, 0x26, 0xa3, 0x2a, 0x94, 0x23, 0x5a, 0x1f, 0x77, 0xba, 0x58, 0x57, 0x50, 0x09, 0xd4, 0x88,
+	0xa4, 0xab, 0x51, 0xbe, 0xc1, 0x41, 0x1f, 0x1f, 0xf4, 0x8e, 0xec, 0x2e, 0x1e, 0xea, 0xc5, 0x1d,
+	0xe3, 0xe7, 0x85, 0x29, 0x9d, 0x5f, 0x98, 0xd2, 0xef, 0x0b, 0x53, 0xfa, 0x7a, 0x69, 0x16, 0xce,
+	0x2f, 0xcd, 0xc2, 0xaf, 0x4b, 0xb3, 0xf0, 0x21, 0xfe, 0xd3, 0x7a, 0xfa, 0x37, 0x00, 0x00, 0xff,
+	0xff, 0x2b, 0x21, 0x3d, 0x73, 0xcd, 0x06, 0x00, 0x00,
 }
 
-func (m *Transaction) Marshal() (dAtA []byte, err error) {
+func (m *PTransaction) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -885,7 +885,7 @@ func (m *Transaction) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Transaction) MarshalTo(dAtA []byte) (int, error) {
+func (m *PTransaction) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -905,7 +905,7 @@ func (m *Transaction) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Command) Marshal() (dAtA []byte, err error) {
+func (m *PCommand) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -915,7 +915,7 @@ func (m *Command) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Command) MarshalTo(dAtA []byte) (int, error) {
+func (m *PCommand) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1067,7 +1067,7 @@ func (m *DecideCommand) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
-func (m *ConsensusMessage) Marshal() (dAtA []byte, err error) {
+func (m *PConsensusMessage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -1077,7 +1077,7 @@ func (m *ConsensusMessage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ConsensusMessage) MarshalTo(dAtA []byte) (int, error) {
+func (m *PConsensusMessage) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1177,7 +1177,7 @@ func (m *Certification) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Vote) Marshal() (dAtA []byte, err error) {
+func (m *PVote) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -1187,7 +1187,7 @@ func (m *Vote) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Vote) MarshalTo(dAtA []byte) (int, error) {
+func (m *PVote) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1216,7 +1216,7 @@ func (m *Vote) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
-func (m *QuorumCert) Marshal() (dAtA []byte, err error) {
+func (m *PQuorumCert) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -1226,7 +1226,7 @@ func (m *QuorumCert) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *QuorumCert) MarshalTo(dAtA []byte) (int, error) {
+func (m *PQuorumCert) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1386,7 +1386,7 @@ func encodeVarintMessages(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return offset + 1
 }
-func (m *Transaction) Size() (n int) {
+func (m *PTransaction) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1403,7 +1403,7 @@ func (m *Transaction) Size() (n int) {
 	return n
 }
 
-func (m *Command) Size() (n int) {
+func (m *PCommand) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1486,7 +1486,7 @@ func (m *DecideCommand) Size() (n int) {
 	return n
 }
 
-func (m *ConsensusMessage) Size() (n int) {
+func (m *PConsensusMessage) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1549,7 +1549,7 @@ func (m *Certification) Size() (n int) {
 	return n
 }
 
-func (m *Vote) Size() (n int) {
+func (m *PVote) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1569,7 +1569,7 @@ func (m *Vote) Size() (n int) {
 	return n
 }
 
-func (m *QuorumCert) Size() (n int) {
+func (m *PQuorumCert) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1660,7 +1660,7 @@ func sovMessages(x uint64) (n int) {
 func sozMessages(x uint64) (n int) {
 	return sovMessages(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *Transaction) Unmarshal(dAtA []byte) error {
+func (m *PTransaction) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1683,10 +1683,10 @@ func (m *Transaction) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Transaction: wiretype end group for non-group")
+			return fmt.Errorf("proto: PTransaction: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Transaction: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: PTransaction: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1779,7 +1779,7 @@ func (m *Transaction) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Command) Unmarshal(dAtA []byte) error {
+func (m *PCommand) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1802,10 +1802,10 @@ func (m *Command) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Command: wiretype end group for non-group")
+			return fmt.Errorf("proto: PCommand: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Command: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: PCommand: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1907,7 +1907,7 @@ func (m *Command) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Content = append(m.Content, &Transaction{})
+			m.Content = append(m.Content, &PTransaction{})
 			if err := m.Content[len(m.Content)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -2290,7 +2290,7 @@ func (m *DecideCommand) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Command == nil {
-				m.Command = &Command{}
+				m.Command = &PCommand{}
 			}
 			if err := m.Command.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2320,7 +2320,7 @@ func (m *DecideCommand) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *ConsensusMessage) Unmarshal(dAtA []byte) error {
+func (m *PConsensusMessage) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2343,10 +2343,10 @@ func (m *ConsensusMessage) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ConsensusMessage: wiretype end group for non-group")
+			return fmt.Errorf("proto: PConsensusMessage: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ConsensusMessage: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: PConsensusMessage: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2723,7 +2723,7 @@ func (m *Certification) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Vote) Unmarshal(dAtA []byte) error {
+func (m *PVote) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2746,10 +2746,10 @@ func (m *Vote) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Vote: wiretype end group for non-group")
+			return fmt.Errorf("proto: PVote: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Vote: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: PVote: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2863,7 +2863,7 @@ func (m *Vote) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *QuorumCert) Unmarshal(dAtA []byte) error {
+func (m *PQuorumCert) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2886,10 +2886,10 @@ func (m *QuorumCert) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QuorumCert: wiretype end group for non-group")
+			return fmt.Errorf("proto: PQuorumCert: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QuorumCert: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: PQuorumCert: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3126,7 +3126,7 @@ func (m *PartialOrder) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.QC == nil {
-				m.QC = &QuorumCert{}
+				m.QC = &PQuorumCert{}
 			}
 			if err := m.QC.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -3268,10 +3268,10 @@ func (m *PartialOrderBatch) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Commands == nil {
-				m.Commands = make(map[string]*Command)
+				m.Commands = make(map[string]*PCommand)
 			}
 			var mapkey string
-			var mapvalue *Command
+			var mapvalue *PCommand
 			for iNdEx < postIndex {
 				entryPreIndex := iNdEx
 				var wire uint64
@@ -3345,7 +3345,7 @@ func (m *PartialOrderBatch) Unmarshal(dAtA []byte) error {
 					if postmsgIndex > l {
 						return io.ErrUnexpectedEOF
 					}
-					mapvalue = &Command{}
+					mapvalue = &PCommand{}
 					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
 						return err
 					}

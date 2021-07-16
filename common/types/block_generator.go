@@ -7,7 +7,7 @@ import (
 )
 
 // NewBlock generates the block to commit.
-func NewBlock(commandD string, txList []*protos.Transaction, hashList []string, timestamp int64) Block {
+func NewBlock(commandD string, txList []*protos.PTransaction, hashList []string, timestamp int64) Block {
 	return Block{CommandD: commandD, TxList: txList, HashList: hashList, Timestamp: timestamp}
 }
 
@@ -15,7 +15,7 @@ type Block struct {
 	Author    uint64
 	CmdSeq    uint64
 	CommandD  string
-	TxList    []*protos.Transaction
+	TxList    []*protos.PTransaction
 	HashList  []string
 	Timestamp int64
 }

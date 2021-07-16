@@ -69,7 +69,7 @@ While receiving a command from clients, the replica will assign a specific seque
 and generate pre-order to notify other participants.
 - <PRE-ORDER i, n, d, command-d, t>
 
-#### Vote
+#### PVote
 While receiving a pre-order from other replica, verify it according to sequence number.
 We should make sure that the sequence number is increasing one by one, and then, send a signed vote back if the pre-order is valid.
 - <VOTE i, d, sig>

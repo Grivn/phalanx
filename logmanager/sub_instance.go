@@ -118,7 +118,7 @@ func (si *subInstance) processBTree() error {
 		}
 
 		// generate and send vote to the pre-order author
-		vote := &protos.Vote{Author: si.author, Digest: pre.Digest, Certification: sig}
+		vote := &protos.PVote{Author: si.author, Digest: pre.Digest, Certification: sig}
 		si.logger.Infof("[%d] voted %s for %s", si.author, vote.Format(), pre.Format())
 
 		cm, err := protos.PackVote(vote, pre.Author)

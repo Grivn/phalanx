@@ -21,7 +21,7 @@ type cmdManager struct {
 
 	commandSize int
 
-	txSet []*protos.Transaction
+	txSet []*protos.PTransaction
 
 	sender external.TestSender
 
@@ -32,7 +32,7 @@ func NewTestReceiver(n int, author uint64, commandSize int, sender external.Test
 	return &cmdManager{n: n, author: author, interval: author, commandSize: commandSize, sender: sender, logger: logger}
 }
 
-func (cmd *cmdManager) ProcessTransaction(tx *protos.Transaction) {
+func (cmd *cmdManager) ProcessTransaction(tx *protos.PTransaction) {
 	cmd.mutex.Lock()
 	defer cmd.mutex.Unlock()
 

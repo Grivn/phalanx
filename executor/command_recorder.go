@@ -10,7 +10,7 @@ type commandRecorder struct {
 	author uint64
 
 	// mapRaw is a map for tracking the command content.
-	mapRaw map[string]*protos.Command
+	mapRaw map[string]*protos.PCommand
 
 	// mapCmd is a map for tracking the command info, including the selected partial order, the priori commands,
 	// the content of current command.
@@ -49,7 +49,7 @@ type forestGroup struct {
 func newCommandRecorder(author uint64, logger external.Logger) *commandRecorder {
 	return &commandRecorder{
 		author: author,
-		mapRaw: make(map[string]*protos.Command),
+		mapRaw: make(map[string]*protos.PCommand),
 		mapCmd: make(map[string]*commandInfo),
 		mapCSC: make(map[string]bool),
 		mapQSC: make(map[string]bool),
@@ -63,7 +63,7 @@ func newCommandRecorder(author uint64, logger external.Logger) *commandRecorder 
 
 //=============================== store raw data ===============================================
 
-func (recorder *commandRecorder) storeCommand(command *protos.Command) {
+func (recorder *commandRecorder) storeCommand(command *protos.PCommand) {
 	if recorder.mapCmt[command.Digest] {
 		return
 	}
@@ -72,7 +72,7 @@ func (recorder *commandRecorder) storeCommand(command *protos.Command) {
 
 //=============================== read command info ============================================
 
-func (recorder *commandRecorder) readCommandRaw(commandD string) *protos.Command {
+func (recorder *commandRecorder) readCommandRaw(commandD string) *protos.PCommand {
 	return recorder.mapRaw[commandD]
 }
 

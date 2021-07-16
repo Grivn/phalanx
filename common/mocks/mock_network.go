@@ -33,7 +33,7 @@ func (_m *MockNetworkService) EXPECT() *MockNetworkServiceMockRecorder {
 }
 
 // BroadcastPCM mocks base method
-func (_m *MockNetworkService) BroadcastPCM(message *protos.ConsensusMessage) {
+func (_m *MockNetworkService) BroadcastPCM(message *protos.PConsensusMessage) {
 	_m.ctrl.Call(_m, "BroadcastPCM", message)
 }
 
@@ -43,7 +43,7 @@ func (_mr *MockNetworkServiceMockRecorder) BroadcastPCM(arg0 interface{}) *gomoc
 }
 
 // UnicastPCM mocks base method
-func (_m *MockNetworkService) UnicastPCM(message *protos.ConsensusMessage) {
+func (_m *MockNetworkService) UnicastPCM(message *protos.PConsensusMessage) {
 	_m.ctrl.Call(_m, "UnicastPCM", message)
 }
 
@@ -53,7 +53,7 @@ func (_mr *MockNetworkServiceMockRecorder) UnicastPCM(arg0 interface{}) *gomock.
 }
 
 // BroadcastCommand mocks base method
-func (_m *MockNetworkService) BroadcastCommand(command *protos.Command) {
+func (_m *MockNetworkService) BroadcastCommand(command *protos.PCommand) {
 	_m.ctrl.Call(_m, "BroadcastCommand", command)
 }
 
@@ -86,7 +86,7 @@ func (_m *MockTestSender) EXPECT() *MockTestSenderMockRecorder {
 }
 
 // BroadcastCommand mocks base method
-func (_m *MockTestSender) BroadcastCommand(command *protos.Command) {
+func (_m *MockTestSender) BroadcastCommand(command *protos.PCommand) {
 	_m.ctrl.Call(_m, "BroadcastCommand", command)
 }
 

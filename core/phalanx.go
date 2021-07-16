@@ -36,13 +36,13 @@ func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, 
 	}
 
 	// initiate sequence pool.
-	seq := sequencepool.NewSequencePool(author, n, size, duration, mLogs.sequencePoolLog)
+	seq := sequencepool.NewSequencePool(author, n, size, duration, logger)
 
 	// initiate log manager.
 	mgr := logmanager.NewLogManager(n, author, seq, network, mLogs.logManagerLog)
 
 	// initiate executor.
-	exe := executor.NewExecutor(author, n, mgr, exec, mLogs.executorLog)
+	exe := executor.NewExecutor(author, n, mgr, exec, logger)
 
 	go mgr.Run()
 
@@ -55,12 +55,12 @@ func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, 
 	}
 }
 
-func (phi *phalanxImpl) ProcessTransaction(tx *protos.Transaction) {
+func (phi *phalanxImpl) ProcessTransaction(tx *protos.PTransaction) {
 	phi.cmdManager.ProcessTransaction(tx)
 }
 
 // ProcessCommand is used to process the commands from clients.
-func (phi *phalanxImpl) ProcessCommand(command *protos.Command) {
+func (phi *phalanxImpl) ProcessCommand(command *protos.PCommand) {
 	phi.sequencePool.InsertCommand(command)
 	if err := phi.logManager.ProcessCommand(command); err != nil {
 		panic(err)
@@ -68,7 +68,7 @@ func (phi *phalanxImpl) ProcessCommand(command *protos.Command) {
 }
 
 // ProcessConsensusMessage is used process the consensus messages from phalanx replica.
-func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.ConsensusMessage) {
+func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.PConsensusMessage) {
 	switch message.Type {
 	case protos.MessageType_PRE_ORDER:
 		pre := &protos.PreOrder{}
@@ -87,7 +87,7 @@ func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.ConsensusMessage
 			panic(err)
 		}
 	case protos.MessageType_VOTE:
-		vote := &protos.Vote{}
+		vote := &protos.PVote{}
 		if err := proto.Unmarshal(message.Payload, vote); err != nil {
 			panic(err)
 		}

@@ -24,7 +24,7 @@ type sequencePool struct {
 	reminders map[uint64]*partialReminder
 
 	// commands would store the command we received.
-	commands map[string]*protos.Command
+	commands map[string]*protos.PCommand
 
 	// tracker is used to track the duplicated ordered logs for proPartialsal generation.
 	tracker CommandTracker
@@ -59,7 +59,7 @@ func NewSequencePool(author uint64, n int, rotation int, duration time.Duration,
 		author:     author,
 		quorum:     types.CalculateQuorum(n),
 		reminders:  reminders,
-		commands:   make(map[string]*protos.Command),
+		commands:   make(map[string]*protos.PCommand),
 		tracker:    NewCommandTracker(n),
 		rotation:   rotation,
 		duration:   duration,
@@ -81,7 +81,7 @@ func (sp *sequencePool) InsertPartialOrder(pOrder *protos.PartialOrder) error {
 }
 
 // InsertCommand could insertPartial command into the sync-map.
-func (sp *sequencePool) InsertCommand(command *protos.Command) {
+func (sp *sequencePool) InsertCommand(command *protos.PCommand) {
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 
@@ -190,6 +190,7 @@ func (sp *sequencePool) readyPointer(pOrder *protos.PartialOrder) {
 
 // PullPartials is used to pull the Partials from b-tree to generate consensus proposal.
 func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.PartialOrderBatch, error) {
+	time.Sleep(types.DefaultTimeDuration)
 	sp.mutex.Lock()
 	defer sp.mutex.Unlock()
 	pBatch := protos.NewPartialOrderBatch(sp.author)
@@ -227,19 +228,20 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 
 	for i:=0; i<sp.rotation; i++ {
 		success := false
-		for _, reminder := range sp.reminders {
+		for id, reminder := range sp.reminders {
 			for {
 				pOrder := reminder.pullPartial()
 
 				// existence of partial order:
 				// cannot find partial order info, continue for next replica's partial order.
 				if pOrder == nil {
+					sp.logger.Debugf("[%d] cannot find partial order from %d", sp.author, id)
 					break
 				}
 
 				if pOrder.Sequence() > sp.readyNo {
 					reminder.backPartial(pOrder)
-					sp.logger.Debugf("[%d] sequence %d not ready", sp.author, pOrder.Sequence())
+					sp.logger.Debugf("[%d] order indicator %d not ready", sp.author, pOrder.Sequence())
 					break
 				}
 
@@ -287,10 +289,11 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 	// before next phalanx-restoring, current node could find a trusted priori-batch,
 	// so that we should close the restored status and initiate the reminder with the priori-batch.
 	sp.isRestored = false
+	sp.logger.Infof("[%d] generate a batch, partials count %d", sp.author, len(pBatch.Partials))
 	return pBatch, nil
 }
 
-func (sp *sequencePool) getCommand(digest string) *protos.Command {
+func (sp *sequencePool) getCommand(digest string) *protos.PCommand {
 	command, ok := sp.commands[digest]
 	if !ok {
 		return nil

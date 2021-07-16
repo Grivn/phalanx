@@ -9,17 +9,17 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
-func NewTransaction() *protos.Transaction {
+func NewTransaction() *protos.PTransaction {
 	payload := make([]byte, 4)
 	rand.Read(payload)
-	return &protos.Transaction{Hash: types.CalculatePayloadHash(payload, 0), Payload: payload}
+	return &protos.PTransaction{Hash: types.CalculatePayloadHash(payload, 0), Payload: payload}
 }
 
-func NewCommand() *protos.Command {
+func NewCommand() *protos.PCommand {
 	tx := NewTransaction()
-	txList := []*protos.Transaction{tx}
+	txList := []*protos.PTransaction{tx}
 	hashList := []string{tx.Hash}
-	command := &protos.Command{Content: txList, HashList: hashList}
+	command := &protos.PCommand{Content: txList, HashList: hashList}
 
 	payload, _ := proto.Marshal(command)
 	command.Digest = types.CalculatePayloadHash(payload, 0)

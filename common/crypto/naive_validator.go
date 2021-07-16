@@ -38,11 +38,12 @@ func PrivSign(hash types.Hash, nodeID int) (*protos.Certification, error) {
 
 // PubVerify is used to verify the signature with the provided public key
 func PubVerify(cert *protos.Certification, hash types.Hash, nodeID int) error {
+	return nil
 	return pubKeys[nodeID-1].Verify(cert, hash)
 }
 
 // VerifyProofCerts is used to verify the validation of proof-certs
-func VerifyProofCerts(digest types.Hash, pc *protos.QuorumCert, quorum int) error {
+func VerifyProofCerts(digest types.Hash, pc *protos.PQuorumCert, quorum int) error {
 	if pc == nil {
 		return errors.New("nil proof-certs")
 	}

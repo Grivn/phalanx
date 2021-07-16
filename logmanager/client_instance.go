@@ -26,10 +26,10 @@ type clientInstance struct {
 	commands *btree.BTree
 
 	// receiveC is used to receive command.
-	receiveC chan *protos.Command
+	receiveC chan *protos.PCommand
 
 	// commandC is used to propose command towards log-manager.
-	commandC chan *protos.Command
+	commandC chan *protos.PCommand
 
 	// committedC is used to receive the committed seqNo.
 	committedC chan uint64
@@ -41,7 +41,7 @@ type clientInstance struct {
 	logger external.Logger
 }
 
-func newClient(author, id uint64, commandC chan *protos.Command, logger external.Logger) *clientInstance {
+func newClient(author, id uint64, commandC chan *protos.PCommand, logger external.Logger) *clientInstance {
 	logger.Infof("[%d] initiate manager for client %d", author, id)
 	committedNo := make(map[uint64]bool)
 	committedNo[uint64(0)] = true
@@ -50,7 +50,7 @@ func newClient(author, id uint64, commandC chan *protos.Command, logger external
 		id: id,
 		proposedNo: uint64(0),
 		commands: btree.New(2),
-		receiveC: make(chan *protos.Command, 1000),
+		receiveC: make(chan *protos.PCommand, 1000),
 		commandC: commandC,
 		committedNo: committedNo,
 		logger: logger,
@@ -68,7 +68,7 @@ func (client *clientInstance) commit(seqNo uint64) {
 	}
 }
 
-func (client *clientInstance) append(command *protos.Command) {
+func (client *clientInstance) append(command *protos.PCommand) {
 	client.mutex.Lock()
 	defer client.mutex.Unlock()
 
@@ -79,13 +79,13 @@ func (client *clientInstance) append(command *protos.Command) {
 	}
 }
 
-func (client *clientInstance) minCommand() *protos.Command {
+func (client *clientInstance) minCommand() *protos.PCommand {
 	item := client.commands.Min()
 	if item == nil {
 		return nil
 	}
 
-	command, ok := item.(*protos.Command)
+	command, ok := item.(*protos.PCommand)
 	if !ok {
 		return nil
 	}
@@ -99,6 +99,6 @@ func (client *clientInstance) minCommand() *protos.Command {
 	return nil
 }
 
-func (client *clientInstance) feedBack(command *protos.Command) {
+func (client *clientInstance) feedBack(command *protos.PCommand) {
 	client.commandC <- command
 }

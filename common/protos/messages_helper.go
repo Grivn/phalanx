@@ -10,11 +10,11 @@ import (
 
 //=============================== Consensus Message ===============================================
 
-func NewConsensusMessage(typ MessageType, from, to uint64, payload []byte) *ConsensusMessage {
-	return &ConsensusMessage{Type: typ, From: from, To: to, Payload: payload}
+func NewConsensusMessage(typ MessageType, from, to uint64, payload []byte) *PConsensusMessage {
+	return &PConsensusMessage{Type: typ, From: from, To: to, Payload: payload}
 }
 
-func PackPreOrder(pre *PreOrder) (*ConsensusMessage, error) {
+func PackPreOrder(pre *PreOrder) (*PConsensusMessage, error) {
 	payload, err := proto.Marshal(pre)
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func PackPreOrder(pre *PreOrder) (*ConsensusMessage, error) {
 	return NewConsensusMessage(MessageType_PRE_ORDER, pre.Author, 0, payload), nil
 }
 
-func PackVote(vote *Vote, to uint64) (*ConsensusMessage, error) {
+func PackVote(vote *PVote, to uint64) (*PConsensusMessage, error) {
 	payload, err := proto.Marshal(vote)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func PackVote(vote *Vote, to uint64) (*ConsensusMessage, error) {
 	return NewConsensusMessage(MessageType_VOTE, vote.Author, to, payload), nil
 }
 
-func PackPartialOrder(qc *PartialOrder) (*ConsensusMessage, error) {
+func PackPartialOrder(qc *PartialOrder) (*PConsensusMessage, error) {
 	payload, err := proto.Marshal(qc)
 	if err != nil {
 		return nil, err
@@ -38,14 +38,14 @@ func PackPartialOrder(qc *PartialOrder) (*ConsensusMessage, error) {
 	return NewConsensusMessage(MessageType_QUORUM_CERT, qc.Author(), 0, payload), nil
 }
 
-//=============================== Command ===============================================
+//=============================== PCommand ===============================================
 
-func (m *Command) Less(item btree.Item) bool {
-	return m.Sequence < (item.(*Command)).Sequence
+func (m *PCommand) Less(item btree.Item) bool {
+	return m.Sequence < (item.(*PCommand)).Sequence
 }
 
-func (m *Command) Format() string {
-	return fmt.Sprintf("[Command: client %d, sequence %d, digest %s]", m.Author, m.Sequence, m.Digest)
+func (m *PCommand) Format() string {
+	return fmt.Sprintf("[PCommand: client %d, sequence %d, digest %s]", m.Author, m.Sequence, m.Digest)
 }
 
 //=============================== Pre-Order ===============================================
@@ -54,10 +54,10 @@ func (m *PreOrder) Format() string {
 	return fmt.Sprintf("[PreOrder: author %d, sequence %d, digest %s, command %s]", m.Author, m.Sequence, m.Digest, m.CommandDigest)
 }
 
-//=============================== Vote ====================================================
+//=============================== PVote ====================================================
 
-func (m *Vote) Format() string {
-	return fmt.Sprintf("[Vote: author %d, vote-digest %s]", m.Author, m.Digest)
+func (m *PVote) Format() string {
+	return fmt.Sprintf("[PVote: author %d, vote-digest %s]", m.Author, m.Digest)
 }
 
 //=============================== Partial Order ===============================================
@@ -109,8 +109,8 @@ func maxUint64(a, b uint64) uint64 {
 
 //=================================== Generate Messages ============================================
 
-func NewQuorumCert() *QuorumCert {
-	return &QuorumCert{Certs: make(map[uint64]*Certification)}
+func NewQuorumCert() *PQuorumCert {
+	return &PQuorumCert{Certs: make(map[uint64]*Certification)}
 }
 
 
@@ -118,10 +118,10 @@ func NewPartialOrder(pre *PreOrder) *PartialOrder {
 	return &PartialOrder{PreOrder: pre, QC: NewQuorumCert()}
 }
 
-func NewPreOrder(author uint64, sequence uint64, command *Command) *PreOrder {
+func NewPreOrder(author uint64, sequence uint64, command *PCommand) *PreOrder {
 	return &PreOrder{Author: author, Sequence: sequence, CommandDigest: command.Digest, Timestamp: time.Now().UnixNano()}
 }
 
 func NewPartialOrderBatch(author uint64) *PartialOrderBatch {
-	return &PartialOrderBatch{Author: author, Commands: make(map[string]*Command), ProposedNos: make(map[uint64]uint64)}
+	return &PartialOrderBatch{Author: author, Commands: make(map[string]*PCommand), ProposedNos: make(map[uint64]uint64)}
 }

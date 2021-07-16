@@ -33,7 +33,7 @@ func (_m *MockExecutionService) EXPECT() *MockExecutionServiceMockRecorder {
 }
 
 // CommandExecution mocks base method
-func (_m *MockExecutionService) CommandExecution(commandD string, txs []*protos.Transaction, seqNo uint64, timestamp int64) {
+func (_m *MockExecutionService) CommandExecution(commandD string, txs []*protos.PTransaction, seqNo uint64, timestamp int64) {
 	_m.ctrl.Call(_m, "CommandExecution", commandD, txs, seqNo, timestamp)
 }
 

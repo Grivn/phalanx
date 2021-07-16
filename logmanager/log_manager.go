@@ -39,7 +39,7 @@ type logManager struct {
 	clients map[uint64]*clientInstance
 
 	//
-	commandC chan *protos.Command
+	commandC chan *protos.PCommand
 
 	//
 	closeC chan bool
@@ -63,7 +63,7 @@ func NewLogManager(n int, author uint64, sp internal.SequencePool, sender extern
 		aggMap:   make(map[string]*protos.PartialOrder),
 		subs:     subs,
 		clients:  make(map[uint64]*clientInstance),
-		commandC: make(chan *protos.Command),
+		commandC: make(chan *protos.PCommand),
 		closeC:   make(chan bool),
 		sender:   sender,
 		logger:   logger,
@@ -92,7 +92,7 @@ func (mgr *logManager) Committed(author uint64, seqNo uint64) {
 //                 Processor for Local Logs
 //===============================================================
 
-func (mgr *logManager) ProcessCommand(command *protos.Command) error {
+func (mgr *logManager) ProcessCommand(command *protos.PCommand) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -109,7 +109,7 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 
 // generatePreOrder is used to process command received from clients.
 // We would like to assign a sequence number for such a command and generate a pre-order message.
-func (mgr *logManager) tryGeneratePreOrder(command *protos.Command) error {
+func (mgr *logManager) tryGeneratePreOrder(command *protos.PCommand) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -145,7 +145,7 @@ func (mgr *logManager) tryGeneratePreOrder(command *protos.Command) error {
 
 // ProcessVote is used to process the vote message from others.
 // It could aggregate a agg-signature for one pre-order and generate an order message for one command.
-func (mgr *logManager) ProcessVote(vote *protos.Vote) error {
+func (mgr *logManager) ProcessVote(vote *protos.PVote) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 

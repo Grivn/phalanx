@@ -14,13 +14,13 @@ import (
 
 func TestPhalanx(t *testing.T) {
 
-	n := 4
+	n := 32
 
 	async := false
 
-	nc := make(map[uint64]chan *protos.ConsensusMessage)
+	nc := make(map[uint64]chan *protos.PConsensusMessage)
 
-	cc := make(map[uint64]chan *protos.Command)
+	cc := make(map[uint64]chan *protos.PCommand)
 
 	closeC := make(chan bool)
 
@@ -28,8 +28,8 @@ func TestPhalanx(t *testing.T) {
 
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		nc[id] = make(chan *protos.ConsensusMessage)
-		cc[id] = make(chan *protos.Command)
+		nc[id] = make(chan *protos.PConsensusMessage)
+		cc[id] = make(chan *protos.PCommand)
 	}
 	net := mocks.NewSimpleNetwork(nc, cc, types.NewRawLogger(), async)
 
@@ -58,10 +58,10 @@ func TestPhalanx(t *testing.T) {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	num := 100
-	client := 128
-	transactionSendInstance(num, client, phx)
-	//commandSendInstance(num, client, phx)
+	num := 1000
+	client := 4
+	//transactionSendInstance(num, client, phx)
+	commandSendInstance(num, client, phx)
 
 	time.Sleep(3000 * time.Second)
 }
@@ -77,14 +77,14 @@ func transactionSendInstance(num, client int, phx map[uint64]phalanx.Provider) {
 
 func commandSendInstance(num, client int, phx map[uint64]phalanx.Provider) {
 	for i:=0; i<num; i++ {
-		time.Sleep(2*time.Microsecond)
+		//time.Sleep(time.Duration(rand.Int()%200)*time.Microsecond)
 		for c:=0; c<client; c++ {
 			go commandSender(uint64(c+1), uint64(i+1), phx)
 		}
 	}
 }
 
-func phalanxListener(phx phalanx.Provider, net chan *protos.ConsensusMessage, cmd chan *protos.Command, closeC chan bool) {
+func phalanxListener(phx phalanx.Provider, net chan *protos.PConsensusMessage, cmd chan *protos.PCommand, closeC chan bool) {
 	for {
 		select {
 		case message := <-net:

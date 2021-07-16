@@ -12,16 +12,16 @@ type Provider interface {
 }
 
 type TestReceiver interface {
-	ProcessTransaction(tx *protos.Transaction)
+	ProcessTransaction(tx *protos.PTransaction)
 }
 
 // Communicator is used to process messages from network.
 type Communicator interface {
 	// ProcessCommand is used to process the commands from clients.
-	ProcessCommand(command *protos.Command)
+	ProcessCommand(command *protos.PCommand)
 
 	// ProcessConsensusMessage is used process the consensus messages from phalanx replica.
-	ProcessConsensusMessage(message *protos.ConsensusMessage)
+	ProcessConsensusMessage(message *protos.PConsensusMessage)
 }
 
 // Generator is used to generate essential messages.
