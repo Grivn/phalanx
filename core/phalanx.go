@@ -36,15 +36,17 @@ func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, 
 	}
 
 	// initiate sequence pool.
-	seq := sequencepool.NewSequencePool(author, n, size, duration, logger)
+	seq := sequencepool.NewSequencePool(author, n, size, duration, mLogs.sequencePoolLog)
 
 	// initiate log manager.
 	mgr := logmanager.NewLogManager(n, author, seq, network, mLogs.logManagerLog)
 
 	// initiate executor.
-	exe := executor.NewExecutor(author, n, mgr, exec, logger)
+	exe := executor.NewExecutor(author, n, mgr, exec, mLogs.executorLog)
 
 	go mgr.Run()
+
+	go exe.Run()
 
 	return &phalanxImpl{
 		logManager:   mgr,
@@ -124,7 +126,7 @@ func (phi *phalanxImpl) SetStable(pBatch *protos.PartialOrderBatch) error {
 	return phi.sequencePool.SetStablePartials(pBatch)
 }
 
-// Commit is used to commit the phalanx partial order batch which has been verified by bft consensus.
-func (phi *phalanxImpl) Commit(pBatch *protos.PartialOrderBatch) error {
-	return phi.executor.CommitPartials(pBatch)
+// PCommit is used to commit the phalanx partial order batch which has been verified by bft consensus.
+func (phi *phalanxImpl) PCommit(event *types.CommitEvent) {
+	phi.executor.Commit(event)
 }

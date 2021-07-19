@@ -254,9 +254,12 @@ func (replica *replica) execute(message *bftMessage) {
 			m.pBatch = nil
 		}
 
-		if err := replica.phalanx.Commit(m.pBatch); err != nil {
-			panic(err)
+		event := &types.CommitEvent{
+			Sequence: message.sequence,
+			IsValid:  true,
+			PBatch:   m.pBatch,
 		}
+		go replica.phalanx.PCommit(event)
 
 		replica.executeCache.Delete(item)
 		replica.executedSeq++

@@ -1,6 +1,9 @@
 package phalanx
 
-import "github.com/Grivn/phalanx/common/protos"
+import (
+	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
+)
 
 // Provider is the phalanx service provider for all kinds of consensus algorithm, such as PBFT or HS.
 type Provider interface {
@@ -61,6 +64,6 @@ type Validator interface {
 
 // Executor is used to execute the phalanx objects.
 type Executor interface {
-	// Commit is used to commit the phalanx-QCBatch which has been verified by bft consensus.
-	Commit(pBatch *protos.PartialOrderBatch) error
+	// PCommit is used to commit the phalanx-QCBatch which has been verified by bft consensus.
+	PCommit(event *types.CommitEvent)
 }

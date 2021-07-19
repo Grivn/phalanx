@@ -14,7 +14,7 @@ import (
 
 func TestPhalanx(t *testing.T) {
 
-	n := 32
+	n := 4
 
 	async := false
 
