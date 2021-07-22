@@ -58,8 +58,8 @@ func TestPhalanx(t *testing.T) {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	num := 100
-	client := 128
+	num := 1000
+	client := 4
 	transactionSendInstance(num, client, phx)
 	//commandSendInstance(num, client, phx)
 
