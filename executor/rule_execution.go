@@ -42,16 +42,38 @@ func (er *executionRule) naturalOrder() []*commandInfo {
 	var execution []*commandInfo
 
 	qCommandInfos := er.recorder.readQSCInfos()
-	potentialInfos := append(er.recorder.readCSCInfos(), er.recorder.readWatInfos()...)
+
+	cCommandInfos := er.recorder.readCSCInfos()
+
+	wCommandInfos := er.recorder.readWatInfos()
 
 	// natural order 1:
 	// there isn't any command which has reached correct sequenced status, which means no one could be the pri-command
 	// for one command which has reached quorum sequenced status and finished execution for its pri-commands.
-	if len(potentialInfos) == 0 {
+	if len(cCommandInfos) == 0 && len(wCommandInfos) == 0 {
 		for _, qInfo := range qCommandInfos {
 			execution = append(execution, qInfo)
 		}
 		return execution
+	}
+
+	// natural order 2&3:
+	for _, qInfo := range qCommandInfos {
+		if qInfo.trusted {
+			// we have selected all the potential priori commands.
+			execution = append(execution, qInfo)
+			continue
+		}
+
+		// the potential priority check between quorum sequenced command and waiting command
+		// here, there is possibility for us to generate Condorcet Paradox, so that we should resolve the cyclic problems.
+		if er.priorityCheck(qInfo, wCommandInfos) {
+			// there isn't any potential priori command.
+			execution = append(execution, qInfo)
+		}
+
+		// the potential priority check between quorum sequenced command and correct sequenced command
+		// here, we only need to verify the priority properties for these correct sequenced command do not have any priority.
 	}
 
 	// natural order 2:
@@ -67,6 +89,9 @@ func (er *executionRule) naturalOrder() []*commandInfo {
 			// there isn't any potential priori command.
 			execution = append(execution, qInfo)
 		}
+
+		// we have selected all the potential priori commands.
+		qInfo.trusted = true
 	}
 
 	return execution
@@ -80,7 +105,13 @@ func (er *executionRule) priorityCheck(qInfo *commandInfo, checkInfos []*command
 		qPointers[pOrder.Author()] = pOrder.Sequence()
 	}
 
+	var newPriorities []string
 	for _, checkInfo := range checkInfos {
+		if qInfo.priCmd[checkInfo.curCmd] {
+			// it has already become the priority command of QSC.
+			continue
+		}
+
 		count := 0
 
 		for id, seq := range qPointers {
@@ -94,18 +125,17 @@ func (er *executionRule) priorityCheck(qInfo *commandInfo, checkInfos []*command
 		}
 
 		if count < er.oneCorrect {
-			helper := newScanner(er.recorder, checkInfo, qInfo.curCmd)
+			helper := newScanner(qInfo)
 			if helper.scan() {
 				er.logger.Debugf("[%d] priority command depend on self %s", er.author, qInfo.format())
 				continue
 			}
 
 			qInfo.prioriRecord(checkInfo)
+			newPriorities = append(newPriorities, checkInfo.curCmd)
 			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, checkInfo.format(), qInfo.format())
 		}
 	}
-	// we have selected all the potential priori commands.
-	qInfo.trusted = true
 
 	if len(qInfo.priCmd) > 0 {
 		er.recorder.potentialByz(qInfo)
