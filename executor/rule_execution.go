@@ -67,55 +67,38 @@ func (er *executionRule) naturalOrder() []*commandInfo {
 
 		// the potential priority check between quorum sequenced command and waiting command
 		// here, there is possibility for us to generate Condorcet Paradox, so that we should resolve the cyclic problems.
-		if er.priorityCheck(qInfo, wCommandInfos) {
-			// there isn't any potential priori command.
-			execution = append(execution, qInfo)
-		}
-
+		//
 		// the potential priority check between quorum sequenced command and correct sequenced command
 		// here, we only need to verify the priority properties for these correct sequenced command do not have any priority.
-	}
-
-	// natural order 2:
-	// check the quorum sequenced command to make sure all the commands in correct sequenced status cannot become
-	// the pri-command of it.
-	for _, qInfo := range qCommandInfos {
-		if qInfo.trusted {
-			// we have selected all the potential priori commands.
-			execution = append(execution, qInfo)
-			continue
-		}
-		if er.priorityCheck(qInfo, potentialInfos) {
+		if er.priorityCheck(qInfo, wCommandInfos, cCommandInfos) {
 			// there isn't any potential priori command.
 			execution = append(execution, qInfo)
 		}
-
-		// we have selected all the potential priori commands.
-		qInfo.trusted = true
 	}
 
 	return execution
 }
 
-func (er *executionRule) priorityCheck(qInfo *commandInfo, checkInfos []*commandInfo) bool {
+func (er *executionRule) priorityCheck(qInfo *commandInfo, wInfos []*commandInfo, cInfos []*commandInfo) bool {
+	var newPriorities []string
+
 	qPointers := make(map[uint64]uint64)
 
 	// initiate the pointer for quorum replicas.
 	for _, pOrder := range qInfo.pOrders {
 		qPointers[pOrder.Author()] = pOrder.Sequence()
 	}
-
-	var newPriorities []string
-	for _, checkInfo := range checkInfos {
-		if qInfo.priCmd[checkInfo.curCmd] {
+	for _, wInfo := range wInfos {
+		if qInfo.priCmd[wInfo.curCmd] {
 			// it has already become the priority command of QSC.
 			continue
 		}
 
 		count := 0
 
+		// check if there are f+1 replicas believe current QSC should be selected before waiting command.
 		for id, seq := range qPointers {
-			pOrder, ok := checkInfo.pOrders[id]
+			pOrder, ok := wInfo.pOrders[id]
 			if !ok || pOrder.Sequence() < seq {
 				count++
 			}
@@ -125,20 +108,47 @@ func (er *executionRule) priorityCheck(qInfo *commandInfo, checkInfos []*command
 		}
 
 		if count < er.oneCorrect {
+			// should make sure a Condorcet Paradox wouldn't occur.
 			helper := newScanner(qInfo)
+
 			if helper.scan() {
 				er.logger.Debugf("[%d] priority command depend on self %s", er.author, qInfo.format())
 				continue
 			}
 
-			qInfo.prioriRecord(checkInfo)
-			newPriorities = append(newPriorities, checkInfo.curCmd)
-			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, checkInfo.format(), qInfo.format())
+			qInfo.prioriAppend(wInfo)
+			newPriorities = append(newPriorities, wInfo.curCmd)
+			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, wInfo.format(), qInfo.format())
+		}
+	}
+
+	for _, cInfo := range cInfos {
+		if qInfo.priCmd[cInfo.curCmd] {
+			// it has already become the priority command of QSC.
+			continue
+		}
+
+		count := 0
+
+		for id, seq := range qPointers {
+			pOrder, ok := cInfo.pOrders[id]
+			if !ok || pOrder.Sequence() < seq {
+				count++
+			}
+			if count == er.oneCorrect {
+				break
+			}
+		}
+
+		if count < er.oneCorrect {
+			qInfo.prioriRecord(cInfo)
+			newPriorities = append(newPriorities, cInfo.curCmd)
+			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, cInfo.format(), qInfo.format())
 		}
 	}
 
 	if len(qInfo.priCmd) > 0 {
-		er.recorder.potentialByz(qInfo)
+		er.recorder.potentialByz(qInfo, newPriorities)
 		return false
 	}
 

@@ -59,9 +59,19 @@ func (ci *commandInfo) prioriRecord(priInfo *commandInfo) {
 	ci.priCmd[priInfo.curCmd] = true
 }
 
-func (ci *commandInfo) prioriAppend(cmdMap map[string]bool) {
-	for commandD := range cmdMap {
-		ci.priCmd[commandD] = true
+func (ci *commandInfo) prioriAppend(priInfo *commandInfo) {
+	var priorities []string
+
+	ci.priCmd[priInfo.curCmd] = true
+	priorities = append(priorities, priInfo.curCmd)
+
+	for digest := range priInfo.priCmd {
+		ci.priCmd[digest] = true
+		priorities = append(priorities, digest)
+	}
+
+	for digest, info := range priInfo.lowCmd {
+		ci.lowCmd[digest] = info
 	}
 }
 
