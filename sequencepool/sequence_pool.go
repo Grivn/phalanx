@@ -209,6 +209,11 @@ func (sp *sequencePool) PullPartials(priori *protos.PartialOrderBatch) (*protos.
 	} else {
 		if len(priori.Partials) == 0 {
 			sp.logger.Debugf("[%d] have a blank priori-batch, trying to generate self-dependent batch", sp.author)
+			for id, reminder := range sp.reminders {
+				proposedNo := pBatch.ProposedNos[id]
+				reminder.pullInitiation(proposedNo)
+				sp.logger.Debugf("[%d] initiate reminder status, replica %d, proposedNo %d", sp.author, id, proposedNo)
+			}
 		} else {
 			minNo := priori.ProposedNos[initID]
 			// initiate the reminder to avoid duplicated partial orders.

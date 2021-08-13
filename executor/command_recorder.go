@@ -32,7 +32,7 @@ type commandRecorder struct {
 	mapWat map[string]bool
 
 	// mapPri the potential priori relation recorder to update the mapWat at the same time the priori command committed.
-	mapPri map[string]map[string]bool
+	mapPri map[string][]*commandInfo
 
 	// todo update the leaf node algorithm to find cyclic dependency.
 	mapLeaf map[string]bool
@@ -55,7 +55,7 @@ func newCommandRecorder(author uint64, logger external.Logger) *commandRecorder 
 		mapQSC: make(map[string]bool),
 		mapCmt: make(map[string]bool),
 		mapWat: make(map[string]bool),
-		mapPri: make(map[string]map[string]bool),
+		mapPri: make(map[string][]*commandInfo),
 		mapLeaf: make(map[string]bool),
 		logger: logger,
 	}
@@ -155,32 +155,21 @@ func (recorder *commandRecorder) isCommitted(commandD string) bool {
 
 //=========================== commands with potential byzantine order =================================
 
-func (recorder *commandRecorder) potentialByz(info *commandInfo) {
+func (recorder *commandRecorder) potentialByz(info *commandInfo, newPriorities []string) {
 	// remove the potential commands with potential byzantine order from QSC map.
 	// put it into waiting map.
 	delete(recorder.mapQSC, info.curCmd)
 	recorder.mapWat[info.curCmd] = true
 
 	// update the priority map for current QSC.
-	for priori := range info.priCmd {
-		m, ok := recorder.mapPri[priori]
-		if !ok {
-			m = make(map[string]bool)
-			recorder.mapPri[priori] = m
-		}
-
-		m[info.curCmd] = true
+	for _, priori := range newPriorities {
+		recorder.mapPri[priori] = append(recorder.mapPri[priori], info)
 	}
 }
 
 func (recorder *commandRecorder) prioriCommit(commandD string) {
-	m, ok := recorder.mapPri[commandD]
-	if !ok {
-		return
-	}
-
-	for digest := range m {
-		waitingInfo := recorder.readCommandInfo(digest)
+	// notify the post commands that its priority has been committed.
+	for _, waitingInfo := range recorder.mapPri[commandD] {
 		waitingInfo.prioriCommit(commandD)
 		recorder.logger.Debugf("[%d] %s committed potential pri-command %s", recorder.author, waitingInfo.format(), commandD)
 
@@ -190,48 +179,49 @@ func (recorder *commandRecorder) prioriCommit(commandD string) {
 			delete(recorder.mapWat, waitingInfo.curCmd)
 		}
 	}
+	delete(recorder.mapPri, commandD)
 }
 
 //===============================================================
 
-type scanner struct {
-	recorder *commandRecorder
-
-	priority *commandInfo
-
-	sDigest string
-
-	sDependent bool
-}
-
-func newScanner(recorder *commandRecorder, priInfo *commandInfo, selfCmd string) *scanner {
-	return &scanner{recorder: recorder, priority: priInfo, sDigest: selfCmd, sDependent: false}
-}
-
-func (scanner *scanner) scan() bool {
-	scanner.selfDependency(scanner.priority)
-	return scanner.sDependent
-}
-
-func (scanner *scanner) selfDependency(priInfo *commandInfo) {
-	if scanner.sDependent == true {
-		return
-	}
-
-	if !scanner.recorder.mapWat[priInfo.curCmd] {
-		if priInfo.curCmd == scanner.sDigest {
-			scanner.sDependent = true
-		}
-		return
-	}
-
-	for digest := range priInfo.priCmd {
-		if scanner.sDependent == true {
-			return
-		}
-		scanner.selfDependency(scanner.recorder.readCommandInfo(digest))
-	}
-}
+//type scanner struct {
+//	recorder *commandRecorder
+//
+//	priority *commandInfo
+//
+//	sDigest string
+//
+//	sDependent bool
+//}
+//
+//func newScanner(recorder *commandRecorder, priInfo *commandInfo, selfCmd string) *scanner {
+//	return &scanner{recorder: recorder, priority: priInfo, sDigest: selfCmd, sDependent: false}
+//}
+//
+//func (scanner *scanner) scan() bool {
+//	scanner.selfDependency(scanner.priority)
+//	return scanner.sDependent
+//}
+//
+//func (scanner *scanner) selfDependency(priInfo *commandInfo) {
+//	if scanner.sDependent == true {
+//		return
+//	}
+//
+//	if !scanner.recorder.mapWat[priInfo.curCmd] {
+//		if priInfo.curCmd == scanner.sDigest {
+//			scanner.sDependent = true
+//		}
+//		return
+//	}
+//
+//	for digest := range priInfo.priCmd {
+//		if scanner.sDependent == true {
+//			return
+//		}
+//		scanner.selfDependency(scanner.recorder.readCommandInfo(digest))
+//	}
+//}
 
 //===================================================================
 
