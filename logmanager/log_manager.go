@@ -23,7 +23,7 @@ type logManager struct {
 	// quorum is the legal size for current node.
 	quorum int
 
-	// sequence is the the target for local-log.
+	// sequence is a target for local-log.
 	sequence uint64
 
 	// aggMap is used to generate aggregated-certificates.
@@ -35,13 +35,13 @@ type logManager struct {
 	// sender is used to send consensus message into network.
 	sender external.NetworkService
 
-	// clients is used to track the commands send from them.
+	// clients are used to track the commands send from them.
 	clients map[uint64]*clientInstance
 
-	//
+	// commandC is used to receive the valid transaction from one client instance.
 	commandC chan *protos.Command
 
-	//
+	// closeC is used to stop log manager.
 	closeC chan bool
 
 	// logger is used to print logs.
@@ -76,7 +76,9 @@ func (mgr *logManager) Run() {
 		case <-mgr.closeC:
 			return
 		case c := <-mgr.commandC:
-			_ = mgr.tryGeneratePreOrder(c)
+			if err := mgr.tryGeneratePreOrder(c); err != nil {
+				panic(fmt.Sprintf("log manager runtime error: %s", err))
+			}
 		}
 	}
 }
@@ -96,19 +98,22 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
+	// select the client instance according to the identifier of command author.
 	client, ok := mgr.clients[command.Author]
 	if !ok {
+		// if we cannot find the client, initiate an instance for this client.
 		client = newClient(mgr.author, command.Author, mgr.commandC, mgr.logger)
 		mgr.clients[command.Author] = client
 	}
 
+	// append the transaction into this client.
 	go client.append(command)
 
 	return nil
 }
 
-// generatePreOrder is used to process command received from clients.
-// We would like to assign a sequence number for such a command and generate a pre-order message.
+// tryGeneratePreOrder is used to process the command received from one client instance.
+// We would like to assign the latest seqNo for it and generate a pre-order message.
 func (mgr *logManager) tryGeneratePreOrder(command *protos.Command) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()

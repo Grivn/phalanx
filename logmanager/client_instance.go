@@ -7,6 +7,13 @@ import (
 	"sync"
 )
 
+// clientInstance is used to process transactions from specific client.
+//
+// we would like to generate an instance for each specific client.
+// the client in phalanx naive demo is distinguished with identifier number.
+// we should process transactions from each client by order,
+// which means we should process (n+1)th tx should be processed
+// after the procession for (n)th tx has been finished.
 type clientInstance struct {
 	mutex sync.Mutex
 
