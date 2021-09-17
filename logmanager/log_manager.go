@@ -13,6 +13,15 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
+// todo pre-trusted order entry
+// while receiving a quorum cert in cross-consensus:
+// 1) qc with lower or equal height: skip
+// 2) qc with higher height: update the trusted number and generate QC cert for it
+//
+// while we receive a pre-order, check if there is already QC for it:
+// 1) there isn't QC cert: normal process
+// 2) there is a QC cert: check the digest between them, if they are not equal, reject.
+
 type logManager struct {
 	// mutex is used to deal with the concurrent problems of log-manager.
 	mutex sync.Mutex
