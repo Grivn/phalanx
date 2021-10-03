@@ -9,8 +9,6 @@ import (
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
-
-	"github.com/gogo/protobuf/proto"
 )
 
 // todo pre-trusted order entry
@@ -23,11 +21,15 @@ import (
 // 2) there is a QC cert: check the digest between them, if they are not equal, reject.
 
 type logManager struct {
+	//===================================== basic information =========================================
+
 	// mutex is used to deal with the concurrent problems of log-manager.
 	mutex sync.Mutex
 
 	// author is the identifier for current node.
 	author uint64
+
+	//==================================== sub-chain management =============================================
 
 	// quorum is the legal size for current node.
 	quorum int
@@ -35,14 +37,17 @@ type logManager struct {
 	// sequence is a target for local-log.
 	sequence uint64
 
+	// highOrder is the highest partial order for current chained manager.
+	// as for that we should be responsible for the order of our own private chain, each block could
+	highOrder *protos.PreOrder
+
 	// aggMap is used to generate aggregated-certificates.
 	aggMap map[string]*protos.PartialOrder
 
 	// subs is the module for us to process consensus messages for participates.
 	subs map[uint64]*subInstance
 
-	// sender is used to send consensus message into network.
-	sender external.NetworkService
+	//===================================== client commands manager ============================================
 
 	// clients are used to track the commands send from them.
 	clients map[uint64]*clientInstance
@@ -52,6 +57,11 @@ type logManager struct {
 
 	// closeC is used to stop log manager.
 	closeC chan bool
+
+	//======================================= external tools ===========================================
+
+	// sender is used to send consensus message into network.
+	sender external.NetworkService
 
 	// logger is used to print logs.
 	logger external.Logger
@@ -121,19 +131,50 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 	return nil
 }
 
+func (mgr *logManager) checkHighOrder() error {
+
+	// here, we should make sure the highest sequence number is valid.
+	if mgr.highOrder == nil {
+		switch mgr.sequence {
+		case 0:
+			// if there isn't any high order, we should make sure that we are trying to generate the first partial order.
+			return nil
+		default:
+			return fmt.Errorf("invalid status for current node, highest order nil, current seqNo %d", mgr.sequence)
+		}
+	}
+
+	if mgr.highOrder.Sequence != mgr.sequence {
+		return fmt.Errorf("invalid status for current node, highest order %d, current seqNo %d", mgr.highOrder.Sequence, mgr.sequence)
+	}
+
+	// highest partial order has a valid sequence number.
+	return nil
+}
+
+func (mgr *logManager) updateHighOrder(pre *protos.PreOrder) {
+	mgr.highOrder = pre
+}
+
 // tryGeneratePreOrder is used to process the command received from one client instance.
 // We would like to assign the latest seqNo for it and generate a pre-order message.
 func (mgr *logManager) tryGeneratePreOrder(command *protos.Command) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
+	// make sure the highest partial order has a valid status.
+	if err := mgr.checkHighOrder(); err != nil {
+		return fmt.Errorf("highest partial order error: %s", err)
+	}
+
+	// advance the sequence number.
 	mgr.sequence++
 
-	pre := protos.NewPreOrder(mgr.author, mgr.sequence, command)
-	payload, err := proto.Marshal(pre)
+	// generate pre order message.
+	pre := protos.NewPreOrder(mgr.author, mgr.sequence, command, mgr.highOrder)
+	payload, err := pre.Marshal()
 	if err != nil {
-		mgr.logger.Errorf("Marshal Error: %v", err)
-		return err
+		return fmt.Errorf("pre order marshal error: %s", err)
 	}
 	pre.Digest = types.CalculatePayloadHash(payload, 0)
 
@@ -148,6 +189,9 @@ func (mgr *logManager) tryGeneratePreOrder(command *protos.Command) error {
 	mgr.aggMap[pre.Digest].QC.Certs[mgr.author] = signature
 
 	mgr.logger.Infof("[%d] generate pre-order %s", mgr.author, pre.Format())
+
+	// update the highest pre order for current node.
+	mgr.updateHighOrder(pre)
 
 	cm, err := protos.PackPreOrder(pre)
 	if err != nil {

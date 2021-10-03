@@ -118,8 +118,8 @@ func NewPartialOrder(pre *PreOrder) *PartialOrder {
 	return &PartialOrder{PreOrder: pre, QC: NewQuorumCert()}
 }
 
-func NewPreOrder(author uint64, sequence uint64, command *Command) *PreOrder {
-	return &PreOrder{Author: author, Sequence: sequence, CommandDigest: command.Digest, Timestamp: time.Now().UnixNano()}
+func NewPreOrder(author uint64, sequence uint64, command *Command, previous *PreOrder) *PreOrder {
+	return &PreOrder{Author: author, Sequence: sequence, CommandDigest: command.Digest, Timestamp: time.Now().UnixNano(), PreOrder: previous}
 }
 
 func NewPartialOrderBatch(author uint64) *PartialOrderBatch {

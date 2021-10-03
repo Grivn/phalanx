@@ -1,10 +1,11 @@
 package logmanager
 
 import (
+	"sync"
+
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
 	"github.com/google/btree"
-	"sync"
 )
 
 // clientInstance is used to process transactions from specific client.

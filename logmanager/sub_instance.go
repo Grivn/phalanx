@@ -16,14 +16,24 @@ import (
 
 // subInstance is used to process the remote log, each instance would be used for one replica.
 type subInstance struct {
+	//===================================== basic information =========================================
+
 	// author is the local node's identifier.
 	author uint64
 
 	// id indicates which node the current request-pool is maintained for.
 	id uint64
 
+	//==================================== sub-chain management =============================================
+
 	// quorum indicates the set size for invalid signatures.
 	quorum int
+
+	// trusted indicates the highest verified seqNo.
+	trusted uint64
+
+	// highPartialOrder indicates the highest partial order which has been verified by cluster validators.
+	highPartialOrder *protos.PartialOrder
 
 	// sequence is the preferred seqNo for the next request.
 	sequence uint64
@@ -31,11 +41,15 @@ type subInstance struct {
 	// recorder is used to track the pre-order/order messages.
 	recorder *btree.BTree
 
+	//======================================= internal modules =========================================
+
+	// sp is the seq-pool for phalanx.
+	sp internal.SequencePool
+
+	//======================================= external tools ===========================================
+
 	// sender is used to send votes to others.
 	sender external.NetworkService
-
-	// sp is the seq-pool module for phalanx.
-	sp internal.SequencePool
 
 	// logger is used to print logs.
 	logger external.Logger
@@ -46,6 +60,7 @@ func newSubInstance(author, id uint64, sp internal.SequencePool, sender external
 	return &subInstance{
 		author:   author,
 		id:       id,
+		trusted:  uint64(0),
 		sequence: uint64(1),
 		recorder: btree.New(2),
 		sp:       sp,

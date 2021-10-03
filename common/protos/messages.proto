@@ -88,7 +88,7 @@ message PreOrder {
   // Timestamp indicates the time when current node generated such a log.
   int64 Timestamp = 5;
   // PrePartialOrder is the previous order info.
-  PartialOrder PrePartialOrder = 6;
+  PreOrder PreOrder = 6;
 }
 
 // Certification is used to verify the pre-ordering message on one node.
