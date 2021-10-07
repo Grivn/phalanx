@@ -1,12 +1,10 @@
 package internal
 
-import "github.com/Grivn/phalanx/common/protos"
+import (
+	"github.com/Grivn/phalanx/common/types"
+)
 
 type Executor interface {
-	// CommitPartials is used to commit the partial orders.
-	CommitPartials(qcb *protos.PartialOrderBatch) error
-}
-
-type Execution interface {
-	CommitPartials(pOrders []*protos.PartialOrder)
+	// CommitStream is used to commit the partial order stream.
+	CommitStream(qStream types.QueryStream) error
 }

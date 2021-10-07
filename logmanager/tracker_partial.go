@@ -1,12 +1,20 @@
-package slot
+package logmanager
 
 import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
+	"sync"
 )
 
+// partialTracker is used to record the partial orders current node has received.
+// 1) receive partial order directly with the consensus process of logs.
+// 2) fetch missing order process.
+// the tracker of partial order belongs to sub instance, which means the partial orders from such a node.
 type partialTracker struct {
+	// mutex is used to control the concurrency problems of partial tracker.
+	mutex sync.Mutex
+
 	// author indicates current node identifier.
 	author uint64
 
@@ -27,6 +35,9 @@ func newPartialTracker(author uint64, logger external.Logger) *partialTracker {
 }
 
 func (pt *partialTracker) recordPartial(pOrder *protos.PartialOrder) {
+	pt.mutex.Lock()
+	defer pt.mutex.Unlock()
+
 	qIdx := types.QueryIndex{Author: pOrder.Author(), SeqNo: pOrder.Sequence()}
 
 	if _, ok := pt.partialMap[qIdx]; ok {
@@ -38,9 +49,14 @@ func (pt *partialTracker) recordPartial(pOrder *protos.PartialOrder) {
 }
 
 func (pt *partialTracker) readPartial(idx types.QueryIndex) *protos.PartialOrder {
+	pt.mutex.Lock()
+	defer pt.mutex.Unlock()
+
+	// here, we are trying to read the partial order according to partial order query index.
 	pOrder, ok := pt.partialMap[idx]
 	if !ok {
 		return nil
 	}
+	delete(pt.partialMap, idx)
 	return pOrder
 }

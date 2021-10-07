@@ -9,8 +9,6 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
-
 	"github.com/google/btree"
 )
 
@@ -43,8 +41,8 @@ type subInstance struct {
 
 	//======================================= internal modules =========================================
 
-	// sp is the seq-pool for phalanx.
-	sp internal.SequencePool
+	// pTracker is used to record the partial orders from current sub instance node.
+	pTracker *partialTracker
 
 	//======================================= external tools ===========================================
 
@@ -55,7 +53,7 @@ type subInstance struct {
 	logger external.Logger
 }
 
-func newSubInstance(author, id uint64, sp internal.SequencePool, sender external.NetworkService, logger external.Logger) *subInstance {
+func newSubInstance(author, id uint64, pTracker *partialTracker, sender external.NetworkService, logger external.Logger) *subInstance {
 	logger.Infof("[%d] initiate the sub instance of order for replica %d", author, id)
 	return &subInstance{
 		author:   author,
@@ -63,7 +61,7 @@ func newSubInstance(author, id uint64, sp internal.SequencePool, sender external
 		trusted:  uint64(0),
 		sequence: uint64(1),
 		recorder: btree.New(2),
-		sp:       sp,
+		pTracker: pTracker,
 		sender:   sender,
 		logger:   logger,
 	}
@@ -95,16 +93,13 @@ func (si *subInstance) processPreOrder(pre *protos.PreOrder) error {
 func (si *subInstance) processPartial(pOrder *protos.PartialOrder) error {
 	si.logger.Infof("[%d] received a partial order %s", si.author, pOrder.Format())
 
+	// verify the signatures of current received partial order.
 	if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, si.quorum); err != nil {
 		return fmt.Errorf("invalid order: %s", err)
 	}
 
 	ev := &event.BtreeEvent{EventType: event.BTreeEventOrder, Sequence: pOrder.PreOrder.Sequence, Digest: pOrder.PreOrder.Digest, Event: pOrder}
-	item := si.recorder.ReplaceOrInsert(ev)
-	if item != nil {
-		ev := item.(*event.BtreeEvent)
-		si.logger.Infof("%v", ev)
-	}
+	si.recorder.ReplaceOrInsert(ev)
 
 	return si.processBTree()
 }
@@ -148,9 +143,16 @@ func (si *subInstance) processBTree() error {
 
 		pOrder := ev.Event.(*protos.PartialOrder)
 
-		if err := si.sp.InsertPartialOrder(pOrder); err != nil {
-			si.logger.Errorf("[%d] insert failed: %s", si.author, err)
+		// verify the validation between current partial order and highest partial order.
+		if err := si.checkHighestOrder(pOrder); err != nil {
+			return fmt.Errorf("check higest order failed, %s", err)
 		}
+
+		// record partial order with partial tracker.
+		si.pTracker.recordPartial(pOrder)
+
+		// update the highest partial order for current sub instance.
+		si.updateHighestOrder(pOrder)
 
 		si.recorder.Delete(ev)
 		si.sequence++
@@ -163,4 +165,26 @@ func (si *subInstance) processBTree() error {
 	default:
 		return errors.New("invalid event type")
 	}
+}
+
+func (si *subInstance) updateHighestOrder(pOrder *protos.PartialOrder) {
+	si.highPartialOrder = pOrder
+}
+
+func (si *subInstance) checkHighestOrder(pOrder *protos.PartialOrder) error {
+	if pOrder.Sequence() == 1 {
+		// the first partial order for current sub instance.
+		return nil
+	}
+
+	if si.highPartialOrder == nil {
+		// we don't have a partial order here, reject it.
+		return fmt.Errorf("nil highest order")
+	}
+
+	if si.highPartialOrder.PreOrderDigest() != pOrder.ParentOrder().Digest {
+		return fmt.Errorf("invalid parent order digest, expect %s, received %s", si.highPartialOrder.PreOrderDigest(), pOrder.ParentOrder().Digest)
+	}
+
+	return nil
 }

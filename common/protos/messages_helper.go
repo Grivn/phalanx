@@ -91,13 +91,17 @@ func (m *PartialOrder) Format() string {
 	return fmt.Sprintf("[PartialOrder: author %d, sequence %d, command %s]", m.Author(), m.Sequence(), m.CommandDigest())
 }
 
+func (m *PartialOrder) ParentOrder() *PreOrder {
+	return m.PreOrder.PreOrder
+}
+
 //=============================== Partial Order Batch ===============================================
 
 func (m *PartialOrderBatch) Append(pOrder *PartialOrder) {
 	// append:
 	// we have found a partial order which could be proposed in next phase, append into Partials slice.
-	m.Partials = append(m.Partials, pOrder)
-	m.ProposedNos[pOrder.Author()] = maxUint64(m.ProposedNos[pOrder.Author()], pOrder.Sequence())
+	//m.Partials = append(m.Partials, pOrder)
+	//m.ProposedNos[pOrder.Author()] = maxUint64(m.ProposedNos[pOrder.Author()], pOrder.Sequence())
 }
 
 func maxUint64(a, b uint64) uint64 {
@@ -113,15 +117,17 @@ func NewQuorumCert() *QuorumCert {
 	return &QuorumCert{Certs: make(map[uint64]*Certification)}
 }
 
-
 func NewPartialOrder(pre *PreOrder) *PartialOrder {
 	return &PartialOrder{PreOrder: pre, QC: NewQuorumCert()}
 }
 
 func NewPreOrder(author uint64, sequence uint64, command *Command, previous *PreOrder) *PreOrder {
-	return &PreOrder{Author: author, Sequence: sequence, CommandDigest: command.Digest, Timestamp: time.Now().UnixNano(), PreOrder: previous}
+	if previous == nil {
+		previous = &PreOrder{Digest: "GENESIS PRE ORDER"}
+	}
+	return &PreOrder{Author: author, Sequence: sequence, CommandDigest: command.Digest, Timestamp: time.Now().UnixNano(), ParentDigest: previous.Digest, PreOrder: previous}
 }
 
 func NewPartialOrderBatch(author uint64) *PartialOrderBatch {
-	return &PartialOrderBatch{Author: author, Commands: make(map[string]*Command), ProposedNos: make(map[uint64]uint64)}
+	return &PartialOrderBatch{Author: author, Partials: make(map[uint64]*PartialOrder), Commands: make(map[string]*Command), ProposedNos: make(map[uint64]uint64)}
 }

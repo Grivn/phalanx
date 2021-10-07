@@ -12,8 +12,16 @@ func (idx QueryIndex) Format() string {
 	return fmt.Sprintf("[index: author %d, sequence %d]", idx.Author, idx.SeqNo)
 }
 
-type QueryRequest struct {
-	Threshold []uint64
+type QueryStream []QueryIndex
 
-	QueryList []QueryIndex
+func (qs QueryStream) Len() int { return len(qs) }
+func (qs QueryStream) Swap(i, j int) { qs[i], qs[j] = qs[j], qs[i] }
+func (qs QueryStream) Less(i, j int) bool {
+	// query index for the same node, sort according to sequence number.
+	if qs[i].Author == qs[j].Author {
+		return qs[i].SeqNo < qs[j].SeqNo
+	}
+
+	// sort according to author.
+	return qs[i].Author < qs[j].Author
 }

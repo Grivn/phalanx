@@ -1,11 +1,19 @@
-package slot
+package logmanager
 
 import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
+	"sync"
 )
 
+// commandTracker is used to record the commands current node has received.
+// 1) receive commands from clients directly.
+// 2) receive commands with the fetch-missing process.
+// the tracker of commands belongs to log manager.
 type commandTracker struct {
+	// mutex is used to control the concurrency problems of command tracker.
+	mutex sync.Mutex
+
 	// author indicates current node identifier.
 	author uint64
 
@@ -30,6 +38,9 @@ func newCommandTracker(author uint64, logger external.Logger) *commandTracker {
 }
 
 func (ct *commandTracker) recordCommand(command *protos.Command) {
+	ct.mutex.Lock()
+	defer ct.mutex.Unlock()
+
 	if _, ok := ct.commandMap[command.Digest]; ok {
 		// duplicated command.
 		ct.logger.Debugf("[%d] duplicated command %s", ct.author, command.Digest)
@@ -47,14 +58,21 @@ func (ct *commandTracker) recordCommand(command *protos.Command) {
 }
 
 func (ct *commandTracker) readCommand(digest string) *protos.Command {
+	ct.mutex.Lock()
+	defer ct.mutex.Unlock()
+
 	command, ok := ct.commandMap[digest]
 	if !ok {
 		return nil
 	}
+	delete(ct.commandMap, digest)
 	return command
 }
 
 func (ct *commandTracker) commitCommand(digest string) {
+	ct.mutex.Lock()
+	defer ct.mutex.Unlock()
+
 	ct.logger.Debugf("[%d] commit command %s", ct.author, digest)
 	delete(ct.commandMap, digest)
 	ct.committedMap[digest] = true

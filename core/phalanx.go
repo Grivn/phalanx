@@ -2,29 +2,24 @@ package phalanx
 
 import (
 	"github.com/Grivn/phalanx/cmdmanager"
-	"github.com/Grivn/phalanx/common/types"
-	"time"
-
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/executor"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/logmanager"
-	"github.com/Grivn/phalanx/sequencepool"
-
 	"github.com/gogo/protobuf/proto"
 )
 
 type phalanxImpl struct {
 	logManager   internal.LogManager
 	executor     internal.Executor
-	sequencePool internal.SequencePool
 	cmdManager   internal.TestReceiver
 	logger       external.Logger
 }
 
-func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, exec external.ExecutionService, network external.NetworkService, logger external.Logger) *phalanxImpl {
+func NewPhalanxProvider(n int, author uint64, exec external.ExecutionService, network external.NetworkService, logger external.Logger) *phalanxImpl {
 	// initiate key pairs.
 	_ = crypto.SetKeys()
 
@@ -35,11 +30,8 @@ func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, 
 		return nil
 	}
 
-	// initiate sequence pool.
-	seq := sequencepool.NewSequencePool(author, n, size, duration, mLogs.sequencePoolLog)
-
 	// initiate log manager.
-	mgr := logmanager.NewLogManager(n, author, seq, network, mLogs.logManagerLog)
+	mgr := logmanager.NewLogManager(n, author, network, mLogs.logManagerLog)
 
 	// initiate executor.
 	exe := executor.NewExecutor(author, n, mgr, exec, mLogs.executorLog)
@@ -48,7 +40,6 @@ func NewPhalanxProvider(n int, author uint64, size int, duration time.Duration, 
 
 	return &phalanxImpl{
 		logManager:   mgr,
-		sequencePool: seq,
 		executor:     exe,
 		cmdManager:   cmdmanager.NewTestReceiver(n, author, types.TestBatchSize, network, mLogs.testLog),
 		logger:       logger,
@@ -61,7 +52,6 @@ func (phi *phalanxImpl) ProcessTransaction(tx *protos.Transaction) {
 
 // ProcessCommand is used to process the commands from clients.
 func (phi *phalanxImpl) ProcessCommand(command *protos.Command) {
-	phi.sequencePool.InsertCommand(command)
 	if err := phi.logManager.ProcessCommand(command); err != nil {
 		panic(err)
 	}
@@ -98,19 +88,20 @@ func (phi *phalanxImpl) ProcessConsensusMessage(message *protos.ConsensusMessage
 }
 
 // MakeProposal is used to generate payloads for bft consensus.
-func (phi *phalanxImpl) MakeProposal(priori *protos.PartialOrderBatch) (*protos.PartialOrderBatch, error) {
-	return phi.sequencePool.PullPartials(priori)
+func (phi *phalanxImpl) MakeProposal() (*protos.PartialOrderBatch, error) {
+	return phi.logManager.GenerateProposal()
 }
 
 // Restore is used to restore data when we have found a timeout event in partial-synchronized bft consensus module.
 func (phi *phalanxImpl) Restore() {
-	phi.sequencePool.RestorePartials()
+	//phi.sequencePool.RestorePartials()
 }
 
 // Verify is used to verify the phalanx payload.
 // here, we would like to verify the validation of phalanx partial order, and record which seqNo has already been proposed.
 func (phi *phalanxImpl) Verify(pBatch *protos.PartialOrderBatch) error {
-	return phi.sequencePool.VerifyPartials(pBatch)
+	//return phi.sequencePool.VerifyPartials(pBatch)
+	return nil
 }
 
 // SetStable is used to set stable
@@ -121,10 +112,18 @@ func (phi *phalanxImpl) Verify(pBatch *protos.PartialOrderBatch) error {
 // 2) classic-bft: for every time we are trying to execute a block, we would like to use it to
 //    set phalanx stable status.
 func (phi *phalanxImpl) SetStable(pBatch *protos.PartialOrderBatch) error {
-	return phi.sequencePool.SetStablePartials(pBatch)
+	//return phi.sequencePool.SetStablePartials(pBatch)
+	return nil
 }
 
 // Commit is used to commit the phalanx partial order batch which has been verified by bft consensus.
 func (phi *phalanxImpl) Commit(pBatch *protos.PartialOrderBatch) error {
-	return phi.executor.CommitPartials(pBatch)
+
+	qStream, err := phi.logManager.VerifyProposal(pBatch)
+
+	if err != nil {
+		return err
+	}
+
+	return phi.executor.CommitStream(qStream)
 }

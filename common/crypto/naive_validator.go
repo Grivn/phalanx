@@ -59,14 +59,23 @@ func VerifyProofCerts(digest types.Hash, pc *protos.QuorumCert, quorum int) erro
 
 // CheckDigest is used to check the correctness of digest
 func CheckDigest(pre *protos.PreOrder) error {
-	payload, err := proto.Marshal(&protos.PreOrder{Author: pre.Author, Sequence: pre.Sequence, CommandDigest: pre.CommandDigest, Timestamp: pre.Timestamp})
+	digest, err := CalculateDigest(pre)
 	if err != nil {
 		return err
 	}
-	if types.CalculatePayloadHash(payload, 0) != pre.Digest {
+	if digest != pre.Digest {
 		return errors.New("digest is not equal")
 	}
 	return nil
+}
+
+// CalculateDigest is used to calculate the digest
+func CalculateDigest(pre *protos.PreOrder) (string, error) {
+	payload, err := proto.Marshal(&protos.PreOrder{Author: pre.Author, Sequence: pre.Sequence, CommandDigest: pre.CommandDigest, Timestamp: pre.Timestamp, ParentDigest: pre.ParentDigest})
+	if err != nil {
+		return "", err
+	}
+	return types.CalculatePayloadHash(payload, 0), nil
 }
 
 //==================================== Helper =============================================

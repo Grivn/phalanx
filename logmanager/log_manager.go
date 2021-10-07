@@ -8,7 +8,6 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 )
 
 // todo pre-trusted order entry
@@ -45,9 +44,16 @@ type logManager struct {
 	aggMap map[string]*protos.PartialOrder
 
 	// subs is the module for us to process consensus messages for participates.
+	// when we try to read the partial order to execute, we should read them from each sub instance.
 	subs map[uint64]*subInstance
 
+	// pTracker is used to record the partial orders received by current node.
+	pTracker *partialTracker
+
 	//===================================== client commands manager ============================================
+
+	// cTracker is used to record the commands received by current node.
+	cTracker *commandTracker
 
 	// clients are used to track the commands send from them.
 	clients map[uint64]*clientInstance
@@ -58,6 +64,11 @@ type logManager struct {
 	// closeC is used to stop log manager.
 	closeC chan bool
 
+	//======================================= consensus manager ============================================
+
+	//
+	commitNo map[uint64]uint64
+
 	//======================================= external tools ===========================================
 
 	// sender is used to send consensus message into network.
@@ -67,12 +78,20 @@ type logManager struct {
 	logger external.Logger
 }
 
-func NewLogManager(n int, author uint64, sp internal.SequencePool, sender external.NetworkService, logger external.Logger) *logManager {
+func NewLogManager(n int, author uint64, sender external.NetworkService, logger external.Logger) *logManager {
 	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
+
+	// initiate committed number tracker.
+	committedTracker := make(map[uint64]uint64)
+
+	// initiate a partial tracker for current node.
+	pTracker := newPartialTracker(author, logger)
+
 	subs := make(map[uint64]*subInstance)
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
-		subs[id] = newSubInstance(author, id, sp, sender, logger)
+		subs[id] = newSubInstance(author, id, pTracker, sender, logger)
+		committedTracker[id] = 0
 	}
 
 	return &logManager{
@@ -81,11 +100,14 @@ func NewLogManager(n int, author uint64, sp internal.SequencePool, sender extern
 		sequence: uint64(0),
 		aggMap:   make(map[string]*protos.PartialOrder),
 		subs:     subs,
+		pTracker: pTracker,
+		cTracker: newCommandTracker(author, logger),
 		clients:  make(map[uint64]*clientInstance),
 		commandC: make(chan *protos.Command),
 		closeC:   make(chan bool),
 		sender:   sender,
 		logger:   logger,
+		commitNo: committedTracker,
 	}
 }
 
@@ -116,6 +138,9 @@ func (mgr *logManager) Committed(author uint64, seqNo uint64) {
 func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
+
+	// record the command with command tracker.
+	mgr.cTracker.recordCommand(command)
 
 	// select the client instance according to the identifier of command author.
 	client, ok := mgr.clients[command.Author]
@@ -172,11 +197,11 @@ func (mgr *logManager) tryGeneratePreOrder(command *protos.Command) error {
 
 	// generate pre order message.
 	pre := protos.NewPreOrder(mgr.author, mgr.sequence, command, mgr.highOrder)
-	payload, err := pre.Marshal()
+	digest, err := crypto.CalculateDigest(pre)
 	if err != nil {
 		return fmt.Errorf("pre order marshal error: %s", err)
 	}
-	pre.Digest = types.CalculatePayloadHash(payload, 0)
+	pre.Digest = digest
 
 	// generate self-signature for current pre-order
 	signature, err := crypto.PrivSign(types.StringToBytes(pre.Digest), int(mgr.author))
@@ -268,4 +293,116 @@ func (mgr *logManager) ProcessPartial(pOrder *protos.PartialOrder) error {
 	defer mgr.mutex.Unlock()
 
 	return mgr.subs[pOrder.Author()].processPartial(pOrder)
+}
+
+//===============================================================
+//                   Read Essential Info
+//===============================================================
+
+func (mgr *logManager) ReadCommand(commandD string) *protos.Command {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	command := mgr.cTracker.readCommand(commandD)
+
+	for {
+		if command != nil {
+			break
+		}
+
+		// if we could not read the command, just try the next time.
+		command = mgr.cTracker.readCommand(commandD)
+	}
+
+	return command
+}
+
+func (mgr *logManager) ReadPartials(qStream types.QueryStream) []*protos.PartialOrder {
+	var res []*protos.PartialOrder
+
+	for _, qIndex := range qStream {
+		pOrder := mgr.pTracker.readPartial(qIndex)
+
+		for {
+			if pOrder != nil {
+				break
+			}
+
+			// if we could not read the partial order, just try the next time.
+			pOrder = mgr.pTracker.readPartial(qIndex)
+		}
+
+		res = append(res, pOrder)
+	}
+
+	return res
+}
+
+//=====================================================================
+//                  Consensus Proposal Manager
+//=====================================================================
+
+func (mgr *logManager) GenerateProposal() (*protos.PartialOrderBatch, error) {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	batch := protos.NewPartialOrderBatch(mgr.author)
+
+	for _, sub := range mgr.subs {
+		if sub.highPartialOrder == nil {
+			//mgr.logger.Debugf("[%d] generate batch, nil high order for node %d", mgr.author, sub.id)
+			batch.ProposedNos[sub.id] = 0
+			continue
+		}
+
+		batch.Partials[sub.id] = sub.highPartialOrder
+		batch.ProposedNos[sub.id] = sub.highPartialOrder.Sequence()
+	}
+
+	return batch, nil
+}
+
+func (mgr *logManager) VerifyProposal(batch *protos.PartialOrderBatch) (types.QueryStream, error) {
+	updated := false
+
+	for id, no := range batch.ProposedNos {
+		if no <= mgr.commitNo[id] {
+			// committed previous partial order for node id, including partial number 0.
+			continue
+		}
+
+		pOrder := batch.Partials[id]
+
+		if pOrder.Sequence() != no {
+			return nil, fmt.Errorf("invalid partial order seqNo, proposedNo %d, partial seqNo %d", no, pOrder.Sequence())
+		}
+
+		if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, mgr.quorum); err != nil {
+			return nil, fmt.Errorf("invalid high partial order received from %d: %s", batch.Author, err)
+		}
+
+		updated = true
+	}
+
+	if !updated {
+		// haven't updated committed partial order.
+		return nil, nil
+	}
+
+	var qStream types.QueryStream
+
+	for id, no := range batch.ProposedNos {
+		for {
+			if no <= mgr.commitNo[id] {
+				break
+			}
+
+			mgr.commitNo[id]++
+
+			qIndex := types.QueryIndex{Author: id, SeqNo: mgr.commitNo[id]}
+			qStream = append(qStream, qIndex)
+		}
+	}
+
+	return qStream, nil
 }

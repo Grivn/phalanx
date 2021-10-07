@@ -36,8 +36,7 @@ func TestPhalanx(t *testing.T) {
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 		exec := mocks.NewSimpleExecutor(id, types.NewRawLogger())
-		phx[id] = phalanx.NewPhalanxProvider(n, id, types.DefaultLogRotation, types.DefaultTimeDuration,
-			exec, net, types.NewRawLogger())
+		phx[id] = phalanx.NewPhalanxProvider(n, id, exec, net, types.NewRawLogger())
 	}
 
 	for i:=0; i<n; i++ {
@@ -48,7 +47,7 @@ func TestPhalanx(t *testing.T) {
 	replicas := make(map[uint64]*replica)
 	bftCs := make(map[uint64]chan *bftMessage)
 	sendC := make(chan *bftMessage)
-	logDir := "bft_nodes_"+time.Now().Format("2006-01-02_15:04:05")
+	logDir := "bft_nodes"
 	_ = os.Mkdir(logDir, os.ModePerm)
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
@@ -60,8 +59,8 @@ func TestPhalanx(t *testing.T) {
 
 	num := 1000
 	client := 4
-	transactionSendInstance(num, client, phx)
-	//commandSendInstance(num, client, phx)
+	//transactionSendInstance(num, client, phx)
+	commandSendInstance(num, client, phx)
 
 	time.Sleep(3000 * time.Second)
 }

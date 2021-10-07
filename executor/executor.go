@@ -1,10 +1,11 @@
 package executor
 
 import (
+	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/internal"
+	"sort"
 	"sync"
 
-	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
 )
 
@@ -25,7 +26,13 @@ type executorImpl struct {
 	recorder *commandRecorder
 
 	//
-	mgr internal.LogManager
+	committer internal.Committer
+
+	//
+	commandMap map[string]bool
+
+	//
+	reader internal.Reader
 
 	// exec is used to execute the block.
 	exec external.ExecutionService
@@ -35,34 +42,44 @@ type executorImpl struct {
 func NewExecutor(author uint64, n int, mgr internal.LogManager, exec external.ExecutionService, logger external.Logger) *executorImpl {
 	recorder := newCommandRecorder(author, logger)
 	return &executorImpl{
-		author:   author,
-		rules:    newOrderRule(author, n, recorder, logger),
-		recorder: recorder,
-		exec:     exec,
-		mgr:      mgr,
+		author:    author,
+		rules:     newOrderRule(author, n, recorder, logger),
+		recorder:  recorder,
+		exec:      exec,
+		committer: mgr,
+		reader:    mgr,
+		commandMap: make(map[string]bool),
 	}
 }
 
-// CommitPartials is used to commit the QCs.
-func (ei *executorImpl) CommitPartials(pBatch *protos.PartialOrderBatch) error {
+// CommitStream is used to commit the partial order stream.
+func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 	ei.mutex.Lock()
 	defer ei.mutex.Unlock()
 
-	if pBatch == nil {
+	if len(qStream) == 0 {
 		// nil partial order batch means we should skip the current commitment attempt.
 		return nil
 	}
 
-	for _, rawCommand := range pBatch.Commands {
-		ei.recorder.storeCommand(rawCommand)
-	}
+	sort.Sort(qStream)
 
-	for _, pOrder := range pBatch.Partials {
+	partials := ei.reader.ReadPartials(qStream)
+
+	for _, pOrder := range partials {
+
+		if !ei.commandMap[pOrder.CommandDigest()] {
+			// raed the command info.
+			command := ei.reader.ReadCommand(pOrder.CommandDigest())
+			ei.recorder.storeCommand(command)
+			ei.commandMap[pOrder.CommandDigest()] = true
+		}
+
 		blocks := ei.rules.processPartialOrder(pOrder)
 		for _, blk := range blocks {
 			ei.seqNo++
 			ei.exec.CommandExecution(blk.CommandD, blk.TxList, ei.seqNo, blk.Timestamp)
-			ei.mgr.Committed(blk.Author, blk.CmdSeq)
+			ei.committer.Committed(blk.Author, blk.CmdSeq)
 		}
 	}
 
