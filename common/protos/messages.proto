@@ -12,6 +12,8 @@ message Transaction {
   string Hash = 1;
   // Payload is the instruction content.
   bytes Payload = 2;
+  // Timestamp is the time stamp for current transaction.
+  int64 Timestamp = 3;
 }
 
 // Command is the thing we receive from others.
@@ -89,8 +91,6 @@ message PreOrder {
   int64 Timestamp = 5;
   // ParentDigest indicates the parent pre-order digest.
   string ParentDigest = 6;
-  // PrePartialOrder is the previous order info.
-  PreOrder PreOrder = 7;
 }
 
 // Certification is used to verify the pre-ordering message on one node.

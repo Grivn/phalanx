@@ -91,8 +91,8 @@ func (m *PartialOrder) Format() string {
 	return fmt.Sprintf("[PartialOrder: author %d, sequence %d, command %s]", m.Author(), m.Sequence(), m.CommandDigest())
 }
 
-func (m *PartialOrder) ParentOrder() *PreOrder {
-	return m.PreOrder.PreOrder
+func (m *PartialOrder) ParentDigest() string {
+	return m.PreOrder.ParentDigest
 }
 
 //=============================== Partial Order Batch ===============================================
@@ -125,7 +125,7 @@ func NewPreOrder(author uint64, sequence uint64, command *Command, previous *Pre
 	if previous == nil {
 		previous = &PreOrder{Digest: "GENESIS PRE ORDER"}
 	}
-	return &PreOrder{Author: author, Sequence: sequence, CommandDigest: command.Digest, Timestamp: time.Now().UnixNano(), ParentDigest: previous.Digest, PreOrder: previous}
+	return &PreOrder{Author: author, Sequence: sequence, CommandDigest: command.Digest, Timestamp: time.Now().UnixNano(), ParentDigest: previous.Digest}
 }
 
 func NewPartialOrderBatch(author uint64) *PartialOrderBatch {

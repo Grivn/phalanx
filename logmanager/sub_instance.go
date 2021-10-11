@@ -145,7 +145,8 @@ func (si *subInstance) processBTree() error {
 
 		// verify the validation between current partial order and highest partial order.
 		if err := si.checkHighestOrder(pOrder); err != nil {
-			return fmt.Errorf("check higest order failed, %s", err)
+			return nil
+			//return fmt.Errorf("check higest order failed, %s", err)
 		}
 
 		// record partial order with partial tracker.
@@ -182,8 +183,8 @@ func (si *subInstance) checkHighestOrder(pOrder *protos.PartialOrder) error {
 		return fmt.Errorf("nil highest order")
 	}
 
-	if si.highPartialOrder.PreOrderDigest() != pOrder.ParentOrder().Digest {
-		return fmt.Errorf("invalid parent order digest, expect %s, received %s", si.highPartialOrder.PreOrderDigest(), pOrder.ParentOrder().Digest)
+	if si.highPartialOrder.PreOrderDigest() != pOrder.ParentDigest() {
+		return fmt.Errorf("invalid parent order digest, expect %s, received %s, pOrder %s", si.highPartialOrder.PreOrderDigest(), pOrder.ParentDigest(), pOrder.Format())
 	}
 
 	return nil

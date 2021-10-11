@@ -151,7 +151,7 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 	}
 
 	// append the transaction into this client.
-	go client.append(command)
+	client.append(command)
 
 	return nil
 }
@@ -350,13 +350,14 @@ func (mgr *logManager) GenerateProposal() (*protos.PartialOrderBatch, error) {
 
 	for _, sub := range mgr.subs {
 		if sub.highPartialOrder == nil {
-			//mgr.logger.Debugf("[%d] generate batch, nil high order for node %d", mgr.author, sub.id)
+			mgr.logger.Debugf("[%d] generate batch, nil high order for node %d", mgr.author, sub.id)
 			batch.ProposedNos[sub.id] = 0
 			continue
 		}
 
 		batch.Partials[sub.id] = sub.highPartialOrder
 		batch.ProposedNos[sub.id] = sub.highPartialOrder.Sequence()
+		mgr.logger.Debugf("[%d] generate batch, high order for node %d, %s", mgr.author, sub.id, sub.highPartialOrder.Format())
 	}
 
 	return batch, nil
@@ -368,6 +369,7 @@ func (mgr *logManager) VerifyProposal(batch *protos.PartialOrderBatch) (types.Qu
 	for id, no := range batch.ProposedNos {
 		if no <= mgr.commitNo[id] {
 			// committed previous partial order for node id, including partial number 0.
+			mgr.logger.Debugf("[%d] haven't updated committed partial order for node %d", mgr.author, id)
 			continue
 		}
 

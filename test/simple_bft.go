@@ -1,4 +1,4 @@
-package test
+package main
 
 import (
 	"github.com/Grivn/phalanx/common/protos"

@@ -7,21 +7,17 @@ import (
 )
 
 // NewBlock generates the block to commit.
-func NewBlock(commandD string, txList []*protos.Transaction, hashList []string, timestamp int64) Block {
-	return Block{CommandD: commandD, TxList: txList, HashList: hashList, Timestamp: timestamp}
+func NewBlock(command *protos.Command, timestamp int64) Block {
+	return Block{Command: command, Timestamp: timestamp}
 }
 
 type Block struct {
-	Author    uint64
-	CmdSeq    uint64
-	CommandD  string
-	TxList    []*protos.Transaction
-	HashList  []string
+	Command   *protos.Command
 	Timestamp int64
 }
 
 func (block Block) Format() string {
-	return fmt.Sprintf("[Block: Author %d, CmdSeq %d, txCount %d, trusted-timestamp %d, digest %s]", block.Author, block.CmdSeq, len(block.TxList), block.Timestamp, block.CommandD)
+	return fmt.Sprintf("[Block: Author %d, CmdSeq %d, txCount %d, trusted-timestamp %d, digest %s]", block.Command.Author, block.Command.Sequence, len(block.Command.Content), block.Timestamp, block.Command.Digest)
 }
 
 // SortableBlocks is a slice of Block to sort.
@@ -31,7 +27,7 @@ func (s SortableBlocks) Len() int {
 }
 func (s SortableBlocks) Less(i, j int) bool {
 	if s[i].Timestamp == s[j].Timestamp {
-		return s[i].CommandD < s[j].CommandD
+		return s[i].Command.Digest < s[j].Command.Digest
 	}
 	return s[i].Timestamp < s[j].Timestamp
 }

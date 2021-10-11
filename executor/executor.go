@@ -36,6 +36,8 @@ type executorImpl struct {
 
 	// exec is used to execute the block.
 	exec external.ExecutionService
+
+	logger external.Logger
 }
 
 // NewExecutor is used to generator an executor for phalanx.
@@ -49,6 +51,7 @@ func NewExecutor(author uint64, n int, mgr internal.LogManager, exec external.Ex
 		committer: mgr,
 		reader:    mgr,
 		commandMap: make(map[string]bool),
+		logger: logger,
 	}
 }
 
@@ -63,6 +66,7 @@ func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 	}
 
 	sort.Sort(qStream)
+	ei.logger.Debugf("[%d] commit query stream %v", ei.author, qStream)
 
 	partials := ei.reader.ReadPartials(qStream)
 
@@ -78,8 +82,8 @@ func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 		blocks := ei.rules.processPartialOrder(pOrder)
 		for _, blk := range blocks {
 			ei.seqNo++
-			ei.exec.CommandExecution(blk.CommandD, blk.TxList, ei.seqNo, blk.Timestamp)
-			ei.committer.Committed(blk.Author, blk.CmdSeq)
+			ei.exec.CommandExecution(blk.Command, ei.seqNo, blk.Timestamp)
+			ei.committer.Committed(blk.Command.Author, blk.Command.Sequence)
 		}
 	}
 

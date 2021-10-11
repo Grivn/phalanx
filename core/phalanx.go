@@ -122,6 +122,7 @@ func (phi *phalanxImpl) Commit(pBatch *protos.PartialOrderBatch) error {
 	qStream, err := phi.logManager.VerifyProposal(pBatch)
 
 	if err != nil {
+		phi.logger.Errorf("verify error, %s", err)
 		return err
 	}
 

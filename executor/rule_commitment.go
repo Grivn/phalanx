@@ -134,17 +134,8 @@ func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.Blo
 		// read the command info from command recorder.
 		info := cr.recorder.readCommandInfo(digest)
 
-		// generate block framework.
-		block := types.NewBlock(info.curCmd, nil, nil, info.timestamps[cr.fault])
-
-		// try to fetch the raw command to fulfill the block.
-		rawCommand := cr.recorder.readCommandRaw(info.curCmd)
-		if rawCommand != nil {
-			block.Author = rawCommand.Author
-			block.CmdSeq = rawCommand.Sequence
-			block.TxList = rawCommand.Content
-			block.HashList = rawCommand.HashList
-		}
+		// generate block, try to fetch the raw command to fulfill the block.
+		block := types.NewBlock(cr.recorder.readCommandRaw(info.curCmd), info.timestamps[cr.fault])
 		cr.logger.Infof("[%d] generate block %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.

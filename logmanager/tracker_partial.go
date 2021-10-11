@@ -13,7 +13,7 @@ import (
 // the tracker of partial order belongs to sub instance, which means the partial orders from such a node.
 type partialTracker struct {
 	// mutex is used to control the concurrency problems of partial tracker.
-	mutex sync.Mutex
+	mutex sync.RWMutex
 
 	// author indicates current node identifier.
 	author uint64
@@ -49,8 +49,8 @@ func (pt *partialTracker) recordPartial(pOrder *protos.PartialOrder) {
 }
 
 func (pt *partialTracker) readPartial(idx types.QueryIndex) *protos.PartialOrder {
-	pt.mutex.Lock()
-	defer pt.mutex.Unlock()
+	pt.mutex.RLock()
+	defer pt.mutex.RUnlock()
 
 	// here, we are trying to read the partial order according to partial order query index.
 	pOrder, ok := pt.partialMap[idx]

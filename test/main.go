@@ -1,18 +1,28 @@
 package main
 
 import (
-	"os"
-	"strconv"
-	"testing"
-	"time"
-
+	"fmt"
 	"github.com/Grivn/phalanx/common/mocks"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/core"
+	phalanx "github.com/Grivn/phalanx/core"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
+	"net/rpc"
+	"os"
+	"strconv"
 )
 
-func TestPhalanx(t *testing.T) {
+type Student struct {
+	Name   string
+	School string
+}
+type RpcServer struct{}
+
+func (r *RpcServer) Introduce(student Student, words *string) error {
+	fmt.Println("student: ", student)
+
 
 	n := 4
 
@@ -62,5 +72,19 @@ func TestPhalanx(t *testing.T) {
 	//transactionSendInstance(num, client, phx)
 	commandSendInstance(num, client, phx)
 
-	time.Sleep(1000 * time.Second)
+	*words = fmt.Sprintf("Hello everyone, my name is %s, and I am from %s", student.Name, student.School)
+	return nil
+}
+
+func main() {
+	rpcServer := new(RpcServer)
+	// 注册rpc服务
+	_ = rpc.Register(rpcServer)
+	//把服务处理绑定到http协议上
+	rpc.HandleHTTP()
+	log.Println("http rpc service start success addr:8080")
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

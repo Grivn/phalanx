@@ -60,10 +60,15 @@ func GenerateRandTransaction(size int) *protos.Transaction {
 	return GenerateTransaction(payload)
 }
 
+func NanoToSecond(nano int64) float64 {
+	return float64(nano)/float64(time.Second)
+}
+
 func GenerateTransaction(payload []byte) *protos.Transaction {
 	return &protos.Transaction{
-		Hash:    CalculatePayloadHash(payload, time.Now().UnixNano()),
-		Payload: payload,
+		Hash:      CalculatePayloadHash(payload, time.Now().UnixNano()),
+		Payload:   payload,
+		Timestamp: time.Now().UnixNano(),
 	}
 }
 

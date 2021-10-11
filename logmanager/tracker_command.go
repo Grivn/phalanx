@@ -12,7 +12,7 @@ import (
 // the tracker of commands belongs to log manager.
 type commandTracker struct {
 	// mutex is used to control the concurrency problems of command tracker.
-	mutex sync.Mutex
+	mutex sync.RWMutex
 
 	// author indicates current node identifier.
 	author uint64
@@ -53,27 +53,20 @@ func (ct *commandTracker) recordCommand(command *protos.Command) {
 		return
 	}
 
-	ct.logger.Debugf("[%d] received command %s", ct.author, command.Digest)
+	//ct.logger.Debugf("[%d] received command %s", ct.author, command.Digest)
 	ct.commandMap[command.Digest] = command
 }
 
 func (ct *commandTracker) readCommand(digest string) *protos.Command {
-	ct.mutex.Lock()
-	defer ct.mutex.Unlock()
+	ct.mutex.RLock()
+	defer ct.mutex.RUnlock()
 
 	command, ok := ct.commandMap[digest]
 	if !ok {
 		return nil
 	}
 	delete(ct.commandMap, digest)
-	return command
-}
-
-func (ct *commandTracker) commitCommand(digest string) {
-	ct.mutex.Lock()
-	defer ct.mutex.Unlock()
-
-	ct.logger.Debugf("[%d] commit command %s", ct.author, digest)
-	delete(ct.commandMap, digest)
 	ct.committedMap[digest] = true
+	ct.logger.Debugf("[%d] read command %s", ct.author, digest)
+	return command
 }

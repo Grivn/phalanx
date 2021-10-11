@@ -72,7 +72,7 @@ func (client *clientInstance) commit(seqNo uint64) {
 	client.logger.Debugf("[%d] client %d committed sequence number %d", client.author, client.id, seqNo)
 	client.committedNo[seqNo] = true
 	if c := client.minCommand(); c != nil {
-		client.feedBack(c)
+		go client.feedBack(c)
 	}
 }
 
@@ -83,7 +83,7 @@ func (client *clientInstance) append(command *protos.Command) {
 	//client.logger.Debugf("[%d] received command %s", client.author, command.Format())
 	client.commands.ReplaceOrInsert(command)
 	if c := client.minCommand(); c != nil {
-		client.feedBack(c)
+		go client.feedBack(c)
 	}
 }
 
