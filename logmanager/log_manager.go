@@ -103,7 +103,7 @@ func NewLogManager(n int, author uint64, sender external.NetworkService, logger 
 		pTracker: pTracker,
 		cTracker: newCommandTracker(author, logger),
 		clients:  make(map[uint64]*clientInstance),
-		commandC: make(chan *protos.Command),
+		commandC: make(chan *protos.Command, 10000),
 		closeC:   make(chan bool),
 		sender:   sender,
 		logger:   logger,
@@ -148,6 +148,7 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 		// if we cannot find the client, initiate an instance for this client.
 		client = newClient(mgr.author, command.Author, mgr.commandC, mgr.logger)
 		mgr.clients[command.Author] = client
+		client.start()
 	}
 
 	// append the transaction into this client.
