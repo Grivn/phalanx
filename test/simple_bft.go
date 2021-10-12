@@ -1,7 +1,6 @@
-package test
+package main
 
 import (
-	"fmt"
 	"github.com/Grivn/phalanx/common/protos"
 	"sync"
 	"time"
@@ -88,7 +87,7 @@ func cluster(sendC chan *bftMessage, bftCs map[uint64]chan *bftMessage, closeC c
 
 func (replica *replica) run() {
 	replica.logger.Infof("[%d] running bft consensus", replica.author)
-	replica.phalanx.Restore()
+	//replica.phalanx.Restore()
 
 	go replica.bftListener()
 
@@ -150,17 +149,14 @@ func (replica *replica) propose() *bftMessage {
 		return nil
 	}
 
-	block := replica.cache[replica.sequence]
+	pBatch, _ := replica.phalanx.MakeProposal()
 
-	var pBatch *protos.PartialOrderBatch
-	var err error
-	if block != nil {
-		pBatch, err = replica.phalanx.MakeProposal(block.pBatch)
-	} else {
-		pBatch, err = replica.phalanx.MakeProposal(nil)
-	}
-	if err != nil {
-		return nil
+	for {
+		if len(pBatch.Partials) != 0 {
+			break
+		}
+
+		pBatch, _ = replica.phalanx.MakeProposal()
 	}
 
 	replica.sequence++
@@ -189,9 +185,9 @@ func (replica *replica) processProposal(message *bftMessage) *bftMessage {
 		return nil
 	}
 
-	if err := replica.phalanx.Verify(message.pBatch); err != nil {
-		panic(fmt.Errorf("replica %d, error %s", replica.author, err))
-	}
+	//if err := replica.phalanx.Verify(message.pBatch); err != nil {
+	//	panic(fmt.Errorf("replica %d, error %s", replica.author, err))
+	//}
 
 	replica.cache[message.sequence] = message
 	v := &bftMessage{from: replica.author, to: message.from, typ: vote, sequence: message.sequence}
@@ -249,10 +245,10 @@ func (replica *replica) execute(message *bftMessage) {
 			continue
 		}
 
-		if err := replica.phalanx.SetStable(m.pBatch); err != nil {
-			replica.phalanx.Restore()
-			m.pBatch = nil
-		}
+		//if err := replica.phalanx.SetStable(m.pBatch); err != nil {
+		//	replica.phalanx.Restore()
+		//	m.pBatch = nil
+		//}
 
 		if err := replica.phalanx.Commit(m.pBatch); err != nil {
 			panic(err)

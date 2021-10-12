@@ -1,12 +1,18 @@
 package internal
 
-import "github.com/Grivn/phalanx/common/protos"
+import (
+	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
+)
 
 type LogManager interface {
 	Run()
-	Committed(author uint64, seqNo uint64)
+
 	LocalLog
 	RemoteLog
+	Reader
+	Committer
+	Consensus
 }
 
 type LocalLog interface {
@@ -31,4 +37,18 @@ type RemoteLog interface {
 	// could advance the sequence counter. We should record the advanced counter and put the info of
 	// order message into the sequential-pool.
 	ProcessPartial(pOrder *protos.PartialOrder) error
+}
+
+type Reader interface {
+	ReadCommand(commandD string) *protos.Command
+	ReadPartials(qStream types.QueryStream) []*protos.PartialOrder
+}
+
+type Committer interface {
+	Committed(author uint64, seqNo uint64)
+}
+
+type Consensus interface {
+	GenerateProposal() (*protos.PartialOrderBatch, error)
+	VerifyProposal(batch *protos.PartialOrderBatch) (types.QueryStream, error)
 }

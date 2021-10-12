@@ -1,10 +1,11 @@
 package logmanager
 
 import (
+	"sync"
+
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
 	"github.com/google/btree"
-	"sync"
 )
 
 // clientInstance is used to process transactions from specific client.
@@ -17,6 +18,8 @@ import (
 type clientInstance struct {
 	mutex sync.Mutex
 
+	h uint64
+
 	// author indicates the consensus node identifier.
 	author uint64
 
@@ -27,7 +30,9 @@ type clientInstance struct {
 	proposedNo uint64
 
 	// committedNo indicates the committed seqNo for current client.
-	committedNo map[uint64]bool
+	committedNo uint64
+
+	receivedCommand map[uint64]*protos.Command
 
 	// commands is used to record the command according to its indicator.
 	commands *btree.BTree
@@ -58,35 +63,75 @@ func newClient(author, id uint64, commandC chan *protos.Command, logger external
 		proposedNo: uint64(0),
 		commands: btree.New(2),
 		receiveC: make(chan *protos.Command, 1000),
+		committedC: make(chan uint64),
 		commandC: commandC,
-		committedNo: committedNo,
+		committedNo: uint64(0),
 		logger: logger,
+		receivedCommand: make(map[uint64]*protos.Command),
+	}
+}
+
+func (client *clientInstance) start() {
+	go client.listener()
+}
+
+func (client *clientInstance) listener() {
+	for {
+		select {
+		case <-client.closeC:
+			return
+		case command := <-client.receiveC:
+			client.commands.ReplaceOrInsert(command)
+			client.logger.Debugf("[%d] received command %s", client.author, command.Format())
+			if c := client.minCommand(); c != nil {
+				go client.feedBack(c)
+			}
+		case committed := <-client.committedC:
+			client.logger.Debugf("[%d] client %d committed sequence number %d", client.author, client.id, committed)
+
+			if committed != client.committedNo+1 {
+				panic("invalid committed number")
+			}
+
+			client.committedNo = committed
+
+			if c := client.minCommand(); c != nil {
+				go client.feedBack(c)
+			}
+		}
 	}
 }
 
 func (client *clientInstance) commit(seqNo uint64) {
-	client.mutex.Lock()
-	defer client.mutex.Unlock()
-
-	client.logger.Debugf("[%d] client %d committed sequence number %d", client.author, client.id, seqNo)
-	client.committedNo[seqNo] = true
-	if c := client.minCommand(); c != nil {
-		client.feedBack(c)
-	}
+	client.committedC <- seqNo
+	//client.mutex.Lock()
+	//defer client.mutex.Unlock()
+	//
+	//client.logger.Debugf("[%d] client %d committed sequence number %d", client.author, client.id, seqNo)
+	//client.committedNo[seqNo] = true
+	//if c := client.minCommand(); c != nil {
+	//	go client.feedBack(c)
+	//}
 }
 
 func (client *clientInstance) append(command *protos.Command) {
-	client.mutex.Lock()
-	defer client.mutex.Unlock()
-
-	//client.logger.Debugf("[%d] received command %s", client.author, command.Format())
-	client.commands.ReplaceOrInsert(command)
-	if c := client.minCommand(); c != nil {
-		client.feedBack(c)
-	}
+	client.receiveC <- command
+	//client.mutex.Lock()
+	//defer client.mutex.Unlock()
+	//
+	////client.logger.Debugf("[%d] received command %s", client.author, command.Format())
+	//client.commands.ReplaceOrInsert(command)
+	//if c := client.minCommand(); c != nil {
+	//	go client.feedBack(c)
+	//}
 }
 
 func (client *clientInstance) minCommand() *protos.Command {
+
+	if client.committedNo < client.proposedNo {
+		return nil
+	}
+
 	item := client.commands.Min()
 	if item == nil {
 		return nil
@@ -97,8 +142,7 @@ func (client *clientInstance) minCommand() *protos.Command {
 		return nil
 	}
 
-	if command.Sequence == client.proposedNo+1 && client.committedNo[client.proposedNo] {
-		delete(client.committedNo, client.proposedNo)
+	if command.Sequence == client.proposedNo+1 {
 		client.commands.Delete(item)
 		client.proposedNo++
 		return command

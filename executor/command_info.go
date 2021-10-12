@@ -59,7 +59,7 @@ func (ci *commandInfo) prioriRecord(priInfo *commandInfo) {
 	ci.priCmd[priInfo.curCmd] = true
 }
 
-func (ci *commandInfo) prioriAppend(priInfo *commandInfo) {
+func (ci *commandInfo) prioriAppend(priInfo *commandInfo) []string {
 	var priorities []string
 
 	ci.priCmd[priInfo.curCmd] = true
@@ -73,6 +73,8 @@ func (ci *commandInfo) prioriAppend(priInfo *commandInfo) {
 	for digest, info := range priInfo.lowCmd {
 		ci.lowCmd[digest] = info
 	}
+
+	return priorities
 }
 
 func (ci *commandInfo) prioriCommit(commandD string) {

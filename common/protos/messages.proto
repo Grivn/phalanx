@@ -12,6 +12,8 @@ message Transaction {
   string Hash = 1;
   // Payload is the instruction content.
   bytes Payload = 2;
+  // Timestamp is the time stamp for current transaction.
+  int64 Timestamp = 3;
 }
 
 // Command is the thing we receive from others.
@@ -87,6 +89,8 @@ message PreOrder {
   string CommandDigest = 4;
   // Timestamp indicates the time when current node generated such a log.
   int64 Timestamp = 5;
+  // ParentDigest indicates the parent pre-order digest.
+  string ParentDigest = 6;
 }
 
 // Certification is used to verify the pre-ordering message on one node.
@@ -130,7 +134,7 @@ message PartialOrderBatch {
   // Author is the generator for current batch.
   uint64 Author = 1;
   // Partials are the collected partial orders.
-  repeated PartialOrder Partials = 2;
+  map<uint64, PartialOrder> Partials = 2;
   // Commands are the commands which partial orders refer to.
   map<string, Command> Commands = 3;
   // ProposedNo indicates the latest proposed sequence number for each node.
