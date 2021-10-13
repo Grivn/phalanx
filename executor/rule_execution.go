@@ -116,10 +116,8 @@ func (er *executionRule) priorityCheck(qInfo *commandInfo, wInfos []*commandInfo
 				continue
 			}
 
-			transitiveSet := qInfo.prioriAppend(wInfo)
 			newPriorities = append(newPriorities, wInfo.curCmd)
-			newPriorities = append(newPriorities, transitiveSet...)
-			er.logger.Debugf("[%d] potential natural order: %s <- %s, transitive priorities %v", er.author, wInfo.format(), qInfo.format(), transitiveSet)
+			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, wInfo.format(), qInfo.format())
 		}
 	}
 

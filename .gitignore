@@ -3,3 +3,6 @@
 /test/testLogger/
 /package-lock.json
 *.log
+*.debug
+/test/test
+/test/bft_client/bft_client

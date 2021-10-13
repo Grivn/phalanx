@@ -52,9 +52,7 @@ func (phi *phalanxImpl) ProcessTransaction(tx *protos.Transaction) {
 
 // ProcessCommand is used to process the commands from clients.
 func (phi *phalanxImpl) ProcessCommand(command *protos.Command) {
-	if err := phi.logManager.ProcessCommand(command); err != nil {
-		panic(err)
-	}
+	phi.logManager.ProcessCommand(command)
 }
 
 // ProcessConsensusMessage is used process the consensus messages from phalanx replica.

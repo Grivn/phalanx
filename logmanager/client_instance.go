@@ -1,6 +1,7 @@
 package logmanager
 
 import (
+	"github.com/Grivn/phalanx/common/types"
 	"sync"
 
 	"github.com/Grivn/phalanx/common/protos"
@@ -32,16 +33,16 @@ type clientInstance struct {
 	// committedNo indicates the committed seqNo for current client.
 	committedNo uint64
 
-	receivedCommand map[uint64]*protos.Command
+	receivedCommand map[uint64]*types.CommandIndex
 
 	// commands is used to record the command according to its indicator.
-	commands *btree.BTree
+	commandStream *btree.BTree
 
 	// receiveC is used to receive command.
-	receiveC chan *protos.Command
+	receiveC chan *types.CommandIndex
 
 	// commandC is used to propose command towards log-manager.
-	commandC chan *protos.Command
+	commandC chan *types.CommandIndex
 
 	// committedC is used to receive the committed seqNo.
 	committedC chan uint64
@@ -53,7 +54,7 @@ type clientInstance struct {
 	logger external.Logger
 }
 
-func newClient(author, id uint64, commandC chan *protos.Command, logger external.Logger) *clientInstance {
+func newClient(author, id uint64, commandC chan *types.CommandIndex, logger external.Logger) *clientInstance {
 	logger.Infof("[%d] initiate manager for client %d", author, id)
 	committedNo := make(map[uint64]bool)
 	committedNo[uint64(0)] = true
@@ -61,13 +62,13 @@ func newClient(author, id uint64, commandC chan *protos.Command, logger external
 		author: author,
 		id: id,
 		proposedNo: uint64(0),
-		commands: btree.New(2),
-		receiveC: make(chan *protos.Command, 1000),
+		commandStream: btree.New(2),
+		receiveC: make(chan *types.CommandIndex, 1000),
 		committedC: make(chan uint64),
 		commandC: commandC,
 		committedNo: uint64(0),
 		logger: logger,
-		receivedCommand: make(map[uint64]*protos.Command),
+		receivedCommand: make(map[uint64]*types.CommandIndex),
 	}
 }
 
@@ -80,76 +81,69 @@ func (client *clientInstance) listener() {
 		select {
 		case <-client.closeC:
 			return
-		case command := <-client.receiveC:
-			client.commands.ReplaceOrInsert(command)
-			client.logger.Debugf("[%d] received command %s", client.author, command.Format())
+		case cIndex := <-client.receiveC:
+			client.commandStream.ReplaceOrInsert(cIndex)
+			client.logger.Debugf("[%d] received command %s", client.author, cIndex.Format())
 			if c := client.minCommand(); c != nil {
-				go client.feedBack(c)
+				client.feedBack(c)
 			}
 		case committed := <-client.committedC:
 			client.logger.Debugf("[%d] client %d committed sequence number %d", client.author, client.id, committed)
 
 			if committed != client.committedNo+1 {
-				panic("invalid committed number")
+				client.logger.Errorf("[%d] invalid committed sequence number, expect %d, committed %d", client.committedNo+1, committed)
 			}
 
-			client.committedNo = committed
+			client.committedNo = maxUint64(client.committedNo, committed)
 
 			if c := client.minCommand(); c != nil {
-				go client.feedBack(c)
+				client.feedBack(c)
 			}
 		}
 	}
 }
 
+func maxUint64(a, b uint64) uint64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func (client *clientInstance) commit(seqNo uint64) {
 	client.committedC <- seqNo
-	//client.mutex.Lock()
-	//defer client.mutex.Unlock()
-	//
-	//client.logger.Debugf("[%d] client %d committed sequence number %d", client.author, client.id, seqNo)
-	//client.committedNo[seqNo] = true
-	//if c := client.minCommand(); c != nil {
-	//	go client.feedBack(c)
-	//}
 }
 
 func (client *clientInstance) append(command *protos.Command) {
-	client.receiveC <- command
-	//client.mutex.Lock()
-	//defer client.mutex.Unlock()
-	//
-	////client.logger.Debugf("[%d] received command %s", client.author, command.Format())
-	//client.commands.ReplaceOrInsert(command)
-	//if c := client.minCommand(); c != nil {
-	//	go client.feedBack(c)
-	//}
+	cIndex := types.NewCommandIndex(command)
+
+	client.receiveC <- cIndex
 }
 
-func (client *clientInstance) minCommand() *protos.Command {
+func (client *clientInstance) minCommand() *types.CommandIndex {
 
 	if client.committedNo < client.proposedNo {
 		return nil
 	}
 
-	item := client.commands.Min()
+	item := client.commandStream.Min()
 	if item == nil {
 		return nil
 	}
 
-	command, ok := item.(*protos.Command)
+	cIndex, ok := item.(*types.CommandIndex)
 	if !ok {
 		return nil
 	}
 
-	if command.Sequence == client.proposedNo+1 {
-		client.commands.Delete(item)
+	if cIndex.SeqNo == client.proposedNo+1 {
+		client.commandStream.Delete(item)
 		client.proposedNo++
-		return command
+		return cIndex
 	}
 	return nil
 }
 
-func (client *clientInstance) feedBack(command *protos.Command) {
-	client.commandC <- command
+func (client *clientInstance) feedBack(cIndex *types.CommandIndex) {
+	client.commandC <- cIndex
 }

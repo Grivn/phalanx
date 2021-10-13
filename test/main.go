@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/Grivn/phalanx/common/mocks"
-	"github.com/Grivn/phalanx/common/protos"
-	"github.com/Grivn/phalanx/common/types"
-	phalanx "github.com/Grivn/phalanx/core"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"net/rpc"
 	"os"
 	"strconv"
+
+	"github.com/Grivn/phalanx/common/mocks"
+	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
+	phalanx "github.com/Grivn/phalanx/core"
 )
 
 type Student struct {
@@ -24,7 +25,7 @@ func (r *RpcServer) Introduce(student Student, words *string) error {
 	fmt.Println("student: ", student)
 
 
-	n := 4
+	n := 512
 
 	async := false
 
@@ -67,8 +68,8 @@ func (r *RpcServer) Introduce(student Student, words *string) error {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	num := 1000
-	client := 4
+	num := 100
+	client := 512
 	//transactionSendInstance(num, client, phx)
 	commandSendInstance(num, client, phx)
 

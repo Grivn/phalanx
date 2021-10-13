@@ -25,18 +25,19 @@ type executorImpl struct {
 	// recorder is used to record the command info.
 	recorder *commandRecorder
 
-	//
+	// committer is used to notify client instance the committed sequence number.
 	committer internal.Committer
 
-	//
+	// commandMap is used to record the hash of commands which have been selected into executor.
 	commandMap map[string]bool
 
-	//
+	// reader is used to read commands and partial orders from the tracker.
 	reader internal.Reader
 
 	// exec is used to execute the block.
 	exec external.ExecutionService
 
+	// logger is used to print logs.
 	logger external.Logger
 }
 
@@ -66,7 +67,7 @@ func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 	}
 
 	sort.Sort(qStream)
-	ei.logger.Debugf("[%d] commit query stream %v", ei.author, qStream)
+	ei.logger.Debugf("[%d] commit query stream len %d: %v", ei.author, len(qStream), qStream)
 
 	partials := ei.reader.ReadPartials(qStream)
 
