@@ -59,7 +59,7 @@ type logManager struct {
 	clients map[uint64]*clientInstance
 
 	// commandC is used to receive the valid transaction from one client instance.
-	commandC chan *protos.Command
+	commandC chan *types.CommandIndex
 
 	// closeC is used to stop log manager.
 	closeC chan bool
@@ -103,7 +103,7 @@ func NewLogManager(n int, author uint64, sender external.NetworkService, logger 
 		pTracker: pTracker,
 		cTracker: newCommandTracker(author, logger),
 		clients:  make(map[uint64]*clientInstance),
-		commandC: make(chan *protos.Command, 10000),
+		commandC: make(chan *types.CommandIndex, 10000),
 		closeC:   make(chan bool),
 		sender:   sender,
 		logger:   logger,
@@ -135,17 +135,22 @@ func (mgr *logManager) Committed(author uint64, seqNo uint64) {
 //                 Processor for Local Logs
 //===============================================================
 
-func (mgr *logManager) ProcessCommand(command *protos.Command) error {
-	mgr.mutex.Lock()
-	defer mgr.mutex.Unlock()
-
+func (mgr *logManager) ProcessCommand(command *protos.Command) {
 	// record the command with command tracker.
 	mgr.cTracker.recordCommand(command)
 
-	// select the client instance according to the identifier of command author.
+	// select the client instance and record the command target.
+	mgr.clientInstanceReminder(command)
+}
+
+func (mgr *logManager) clientInstanceReminder(command *protos.Command) {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	// select the client.
 	client, ok := mgr.clients[command.Author]
 	if !ok {
-		// if we cannot find the client, initiate an instance for this client.
+		// if there is not a client instance, initiate it.
 		client = newClient(mgr.author, command.Author, mgr.commandC, mgr.logger)
 		mgr.clients[command.Author] = client
 		client.start()
@@ -153,8 +158,6 @@ func (mgr *logManager) ProcessCommand(command *protos.Command) error {
 
 	// append the transaction into this client.
 	client.append(command)
-
-	return nil
 }
 
 func (mgr *logManager) checkHighOrder() error {
@@ -184,7 +187,7 @@ func (mgr *logManager) updateHighOrder(pre *protos.PreOrder) {
 
 // tryGeneratePreOrder is used to process the command received from one client instance.
 // We would like to assign the latest seqNo for it and generate a pre-order message.
-func (mgr *logManager) tryGeneratePreOrder(command *protos.Command) error {
+func (mgr *logManager) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -197,7 +200,7 @@ func (mgr *logManager) tryGeneratePreOrder(command *protos.Command) error {
 	mgr.sequence++
 
 	// generate pre order message.
-	pre := protos.NewPreOrder(mgr.author, mgr.sequence, command, mgr.highOrder)
+	pre := protos.NewPreOrder(mgr.author, mgr.sequence, cIndex.Digest, mgr.highOrder)
 	digest, err := crypto.CalculateDigest(pre)
 	if err != nil {
 		return fmt.Errorf("pre order marshal error: %s", err)
@@ -301,9 +304,6 @@ func (mgr *logManager) ProcessPartial(pOrder *protos.PartialOrder) error {
 //===============================================================
 
 func (mgr *logManager) ReadCommand(commandD string) *protos.Command {
-	mgr.mutex.Lock()
-	defer mgr.mutex.Unlock()
-
 	command := mgr.cTracker.readCommand(commandD)
 
 	for {

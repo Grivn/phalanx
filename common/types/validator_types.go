@@ -8,7 +8,7 @@ import (
 //==================================== Validator =============================================
 
 const (
-	COUNT = 100
+	COUNT = 512
 	// Supported signing algorithms
 	BLS_BLS12381    = "BLS_BLS12381"
 	ECDSA_P256      = "ECDSA_P256"

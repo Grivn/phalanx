@@ -27,23 +27,18 @@ type commandRecorder struct {
 	// mapCmt is a map for commands which have already been committed.
 	mapCmt map[string]bool
 
-	// todo reduce the check-time for the command pairs with potential natural order, mapPri & mapWat.
-
+	// mapWat is a map for commands which have already become QSC but have some priorities.
 	mapWat map[string]bool
 
 	// mapPri the potential priori relation recorder to update the mapWat at the same time the priori command committed.
 	mapPri map[string][]*commandInfo
 
-	// todo update the leaf node algorithm to find cyclic dependency.
-	mapLeaf map[string]bool
+	// leaves is a budget map to record the leaf nodes in current execution graph.
+	// we could skip to scan the cyclic dependency for command info which is not a leaf node.
+	leaves map[string]bool
 
 	// logger is used to print logs.
 	logger external.Logger
-}
-
-type forestGroup struct {
-	components map[string]bool
-	leaves     map[string]bool
 }
 
 func newCommandRecorder(author uint64, logger external.Logger) *commandRecorder {
@@ -56,7 +51,7 @@ func newCommandRecorder(author uint64, logger external.Logger) *commandRecorder 
 		mapCmt: make(map[string]bool),
 		mapWat: make(map[string]bool),
 		mapPri: make(map[string][]*commandInfo),
-		mapLeaf: make(map[string]bool),
+		leaves: make(map[string]bool),
 		logger: logger,
 	}
 }
@@ -153,6 +148,20 @@ func (recorder *commandRecorder) isCommitted(commandD string) bool {
 	return recorder.mapCmt[commandD]
 }
 
+//================================ management of leaf nodes =============================================
+
+func (recorder *commandRecorder) addLeaf(info *commandInfo) {
+	recorder.leaves[info.curCmd] = true
+}
+
+func (recorder *commandRecorder) cutLeaf(info *commandInfo) {
+	delete(recorder.leaves, info.curCmd)
+}
+
+func (recorder *commandRecorder) isLeaf(info *commandInfo) bool {
+	return recorder.leaves[info.curCmd]
+}
+
 //=========================== commands with potential byzantine order =================================
 
 func (recorder *commandRecorder) potentialByz(info *commandInfo, newPriorities []string) {
@@ -164,6 +173,10 @@ func (recorder *commandRecorder) potentialByz(info *commandInfo, newPriorities [
 	// update the priority map for current QSC.
 	for _, priori := range newPriorities {
 		recorder.mapPri[priori] = append(recorder.mapPri[priori], info)
+
+		for digest, cmd := range recorder.mapCmd[priori].lowCmd {
+			info.lowCmd[digest] = cmd
+		}
 	}
 }
 
@@ -181,67 +194,3 @@ func (recorder *commandRecorder) prioriCommit(commandD string) {
 	}
 	delete(recorder.mapPri, commandD)
 }
-
-//===============================================================
-
-//type scanner struct {
-//	recorder *commandRecorder
-//
-//	priority *commandInfo
-//
-//	sDigest string
-//
-//	sDependent bool
-//}
-//
-//func newScanner(recorder *commandRecorder, priInfo *commandInfo, selfCmd string) *scanner {
-//	return &scanner{recorder: recorder, priority: priInfo, sDigest: selfCmd, sDependent: false}
-//}
-//
-//func (scanner *scanner) scan() bool {
-//	scanner.selfDependency(scanner.priority)
-//	return scanner.sDependent
-//}
-//
-//func (scanner *scanner) selfDependency(priInfo *commandInfo) {
-//	if scanner.sDependent == true {
-//		return
-//	}
-//
-//	if !scanner.recorder.mapWat[priInfo.curCmd] {
-//		if priInfo.curCmd == scanner.sDigest {
-//			scanner.sDependent = true
-//		}
-//		return
-//	}
-//
-//	for digest := range priInfo.priCmd {
-//		if scanner.sDependent == true {
-//			return
-//		}
-//		scanner.selfDependency(scanner.recorder.readCommandInfo(digest))
-//	}
-//}
-
-//===================================================================
-
-//func (recorder *commandRecorder) isLeaf(commandD string) bool {
-//	return recorder.mapLeaf[commandD]
-//}
-//
-//func (recorder *commandRecorder) recordLeaf(commandD string) {
-//	recorder.mapLeaf[commandD] = true
-//}
-//
-//func (recorder *commandRecorder) removeLeaf(commandD string) {
-//	delete(recorder.mapLeaf, commandD)
-//}
-//
-//func (recorder *commandRecorder) getForest(digest string) *forestGroup {
-//	forest, ok := recorder.mapNode[digest]
-//	if !ok {
-//		forest = &forestGroup{components: make(map[string]bool), leaves: make(map[string]bool)}
-//		recorder.mapNode[digest] = forest
-//	}
-//	return forest
-//}

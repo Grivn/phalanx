@@ -18,7 +18,7 @@ type LogManager interface {
 type LocalLog interface {
 	// ProcessCommand is used to process command received from clients.
 	// We would like to assign a sequence number for such a command and generate a pre-order message.
-	ProcessCommand(command *protos.Command) error
+	ProcessCommand(command *protos.Command)
 
 	// ProcessVote is used to process the vote message from others.
 	// It could aggregate a agg-signature for one pre-order and generate an order message for one command.

@@ -6,10 +6,21 @@ import (
 	"github.com/Grivn/phalanx/external"
 )
 
+// orderRule contains the essential rules for block generation.
 type orderRule struct {
+	// collect indicates the collection rule of phalanx:
+	// which partial orders would be selected into execution process to compare order.
 	collect *collectionRule
+
+	// execute indicates the execution rule of phalanx:
+	// which commands would be selected into commitment process to generate blocks.
+	// here, we should take 'Natural Order' into thought.
 	execute *executionRule
-	commit  *commitmentRule
+
+	// commit indicates the commitment rule of phalanx:
+	// generate blocks and assign sequence order for them.
+	// here, the block generation would follow the 'Free Will' of participants.
+	commit *commitmentRule
 }
 
 func newOrderRule(author uint64, n int, recorder *commandRecorder, logger external.Logger) *orderRule {
