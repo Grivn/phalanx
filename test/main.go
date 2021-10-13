@@ -25,7 +25,7 @@ func (r *RpcServer) Introduce(student Student, words *string) error {
 	fmt.Println("student: ", student)
 
 
-	n := 512
+	n := 4
 
 	async := false
 
@@ -69,7 +69,7 @@ func (r *RpcServer) Introduce(student Student, words *string) error {
 	go cluster(sendC, bftCs, closeC)
 
 	num := 100
-	client := 512
+	client := 1024
 	//transactionSendInstance(num, client, phx)
 	commandSendInstance(num, client, phx)
 

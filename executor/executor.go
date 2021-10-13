@@ -13,26 +13,34 @@ type executorImpl struct {
 	// mutex is used to deal with the concurrent problems of executor.
 	mutex sync.Mutex
 
+	//============================ basic information =============================================
+
 	// author indicates the identifier of current node.
 	author uint64
 
 	// seqNo is used to track the sequence number for blocks.
 	seqNo uint64
 
-	// rules is used to generate blocks with phalanx order-rule.
-	rules *orderRule
-
-	// recorder is used to record the command info.
-	recorder *commandRecorder
-
-	// committer is used to notify client instance the committed sequence number.
-	committer internal.Committer
+	//============================ order rule for block generation ========================================
 
 	// commandMap is used to record the hash of commands which have been selected into executor.
 	commandMap map[string]bool
 
+	// recorder is used to record the command info.
+	recorder *commandRecorder
+
+	// rules is used to generate blocks with phalanx order-rule.
+	rules *orderRule
+
+	//============================= internal interfaces =========================================
+
+	// committer is used to notify client instance the committed sequence number.
+	committer internal.Committer
+
 	// reader is used to read commands and partial orders from the tracker.
 	reader internal.Reader
+
+	//============================== external interfaces ==========================================
 
 	// exec is used to execute the block.
 	exec external.ExecutionService
@@ -45,14 +53,14 @@ type executorImpl struct {
 func NewExecutor(author uint64, n int, mgr internal.LogManager, exec external.ExecutionService, logger external.Logger) *executorImpl {
 	recorder := newCommandRecorder(author, logger)
 	return &executorImpl{
-		author:    author,
-		rules:     newOrderRule(author, n, recorder, logger),
-		recorder:  recorder,
-		exec:      exec,
-		committer: mgr,
-		reader:    mgr,
+		author:     author,
+		rules:      newOrderRule(author, n, recorder, logger),
+		recorder:   recorder,
+		exec:       exec,
+		committer:  mgr,
+		reader:     mgr,
 		commandMap: make(map[string]bool),
-		logger: logger,
+		logger:     logger,
 	}
 }
 

@@ -59,31 +59,6 @@ func (ci *commandInfo) prioriRecord(priInfo *commandInfo) {
 	ci.priCmd[priInfo.curCmd] = true
 }
 
-func (ci *commandInfo) prioriCollect() map[string]bool {
-	priori := make(map[string]bool)
-
-	priori[ci.curCmd] = true
-
-	for digest := range ci.priCmd {
-		priori[digest] = true
-	}
-
-	return priori
-}
-
-func (ci *commandInfo) prioriAppend(priInfo *commandInfo) []string {
-	var priorities []string
-
-	priorities = append(priorities, priInfo.curCmd)
-
-	for digest := range priInfo.priCmd {
-		//ci.priCmd[digest] = true
-		priorities = append(priorities, digest)
-	}
-
-	return priorities
-}
-
 func (ci *commandInfo) prioriCommit(commandD string) {
 	delete(ci.priCmd, commandD)
 }

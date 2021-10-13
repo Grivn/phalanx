@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+//nolint
 func transactionSendInstance(num, client int, phx map[uint64]phalanx.Provider) {
 	for i:=0; i<num; i++ {
 		time.Sleep(2*time.Microsecond)
@@ -38,6 +39,7 @@ func phalanxListener(phx phalanx.Provider, net chan *protos.ConsensusMessage, cm
 	}
 }
 
+//nolint
 func transactionSender(sender uint64, phx map[uint64]phalanx.Provider) {
 	tx := types.GenerateRandTransaction(1)
 

@@ -1,10 +1,8 @@
 package logmanager
 
 import (
-	"github.com/Grivn/phalanx/common/types"
-	"sync"
-
 	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/google/btree"
 )
@@ -17,9 +15,7 @@ import (
 // which means we should process (n+1)th tx should be processed
 // after the procession for (n)th tx has been finished.
 type clientInstance struct {
-	mutex sync.Mutex
-
-	h uint64
+	//=============================== basic information =================================
 
 	// author indicates the consensus node identifier.
 	author uint64
@@ -27,16 +23,18 @@ type clientInstance struct {
 	// id indicates the identifier for client.
 	id uint64
 
+	//=========================== command stream management ==================================
+
 	// proposedNo indicates the proposed seqNo for current client.
 	proposedNo uint64
 
 	// committedNo indicates the committed seqNo for current client.
 	committedNo uint64
 
-	receivedCommand map[uint64]*types.CommandIndex
-
 	// commands is used to record the command according to its indicator.
 	commandStream *btree.BTree
+
+	//============================ communication channel ========================================
 
 	// receiveC is used to receive command.
 	receiveC chan *types.CommandIndex
@@ -50,6 +48,8 @@ type clientInstance struct {
 	// closeC is used to stop the listener for current client.
 	closeC chan bool
 
+	//============================== external interfaces =======================================
+
 	// logger is used to print logs.
 	logger external.Logger
 }
@@ -60,20 +60,31 @@ func newClient(author, id uint64, commandC chan *types.CommandIndex, logger exte
 	committedNo[uint64(0)] = true
 	return &clientInstance{
 		author: author,
-		id: id,
-		proposedNo: uint64(0),
+		id:     id,
+
+		proposedNo:    uint64(0),
+		committedNo:   uint64(0),
 		commandStream: btree.New(2),
-		receiveC: make(chan *types.CommandIndex, 1000),
+
+		receiveC:   make(chan *types.CommandIndex, 1000),
 		committedC: make(chan uint64),
-		commandC: commandC,
-		committedNo: uint64(0),
+		commandC:   commandC,
+		closeC:     make(chan bool),
+
 		logger: logger,
-		receivedCommand: make(map[uint64]*types.CommandIndex),
 	}
 }
 
 func (client *clientInstance) start() {
 	go client.listener()
+}
+
+func (client *clientInstance) stop() {
+	select {
+	case <-client.closeC:
+	default:
+		close(client.closeC)
+	}
 }
 
 func (client *clientInstance) listener() {

@@ -27,23 +27,18 @@ type commandRecorder struct {
 	// mapCmt is a map for commands which have already been committed.
 	mapCmt map[string]bool
 
-	// todo reduce the check-time for the command pairs with potential natural order, mapPri & mapWat.
-
+	// mapWat is a map for commands which have already become QSC but have some priorities.
 	mapWat map[string]bool
 
 	// mapPri the potential priori relation recorder to update the mapWat at the same time the priori command committed.
 	mapPri map[string][]*commandInfo
 
-	// todo update the leaf node algorithm to find cyclic dependency.
-	mapLeaf map[string]bool
+	// leaves is a budget map to record the leaf nodes in current execution graph.
+	// we could skip to scan the cyclic dependency for command info which is not a leaf node.
+	leaves map[string]bool
 
 	// logger is used to print logs.
 	logger external.Logger
-}
-
-type forestGroup struct {
-	components map[string]bool
-	leaves     map[string]bool
 }
 
 func newCommandRecorder(author uint64, logger external.Logger) *commandRecorder {
@@ -56,7 +51,7 @@ func newCommandRecorder(author uint64, logger external.Logger) *commandRecorder 
 		mapCmt: make(map[string]bool),
 		mapWat: make(map[string]bool),
 		mapPri: make(map[string][]*commandInfo),
-		mapLeaf: make(map[string]bool),
+		leaves: make(map[string]bool),
 		logger: logger,
 	}
 }
@@ -151,6 +146,20 @@ func (recorder *commandRecorder) committedStatus(commandD string) {
 
 func (recorder *commandRecorder) isCommitted(commandD string) bool {
 	return recorder.mapCmt[commandD]
+}
+
+//================================ management of leaf nodes =============================================
+
+func (recorder *commandRecorder) addLeaf(info *commandInfo) {
+	recorder.leaves[info.curCmd] = true
+}
+
+func (recorder *commandRecorder) cutLeaf(info *commandInfo) {
+	delete(recorder.leaves, info.curCmd)
+}
+
+func (recorder *commandRecorder) isLeaf(info *commandInfo) bool {
+	return recorder.leaves[info.curCmd]
 }
 
 //=========================== commands with potential byzantine order =================================
