@@ -1,4 +1,4 @@
-package logmanager
+package tracker
 
 import (
 	"github.com/Grivn/phalanx/common/protos"
@@ -25,7 +25,7 @@ type partialTracker struct {
 	logger external.Logger
 }
 
-func newPartialTracker(author uint64, logger external.Logger) *partialTracker {
+func NewPartialTracker(author uint64, logger external.Logger) *partialTracker {
 	logger.Infof("[%d] initiate partial tracker")
 	return &partialTracker{
 		author:     author,
@@ -34,7 +34,7 @@ func newPartialTracker(author uint64, logger external.Logger) *partialTracker {
 	}
 }
 
-func (pt *partialTracker) recordPartial(pOrder *protos.PartialOrder) {
+func (pt *partialTracker) RecordPartial(pOrder *protos.PartialOrder) {
 	pt.mutex.Lock()
 	defer pt.mutex.Unlock()
 
@@ -48,7 +48,7 @@ func (pt *partialTracker) recordPartial(pOrder *protos.PartialOrder) {
 	pt.partialMap[qIdx] = pOrder
 }
 
-func (pt *partialTracker) readPartial(idx types.QueryIndex) *protos.PartialOrder {
+func (pt *partialTracker) ReadPartial(idx types.QueryIndex) *protos.PartialOrder {
 	pt.mutex.RLock()
 	defer pt.mutex.RUnlock()
 

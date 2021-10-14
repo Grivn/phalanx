@@ -3,17 +3,15 @@ package main
 import (
 	"os"
 	"strconv"
-	"testing"
 	"time"
 
 	"github.com/Grivn/phalanx/common/mocks"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/core"
+	phalanx "github.com/Grivn/phalanx/core"
 )
 
-func TestPhalanx(t *testing.T) {
-
+func phalanxRunner() {
 	n := 4
 
 	async := false
@@ -26,17 +24,20 @@ func TestPhalanx(t *testing.T) {
 
 	phx := make(map[uint64]phalanx.Provider)
 
+	logDir := "bft_nodes"
+	_ = os.Mkdir(logDir, os.ModePerm)
+
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 		nc[id] = make(chan *protos.ConsensusMessage)
 		cc[id] = make(chan *protos.Command)
 	}
 	net := mocks.NewSimpleNetwork(nc, cc, types.NewRawLogger(), async)
-
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 		exec := mocks.NewSimpleExecutor(id, types.NewRawLogger())
-		phx[id] = phalanx.NewPhalanxProvider(n, id, exec, net, types.NewRawLogger())
+		phx[id] = phalanx.NewPhalanxProvider(n, id, types.SingleCommandSize, exec, net, types.NewRawLoggerFile(logDir+"/bft-node-"+strconv.Itoa(i+1)+".log"))
+		phx[id].Run()
 	}
 
 	for i:=0; i<n; i++ {
@@ -47,8 +48,7 @@ func TestPhalanx(t *testing.T) {
 	replicas := make(map[uint64]*replica)
 	bftCs := make(map[uint64]chan *bftMessage)
 	sendC := make(chan *bftMessage)
-	logDir := "bft_nodes"
-	_ = os.Mkdir(logDir, os.ModePerm)
+
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 		bftCs[id] = make(chan *bftMessage)

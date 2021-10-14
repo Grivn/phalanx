@@ -6,19 +6,16 @@ import (
 )
 
 func main() {
-	type Student struct {
+	type RequestMsg struct {
 		Name   string
-		School string
 	}
-	// 连接RPC服务端 Dial会调用NewClient初始化一个Client
 	client, err := rpc.DialHTTP("tcp", "127.0.0.1:8080")
 	if err != nil {
 		panic(err)
 	}
 	defer client.Close()
-	// 发送请求
 	var reply string
-	err = client.Call("RpcServer.Introduce", &Student{Name: "random_w", School: "Secret"}, &reply)
+	err = client.Call("RpcServer.Introduce", &RequestMsg{Name: "random_w"}, &reply)
 	if err != nil {
 		panic(err)
 	}

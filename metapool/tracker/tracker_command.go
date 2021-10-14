@@ -1,4 +1,4 @@
-package logmanager
+package tracker
 
 import (
 	"github.com/Grivn/phalanx/common/protos"
@@ -27,7 +27,7 @@ type commandTracker struct {
 	logger external.Logger
 }
 
-func newCommandTracker(author uint64, logger external.Logger) *commandTracker {
+func NewCommandTracker(author uint64, logger external.Logger) *commandTracker {
 	logger.Infof("[%d] initiate command tracker", author)
 	return &commandTracker{
 		author:       author,
@@ -37,7 +37,7 @@ func newCommandTracker(author uint64, logger external.Logger) *commandTracker {
 	}
 }
 
-func (ct *commandTracker) recordCommand(command *protos.Command) {
+func (ct *commandTracker) RecordCommand(command *protos.Command) {
 	ct.mutex.Lock()
 	defer ct.mutex.Unlock()
 
@@ -57,7 +57,7 @@ func (ct *commandTracker) recordCommand(command *protos.Command) {
 	ct.commandMap[command.Digest] = command
 }
 
-func (ct *commandTracker) readCommand(digest string) *protos.Command {
+func (ct *commandTracker) ReadCommand(digest string) *protos.Command {
 	ct.mutex.RLock()
 	defer ct.mutex.RUnlock()
 

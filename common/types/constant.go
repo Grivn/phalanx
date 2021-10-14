@@ -11,6 +11,9 @@ const (
 	// DefaultLogRotation is the default log rotation for proposal generation.
 	DefaultLogRotation int = 10000
 
-	// TestBatchSize is used for phalanx test network
-	TestBatchSize int = 1
+	// SingleCommandSize is used for phalanx test network for size 1.
+	SingleCommandSize int = 1
+
+	// DefaultCommandSize is the default batch size for command transactions.
+	DefaultCommandSize int = 500
 )

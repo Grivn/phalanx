@@ -95,6 +95,12 @@ func (m *PartialOrder) ParentDigest() string {
 	return m.PreOrder.ParentDigest
 }
 
+//=================================== Partial Order Batch =========================================
+
+func (m *PartialOrderBatch) Format() string {
+	return fmt.Sprintf("[PartialBatch: author %d, proposed nos %v]", m.Author, m.ProposedNos)
+}
+
 //=================================== Generate Messages ============================================
 
 func NewQuorumCert() *QuorumCert {
@@ -113,5 +119,5 @@ func NewPreOrder(author uint64, sequence uint64, commandDigest string, previous 
 }
 
 func NewPartialOrderBatch(author uint64) *PartialOrderBatch {
-	return &PartialOrderBatch{Author: author, Partials: make(map[uint64]*PartialOrder), Commands: make(map[string]*Command), ProposedNos: make(map[uint64]uint64)}
+	return &PartialOrderBatch{Author: author, Partials: make(map[uint64]*PartialOrder), ProposedNos: make(map[uint64]uint64)}
 }

@@ -50,7 +50,7 @@ type executorImpl struct {
 }
 
 // NewExecutor is used to generator an executor for phalanx.
-func NewExecutor(author uint64, n int, mgr internal.LogManager, exec external.ExecutionService, logger external.Logger) *executorImpl {
+func NewExecutor(author uint64, n int, mgr internal.MetaPool, exec external.ExecutionService, logger external.Logger) *executorImpl {
 	recorder := newCommandRecorder(author, logger)
 	return &executorImpl{
 		author:     author,

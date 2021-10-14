@@ -87,7 +87,6 @@ func cluster(sendC chan *bftMessage, bftCs map[uint64]chan *bftMessage, closeC c
 
 func (replica *replica) run() {
 	replica.logger.Infof("[%d] running bft consensus", replica.author)
-	//replica.phalanx.Restore()
 
 	go replica.bftListener()
 
@@ -152,7 +151,7 @@ func (replica *replica) propose() *bftMessage {
 	pBatch, _ := replica.phalanx.MakeProposal()
 
 	for {
-		if len(pBatch.Partials) != 0 {
+		if pBatch != nil {
 			break
 		}
 
@@ -184,10 +183,6 @@ func (replica *replica) processProposal(message *bftMessage) *bftMessage {
 		replica.logger.Infof("voted on")
 		return nil
 	}
-
-	//if err := replica.phalanx.Verify(message.pBatch); err != nil {
-	//	panic(fmt.Errorf("replica %d, error %s", replica.author, err))
-	//}
 
 	replica.cache[message.sequence] = message
 	v := &bftMessage{from: replica.author, to: message.from, typ: vote, sequence: message.sequence}
@@ -245,12 +240,7 @@ func (replica *replica) execute(message *bftMessage) {
 			continue
 		}
 
-		//if err := replica.phalanx.SetStable(m.pBatch); err != nil {
-		//	replica.phalanx.Restore()
-		//	m.pBatch = nil
-		//}
-
-		if err := replica.phalanx.Commit(m.pBatch); err != nil {
+		if err := replica.phalanx.CommitProposal(m.pBatch); err != nil {
 			panic(err)
 		}
 
