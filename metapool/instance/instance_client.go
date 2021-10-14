@@ -1,4 +1,4 @@
-package logmanager
+package instance
 
 import (
 	"github.com/Grivn/phalanx/common/protos"
@@ -54,7 +54,7 @@ type clientInstance struct {
 	logger external.Logger
 }
 
-func newClient(author, id uint64, commandC chan *types.CommandIndex, logger external.Logger) *clientInstance {
+func NewClient(author, id uint64, commandC chan *types.CommandIndex, logger external.Logger) *clientInstance {
 	logger.Infof("[%d] initiate manager for client %d", author, id)
 	committedNo := make(map[uint64]bool)
 	committedNo[uint64(0)] = true
@@ -74,6 +74,28 @@ func newClient(author, id uint64, commandC chan *types.CommandIndex, logger exte
 		logger: logger,
 	}
 }
+
+//======================================= interfaces of client instance =======================================
+
+func (client *clientInstance) Run() {
+	client.start()
+}
+
+func (client *clientInstance) Quit() {
+	client.stop()
+}
+
+func (client *clientInstance) Commit(seqNo uint64) {
+	client.committedC <- seqNo
+}
+
+func (client *clientInstance) Append(command *protos.Command) {
+	cIndex := types.NewCommandIndex(command)
+
+	client.receiveC <- cIndex
+}
+
+//========================================= implement of client instance ===============================================
 
 func (client *clientInstance) start() {
 	go client.listener()
@@ -114,23 +136,6 @@ func (client *clientInstance) listener() {
 	}
 }
 
-func maxUint64(a, b uint64) uint64 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func (client *clientInstance) commit(seqNo uint64) {
-	client.committedC <- seqNo
-}
-
-func (client *clientInstance) append(command *protos.Command) {
-	cIndex := types.NewCommandIndex(command)
-
-	client.receiveC <- cIndex
-}
-
 func (client *clientInstance) minCommand() *types.CommandIndex {
 
 	if client.committedNo < client.proposedNo {
@@ -157,4 +162,11 @@ func (client *clientInstance) minCommand() *types.CommandIndex {
 
 func (client *clientInstance) feedBack(cIndex *types.CommandIndex) {
 	client.commandC <- cIndex
+}
+
+func maxUint64(a, b uint64) uint64 {
+	if a > b {
+		return a
+	}
+	return b
 }

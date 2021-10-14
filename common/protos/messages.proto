@@ -16,9 +16,11 @@ message Transaction {
   int64 Timestamp = 3;
 }
 
-// Command is the thing we receive from others.
+// Command is the meta data for consensus processor.
 message Command {
+  // Author is the identifier for the client.
   uint64 Author = 1;
+  // Sequence indicates the sequence for current client.
   uint64 Sequence = 2;
   // Digest indicates the identifier for current command.
   string Digest = 3;
@@ -28,37 +30,15 @@ message Command {
   repeated string HashList = 5;
 }
 
-// PreCommand
-message PreCommand {
-  string Digest = 1;
-  uint64 Author = 2;
-  uint64 SeqNo = 3;
-}
-
-// VoteCommand
-message VoteCommand {
-  uint64 Author = 1;
-  string Digest = 2;
-}
-
-// DecideCommand
-message DecideCommand {
-  PreCommand PreCommand = 1;
-  Command Command = 2;
-}
-
 //======================================================
 //                 consensus message
 //======================================================
 
 // MessageType indicates the type of messages.
 enum MessageType {
-  PRE_COMMAND = 0;
-  VOTE_COMMAND = 1;
-  DECIDE_COMMAND = 2;
-  PRE_ORDER = 3;
-  VOTE = 4;
-  QUORUM_CERT = 5;
+  PRE_ORDER = 0;
+  VOTE = 1;
+  QUORUM_CERT = 2;
 }
 
 // ConsensusMessage is the raw consensus messages in real network.
@@ -133,10 +113,8 @@ message PartialOrder {
 message PartialOrderBatch {
   // Author is the generator for current batch.
   uint64 Author = 1;
-  // Partials are the collected partial orders.
+  // Partials are the highest partial orders for each participant the generator has observed,
   map<uint64, PartialOrder> Partials = 2;
-  // Commands are the commands which partial orders refer to.
-  map<string, Command> Commands = 3;
-  // ProposedNo indicates the latest proposed sequence number for each node.
-  map<uint64, uint64> ProposedNos = 4;
+  // ProposedNos indicates the latest proposed sequence number for each node.
+  map<uint64, uint64> ProposedNos = 3;
 }

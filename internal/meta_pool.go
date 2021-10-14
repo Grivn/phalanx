@@ -1,18 +1,22 @@
 package internal
 
 import (
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 )
 
-type LogManager interface {
-	Run()
-
-	LocalLog
-	RemoteLog
+type MetaPool interface {
+	api.Runner
+	LogManager
 	Reader
 	Committer
 	Consensus
+}
+
+type LogManager interface {
+	LocalLog
+	RemoteLog
 }
 
 type LocalLog interface {

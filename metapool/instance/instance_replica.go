@@ -1,8 +1,9 @@
-package logmanager
+package instance
 
 import (
 	"errors"
 	"fmt"
+	"github.com/Grivn/phalanx/metapool/tracker"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/event"
@@ -12,8 +13,8 @@ import (
 	"github.com/google/btree"
 )
 
-// subInstance is used to process the remote log, each instance would be used for one replica.
-type subInstance struct {
+// replicaInstance is used to process the remote log, each instance would be used for one replica.
+type replicaInstance struct {
 	//===================================== basic information =========================================
 
 	// author is the local node's identifier.
@@ -42,7 +43,7 @@ type subInstance struct {
 	//======================================= internal modules =========================================
 
 	// pTracker is used to record the partial orders from current sub instance node.
-	pTracker *partialTracker
+	pTracker tracker.PartialTracker
 
 	//======================================= external tools ===========================================
 
@@ -53,9 +54,9 @@ type subInstance struct {
 	logger external.Logger
 }
 
-func newSubInstance(author, id uint64, pTracker *partialTracker, sender external.NetworkService, logger external.Logger) *subInstance {
+func NewReplicaInstance(author, id uint64, pTracker tracker.PartialTracker, sender external.NetworkService, logger external.Logger) *replicaInstance {
 	logger.Infof("[%d] initiate the sub instance of order for replica %d", author, id)
-	return &subInstance{
+	return &replicaInstance{
 		author:   author,
 		id:       id,
 		trusted:  uint64(0),
@@ -67,45 +68,49 @@ func newSubInstance(author, id uint64, pTracker *partialTracker, sender external
 	}
 }
 
-func (si *subInstance) processPreOrder(pre *protos.PreOrder) error {
-	si.logger.Infof("[%d] received a pre-order %s", si.author, pre.Format())
+func (ri *replicaInstance) GetHighOrder() *protos.PartialOrder {
+	return ri.highPartialOrder
+}
 
-	if si.sequence > pre.Sequence {
-		si.logger.Errorf("[%d] already voted on %d for replica %d", si.author, pre.Sequence, si.id)
+func (ri *replicaInstance) ReceivePreOrder(pre *protos.PreOrder) error {
+	ri.logger.Infof("[%d] received a pre-order %s", ri.author, pre.Format())
+
+	if ri.sequence > pre.Sequence {
+		ri.logger.Errorf("[%d] already voted on %d for replica %d", ri.author, pre.Sequence, ri.id)
 		return nil
 	}
 
 	ev := &event.BtreeEvent{EventType: event.BTreeEventPreOrder, Sequence: pre.Sequence, Digest: pre.Digest, Event: pre}
 
-	if si.recorder.Has(ev) {
-		return si.processBTree()
+	if ri.recorder.Has(ev) {
+		return ri.processBTree()
 	}
 
 	if err := crypto.CheckDigest(pre); err != nil {
 		return fmt.Errorf("invalid digest: %s", err)
 	}
 
-	si.recorder.ReplaceOrInsert(ev)
+	ri.recorder.ReplaceOrInsert(ev)
 
-	return si.processBTree()
+	return ri.processBTree()
 }
 
-func (si *subInstance) processPartial(pOrder *protos.PartialOrder) error {
-	si.logger.Infof("[%d] received a partial order %s", si.author, pOrder.Format())
+func (ri *replicaInstance) ReceivePartial(pOrder *protos.PartialOrder) error {
+	ri.logger.Infof("[%d] received a partial order %s", ri.author, pOrder.Format())
 
 	// verify the signatures of current received partial order.
-	if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, si.quorum); err != nil {
+	if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, ri.quorum); err != nil {
 		return fmt.Errorf("invalid order: %s", err)
 	}
 
 	ev := &event.BtreeEvent{EventType: event.BTreeEventOrder, Sequence: pOrder.PreOrder.Sequence, Digest: pOrder.PreOrder.Digest, Event: pOrder}
-	si.recorder.ReplaceOrInsert(ev)
+	ri.recorder.ReplaceOrInsert(ev)
 
-	return si.processBTree()
+	return ri.processBTree()
 }
 
-func (si *subInstance) processBTree() error {
-	item := si.recorder.Min()
+func (ri *replicaInstance) processBTree() error {
+	item := ri.recorder.Min()
 	if item == nil {
 		return nil
 	}
@@ -113,8 +118,8 @@ func (si *subInstance) processBTree() error {
 
 	switch ev.EventType {
 	case event.BTreeEventPreOrder:
-		if ev.Sequence != si.sequence {
-			si.logger.Debugf("[%d] sub-instance for node %d needs sequence %d", si.author, si.id, si.sequence)
+		if ev.Sequence != ri.sequence {
+			ri.logger.Debugf("[%d] sub-instance for node %d needs sequence %d", ri.author, ri.id, ri.sequence)
 			return nil
 		}
 
@@ -122,43 +127,43 @@ func (si *subInstance) processBTree() error {
 		pre := ev.Event.(*protos.PreOrder)
 
 		// generate the signature for current pre-order
-		sig, err := crypto.PrivSign(types.StringToBytes(pre.Digest), int(si.author))
+		sig, err := crypto.PrivSign(types.StringToBytes(pre.Digest), int(ri.author))
 		if err != nil {
 			return fmt.Errorf("signer failed: %s", err)
 		}
 
 		// generate and send vote to the pre-order author
-		vote := &protos.Vote{Author: si.author, Digest: pre.Digest, Certification: sig}
-		si.logger.Infof("[%d] voted %s for %s", si.author, vote.Format(), pre.Format())
+		vote := &protos.Vote{Author: ri.author, Digest: pre.Digest, Certification: sig}
+		ri.logger.Infof("[%d] voted %s for %s", ri.author, vote.Format(), pre.Format())
 
 		cm, err := protos.PackVote(vote, pre.Author)
 		if err != nil {
 			return fmt.Errorf("generate consensus message error: %s", err)
 		}
-		si.sender.UnicastPCM(cm)
+		ri.sender.UnicastPCM(cm)
 		return nil
 
 	case event.BTreeEventOrder:
-		si.logger.Infof("[%d] process partial order event", si.author)
+		ri.logger.Infof("[%d] process partial order event", ri.author)
 
 		pOrder := ev.Event.(*protos.PartialOrder)
 
 		// verify the validation between current partial order and highest partial order.
-		if err := si.checkHighestOrder(pOrder); err != nil {
+		if err := ri.checkHighestOrder(pOrder); err != nil {
 			return nil
 			//return fmt.Errorf("check higest order failed, %s", err)
 		}
 
 		// record partial order with partial tracker.
-		si.pTracker.recordPartial(pOrder)
+		ri.pTracker.RecordPartial(pOrder)
 
 		// update the highest partial order for current sub instance.
-		si.updateHighestOrder(pOrder)
+		ri.updateHighestOrder(pOrder)
 
-		si.recorder.Delete(ev)
-		si.sequence++
+		ri.recorder.Delete(ev)
+		ri.sequence++
 
-		if err := si.processBTree(); err != nil {
+		if err := ri.processBTree(); err != nil {
 			return err
 		}
 		return nil
@@ -168,23 +173,23 @@ func (si *subInstance) processBTree() error {
 	}
 }
 
-func (si *subInstance) updateHighestOrder(pOrder *protos.PartialOrder) {
-	si.highPartialOrder = pOrder
+func (ri *replicaInstance) updateHighestOrder(pOrder *protos.PartialOrder) {
+	ri.highPartialOrder = pOrder
 }
 
-func (si *subInstance) checkHighestOrder(pOrder *protos.PartialOrder) error {
+func (ri *replicaInstance) checkHighestOrder(pOrder *protos.PartialOrder) error {
 	if pOrder.Sequence() == 1 {
 		// the first partial order for current sub instance.
 		return nil
 	}
 
-	if si.highPartialOrder == nil {
+	if ri.highPartialOrder == nil {
 		// we don't have a partial order here, reject it.
 		return fmt.Errorf("nil highest order")
 	}
 
-	if si.highPartialOrder.PreOrderDigest() != pOrder.ParentDigest() {
-		return fmt.Errorf("invalid parent order digest, expect %s, received %s, pOrder %s", si.highPartialOrder.PreOrderDigest(), pOrder.ParentDigest(), pOrder.Format())
+	if ri.highPartialOrder.PreOrderDigest() != pOrder.ParentDigest() {
+		return fmt.Errorf("invalid parent order digest, expect %s, received %s, pOrder %s", ri.highPartialOrder.PreOrderDigest(), pOrder.ParentDigest(), pOrder.Format())
 	}
 
 	return nil

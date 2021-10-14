@@ -6,9 +6,6 @@ import (
 
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
-
-	"github.com/gogo/protobuf/proto"
 )
 
 type SimpleNetwork struct {
@@ -60,40 +57,4 @@ func (net *SimpleNetwork) sendCommand(command *protos.Command) {
 
 func (net *SimpleNetwork) unicast(message *protos.ConsensusMessage) {
 	net.networkC[message.To] <- message
-}
-
-func SimpleListener(mgr internal.LogManager, net chan *protos.ConsensusMessage, closeC chan bool) {
-	for {
-		select {
-		case msg := <-net:
-			switch msg.Type {
-			case protos.MessageType_PRE_ORDER:
-				pre := &protos.PreOrder{}
-				if err := proto.Unmarshal(msg.Payload, pre); err != nil {
-					panic(err)
-				}
-				if err := mgr.ProcessPreOrder(pre); err != nil {
-					panic(err)
-				}
-			case protos.MessageType_QUORUM_CERT:
-				pOrder := &protos.PartialOrder{}
-				if err := proto.Unmarshal(msg.Payload, pOrder); err != nil {
-					panic(err)
-				}
-				if err := mgr.ProcessPartial(pOrder); err != nil {
-				panic(err)
-			}
-			case protos.MessageType_VOTE:
-				vote := &protos.Vote{}
-				if err := proto.Unmarshal(msg.Payload, vote); err != nil {
-					panic(err)
-				}
-				if err := mgr.ProcessVote(vote); err != nil {
-				panic(err)
-			}
-			}
-		case <-closeC:
-			return
-		}
-	}
 }

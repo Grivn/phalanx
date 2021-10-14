@@ -30,9 +30,11 @@ func phalanxListener(phx phalanx.Provider, net chan *protos.ConsensusMessage, cm
 	for {
 		select {
 		case message := <-net:
-			phx.ProcessConsensusMessage(message)
+			if err := phx.ReceiveConsensusMessage(message); err != nil {
+				panic(err)
+			}
 		case command := <-cmd:
-			phx.ProcessCommand(command)
+			phx.ReceiveCommand(command)
 		case <-closeC:
 			return
 		}
@@ -43,13 +45,13 @@ func phalanxListener(phx phalanx.Provider, net chan *protos.ConsensusMessage, cm
 func transactionSender(sender uint64, phx map[uint64]phalanx.Provider) {
 	tx := types.GenerateRandTransaction(1)
 
-	phx[sender].ProcessTransaction(tx)
+	phx[sender].ReceiveTransaction(tx)
 }
 
 func commandSender(sender, seqNo uint64, phx map[uint64]phalanx.Provider) {
 	command := types.GenerateRandCommand(sender, seqNo, 1, 1)
 
 	for _, p := range phx {
-		go p.ProcessCommand(command)
+		go p.ReceiveCommand(command)
 	}
 }
