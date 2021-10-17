@@ -80,7 +80,7 @@ func (ri *replicaInstance) ReceivePreOrder(pre *protos.PreOrder) error {
 		return nil
 	}
 
-	ev := &event.BtreeEvent{EventType: event.BTreeEventPreOrder, Sequence: pre.Sequence, Digest: pre.Digest, Event: pre}
+	ev := &event.OrderEvent{Status: event.OrderStatusPreOrder, Sequence: pre.Sequence, Digest: pre.Digest, Event: pre}
 
 	if ri.recorder.Has(ev) {
 		return ri.processBTree()
@@ -103,7 +103,7 @@ func (ri *replicaInstance) ReceivePartial(pOrder *protos.PartialOrder) error {
 		return fmt.Errorf("invalid order: %s", err)
 	}
 
-	ev := &event.BtreeEvent{EventType: event.BTreeEventOrder, Sequence: pOrder.PreOrder.Sequence, Digest: pOrder.PreOrder.Digest, Event: pOrder}
+	ev := &event.OrderEvent{Status: event.OrderStatusQuorumVerified, Sequence: pOrder.PreOrder.Sequence, Digest: pOrder.PreOrder.Digest, Event: pOrder}
 	ri.recorder.ReplaceOrInsert(ev)
 
 	return ri.processBTree()
@@ -114,10 +114,10 @@ func (ri *replicaInstance) processBTree() error {
 	if item == nil {
 		return nil
 	}
-	ev := item.(*event.BtreeEvent)
+	ev := item.(*event.OrderEvent)
 
-	switch ev.EventType {
-	case event.BTreeEventPreOrder:
+	switch ev.Status {
+	case event.OrderStatusPreOrder:
 		if ev.Sequence != ri.sequence {
 			ri.logger.Debugf("[%d] sub-instance for node %d needs sequence %d", ri.author, ri.id, ri.sequence)
 			return nil
@@ -143,7 +143,7 @@ func (ri *replicaInstance) processBTree() error {
 		ri.sender.UnicastPCM(cm)
 		return nil
 
-	case event.BTreeEventOrder:
+	case event.OrderStatusQuorumVerified:
 		ri.logger.Infof("[%d] process partial order event", ri.author)
 
 		pOrder := ev.Event.(*protos.PartialOrder)

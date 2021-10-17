@@ -14,6 +14,7 @@ type Provider interface {
 	Executor
 }
 
+// Proposer is used to generate phalanx commands by the transactions received.
 type Proposer interface {
 	// ReceiveTransaction is used to process transaction we have received.
 	ReceiveTransaction(tx *protos.Transaction)

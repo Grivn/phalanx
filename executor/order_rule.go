@@ -32,11 +32,11 @@ func newOrderRule(author uint64, n int, recorder *commandRecorder, logger extern
 }
 
 // processPartialOrder is used to process partial order with order rules.
-func (rule *orderRule) processPartialOrder(pOrder *protos.PartialOrder) []types.Block {
+func (rule *orderRule) processPartialOrder(pOrder *protos.PartialOrder) []types.InnerBlock {
 	// order rule 1: collection rule, collect the partial order.
 	rule.collect.collectPartials(pOrder)
 
-	var blocks []types.Block
+	var blocks []types.InnerBlock
 	for {
 		// order rule 2: execution rule, select commands to execute with natural order.
 		executionList := rule.execute.naturalOrder()

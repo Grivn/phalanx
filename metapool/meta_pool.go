@@ -433,7 +433,7 @@ func (mp *metaPool) VerifyProposal(batch *protos.PartialOrderBatch) (types.Query
 
 			mp.commitNo[id]++
 
-			qIndex := types.QueryIndex{Author: id, SeqNo: mp.commitNo[id]}
+			qIndex := types.NewQueryIndex(id, mp.commitNo[id])
 			qStream = append(qStream, qIndex)
 		}
 	}

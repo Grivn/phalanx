@@ -16,12 +16,6 @@ func NewMockMinimalExecutionService(ctrl *gomock.Controller) *MockExecutionServi
 	return mock
 }
 
-func NewMockMinimalTestSender(ctrl *gomock.Controller) *MockTestSender {
-	mock := NewMockTestSender(ctrl)
-	mock.EXPECT().BroadcastCommand(gomock.Any()).AnyTimes()
-	return mock
-}
-
 func NewMockMinimalLogger(ctrl *gomock.Controller) *MockLogger {
 	mock := NewMockLogger(ctrl)
 	mock.EXPECT().Debug(gomock.Any()).AnyTimes()

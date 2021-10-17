@@ -44,15 +44,23 @@ type RemoteLog interface {
 }
 
 type Reader interface {
+	// ReadCommand reads raw command from meta pool.
 	ReadCommand(commandD string) *protos.Command
+
+	// ReadPartials reads partial orders according to query stream.
 	ReadPartials(qStream types.QueryStream) []*protos.PartialOrder
 }
 
 type Committer interface {
+	// Committed notifies meta pool the committed command info.
 	Committed(author uint64, seqNo uint64)
 }
 
 type Consensus interface {
+	// GenerateProposal generates proposal for total consensus processor.
 	GenerateProposal() (*protos.PartialOrderBatch, error)
+
+	// VerifyProposal verifies the proposal consented by consensus processor
+	// and generate query stream for partial orders if essential.
 	VerifyProposal(batch *protos.PartialOrderBatch) (types.QueryStream, error)
 }
