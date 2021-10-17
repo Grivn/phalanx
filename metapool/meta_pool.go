@@ -30,6 +30,9 @@ type metaPool struct {
 	// author is the identifier for current node.
 	author uint64
 
+	// n indicates the number of participants in current cluster.
+	n int
+
 	//==================================== sub-chain management =============================================
 
 	// quorum is the legal size for current node.
@@ -97,8 +100,9 @@ func NewMetaPool(n int, author uint64, sender external.NetworkService, logger ex
 	}
 
 	return &metaPool{
-		quorum:   types.CalculateQuorum(n),
 		author:   author,
+		n:        n,
+		quorum:   types.CalculateQuorum(n),
 		sequence: uint64(0),
 		aggMap:   make(map[string]*protos.PartialOrder),
 		replicas: subs,
@@ -171,7 +175,7 @@ func (mp *metaPool) clientInstanceReminder(command *protos.Command) {
 	}
 
 	// append the transaction into this client.
-	client.Append(command)
+	go client.Append(command)
 }
 
 func (mp *metaPool) checkHighOrder() error {
@@ -361,33 +365,24 @@ func (mp *metaPool) GenerateProposal() (*protos.PartialOrderBatch, error) {
 	mp.mutex.Lock()
 	defer mp.mutex.Unlock()
 
-	updated := false
-
-	batch := protos.NewPartialOrderBatch(mp.author)
+	batch := protos.NewPartialOrderBatch(mp.author, mp.n)
 
 	for id, replica := range mp.replicas {
+		index := int(id-1)
+
 		// read the highest partial order from replica 'id'.
 		hOrder := replica.GetHighOrder()
 
 		if hOrder == nil {
 			// high-order for replica 'id' is nil, record 0 in batch tracker.
-			batch.ProposedNos[id] = 0
+			batch.HighOrders[index] = protos.NewNopPartialOrder()
+			batch.SeqList[index] = 0
 			continue
 		}
 
 		// update batch tracker with information of high-order.
-		batch.Partials[id] = hOrder
-		batch.ProposedNos[id] = hOrder.Sequence()
-
-		if hOrder.Sequence() > mp.commitNo[id] {
-			// the high-order could update the committed order number, we could generate a valid batch.
-			updated = true
-		}
-	}
-
-	if !updated {
-		// we cannot update the committed order number, just return nil batch.
-		return nil, nil
+		batch.HighOrders[index] = hOrder
+		batch.SeqList[index] = hOrder.Sequence()
 	}
 
 	mp.logger.Debugf("[%d] generate batch %s", mp.author, batch.Format())
@@ -397,14 +392,18 @@ func (mp *metaPool) GenerateProposal() (*protos.PartialOrderBatch, error) {
 func (mp *metaPool) VerifyProposal(batch *protos.PartialOrderBatch) (types.QueryStream, error) {
 	updated := false
 
-	for id, no := range batch.ProposedNos {
+	for index, no := range batch.SeqList {
+
+		// calculate the node id.
+		id := uint64(index+1)
+
 		if no <= mp.commitNo[id] {
 			// committed previous partial order for node id, including partial number 0.
 			mp.logger.Debugf("[%d] haven't updated committed partial order for node %d", mp.author, id)
 			continue
 		}
 
-		pOrder := batch.Partials[id]
+		pOrder := batch.HighOrders[index]
 
 		if pOrder.Sequence() != no {
 			return nil, fmt.Errorf("invalid partial order seqNo, proposedNo %d, partial seqNo %d", no, pOrder.Sequence())
@@ -424,7 +423,9 @@ func (mp *metaPool) VerifyProposal(batch *protos.PartialOrderBatch) (types.Query
 
 	var qStream types.QueryStream
 
-	for id, no := range batch.ProposedNos {
+	for index, no := range batch.SeqList {
+		id := uint64(index+1)
+
 		for {
 			if no <= mp.commitNo[id] {
 				break

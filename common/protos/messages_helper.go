@@ -98,7 +98,7 @@ func (m *PartialOrder) ParentDigest() string {
 //=================================== Partial Order Batch =========================================
 
 func (m *PartialOrderBatch) Format() string {
-	return fmt.Sprintf("[PartialBatch: author %d, proposed nos %v]", m.Author, m.ProposedNos)
+	return fmt.Sprintf("[PartialBatch: author %d, proposed nos %v]", m.Author, m.SeqList)
 }
 
 //=================================== Generate Messages ============================================
@@ -111,6 +111,10 @@ func NewPartialOrder(pre *PreOrder) *PartialOrder {
 	return &PartialOrder{PreOrder: pre, QC: NewQuorumCert()}
 }
 
+func NewNopPartialOrder() *PartialOrder {
+	return &PartialOrder{PreOrder: NewNopPreOrder(), QC: NewQuorumCert()}
+}
+
 func NewPreOrder(author uint64, sequence uint64, commandDigest string, previous *PreOrder) *PreOrder {
 	if previous == nil {
 		previous = &PreOrder{Digest: "GENESIS PRE ORDER"}
@@ -118,6 +122,10 @@ func NewPreOrder(author uint64, sequence uint64, commandDigest string, previous 
 	return &PreOrder{Author: author, Sequence: sequence, CommandDigest: commandDigest, Timestamp: time.Now().UnixNano(), ParentDigest: previous.Digest}
 }
 
-func NewPartialOrderBatch(author uint64) *PartialOrderBatch {
-	return &PartialOrderBatch{Author: author, Partials: make(map[uint64]*PartialOrder), ProposedNos: make(map[uint64]uint64)}
+func NewNopPreOrder() *PreOrder {
+	return &PreOrder{Digest: "Nop Pre Order"}
+}
+
+func NewPartialOrderBatch(author uint64, count int) *PartialOrderBatch {
+	return &PartialOrderBatch{Author: author, HighOrders: make([]*PartialOrder, count), SeqList: make([]uint64, count)}
 }

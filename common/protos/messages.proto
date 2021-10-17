@@ -109,12 +109,14 @@ message PartialOrder {
 //                 quorum certification
 //======================================================
 
+// todo partial batch without map schema for that map has random hash order.
+
 // PartialOrderBatch is used to collect the partial orders for bft consensus.
 message PartialOrderBatch {
   // Author is the generator for current batch.
   uint64 Author = 1;
-  // Partials are the highest partial orders for each participant the generator has observed,
-  map<uint64, PartialOrder> Partials = 2;
-  // ProposedNos indicates the latest proposed sequence number for each node.
-  map<uint64, uint64> ProposedNos = 3;
+  // HighOrders are the high-order which the generator has observed for each participants,
+  repeated PartialOrder HighOrders = 2;
+  // SeqList indicates the sequence number for the high-order we have selected.
+  repeated uint64 SeqList = 3;
 }
