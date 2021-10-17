@@ -1,15 +1,13 @@
 package types
 
 import (
-	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"runtime"
-
-	nested "github.com/antonfisher/nested-logrus-formatter"
-	"github.com/sirupsen/logrus"
+	"bytes"
+	"encoding/binary"
+	"encoding/hex"
+	"time"
 )
+
+//============================= Calculate Basic Information ===========================================
 
 // CalculateFault calculates the upper fault amount in byzantine system with n nodes.
 func CalculateFault(n int) int {
@@ -26,57 +24,57 @@ func CalculateOneCorrect(n int) int {
 	return CalculateFault(n)+1
 }
 
-// NewRawLogger provides a Logger instance to print logs in console.
-func NewRawLogger() *logrus.Logger {
-	log := logrus.New()
-	writer := os.Stdout
-	log.SetLevel(logrus.DebugLevel)
-	log.SetReportCaller(true)
-	log.SetFormatter(formatter(true))
-	log.SetOutput(io.MultiWriter(writer))
-	return log
+//==================================== Time Convert =============================================
+
+func NanoToSecond(nano int64) float64 {
+	return float64(nano)/float64(time.Second)
 }
 
-// NewRawLoggerFile provides a Logger instance to print logs in files.
-func NewRawLoggerFile(path string) *logrus.Logger {
-	log := logrus.New()
-	writer, err := os.OpenFile(path+".log", os.O_WRONLY|os.O_CREATE, os.ModePerm)
+func NanoToMillisecond(nano int64) float64 {
+	return float64(nano)/float64(time.Millisecond)
+}
+
+//================================== Struct Convert =======================================
+
+func BytesToString(b []byte) string {
+	return hex.EncodeToString(b)
+}
+
+func StringToBytes(str string) []byte {
+	b, err := hex.DecodeString(str)
 	if err != nil {
 		panic(err)
 	}
-	log.SetLevel(logrus.DebugLevel)
-	log.SetReportCaller(true)
-	log.SetFormatter(formatter(false))
-	log.SetOutput(io.MultiWriter(writer))
-	return log
+	return b
 }
 
-// formatter is used to generate log format.
-func formatter(isConsole bool) *nested.Formatter {
-	// custom function to generate filename and line.
-	customFunc := func(frame *runtime.Frame) string {
-		funcInfo := runtime.FuncForPC(frame.PC)
-		if funcInfo == nil {
-			return "formatter error: FuncForPC failed"
-		}
-		fullPath, line := funcInfo.FileLine(frame.PC)
-		return fmt.Sprintf(" [%v:%v]", filepath.Base(fullPath), line)
+func Uint64MapToList(m map[uint64]bool) []uint64 {
+	var list []uint64
+	for key := range m {
+		list = append(list, key)
+	}
+	return list
+}
+
+func Uint64ToBytes(num uint64) []byte {
+	buffer := bytes.NewBuffer([]byte{})
+
+	err := binary.Write(buffer, binary.BigEndian, &num)
+	if err != nil {
+		panic("error convert bytes to int")
 	}
 
-	// generate formatter.
-	format := &nested.Formatter{
-		HideKeys:              true,
-		TimestampFormat:       "2006-01-02 15:04:05",
-		CallerFirst:           true,
-		CustomCallerFormatter: customFunc,
+	return buffer.Bytes()
+}
+
+func BytesToUint64(bys []byte) uint64 {
+	buffer := bytes.NewBuffer([]byte{})
+
+	var num uint64
+	err := binary.Read(buffer, binary.BigEndian, &num)
+	if err != nil {
+		panic("error convert bytes to int")
 	}
 
-	// generate color in console.
-	if isConsole {
-		format.NoColors = false
-	} else {
-		format.NoColors = true
-	}
-
-	return format
+	return num
 }

@@ -55,7 +55,7 @@ func newCommitmentRule(author uint64, n int, recorder *commandRecorder, logger e
 	}
 }
 
-func (cr *commitmentRule) freeWill(executionInfos []*commandInfo) []types.Block {
+func (cr *commitmentRule) freeWill(executionInfos []*commandInfo) []types.InnerBlock {
 	if len(executionInfos) == 0 {
 		return nil
 	}
@@ -70,7 +70,7 @@ func (cr *commitmentRule) freeWill(executionInfos []*commandInfo) []types.Block 
 	}
 
 	// free will: trying to generate blocks.
-	var blocks []types.Block
+	var blocks []types.InnerBlock
 	for {
 		concurrentC := cr.generateConcurrentC()
 		sub := cr.generateSortedBlocks(concurrentC)
@@ -125,17 +125,17 @@ func (cr *commitmentRule) generateConcurrentC() []string {
 	return concurrentC
 }
 
-func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.Block {
+func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.InnerBlock {
 	// free will:
 	// generate blocks and sort according to the trusted timestamp
 	// here, the command-pair with natural order cannot take part in concurrent command set.
-	var sortable types.SortableBlocks
+	var sortable types.SortableInnerBlocks
 	for _, digest := range concurrentC {
 		// read the command info from command recorder.
 		info := cr.recorder.readCommandInfo(digest)
 
 		// generate block, try to fetch the raw command to fulfill the block.
-		block := types.NewBlock(cr.recorder.readCommandRaw(info.curCmd), info.timestamps[cr.fault])
+		block := types.NewInnerBlock(cr.recorder.readCommandRaw(info.curCmd), info.timestamps[cr.fault])
 		cr.logger.Infof("[%d] generate block %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.

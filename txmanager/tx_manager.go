@@ -34,13 +34,13 @@ type txManager struct {
 	//======================================= external interfaces ==================================================
 
 	// sender is used to send messages.
-	sender external.TestSender
+	sender external.NetworkService
 
 	// logger is used to print logs.
 	logger external.Logger
 }
 
-func NewTxManager(n int, author uint64, commandSize int, sender external.TestSender, logger external.Logger) *txManager {
+func NewTxManager(n int, author uint64, commandSize int, sender external.NetworkService, logger external.Logger) *txManager {
 	return &txManager{n: n, author: author, commandSize: commandSize, sender: sender, logger: logger}
 }
 

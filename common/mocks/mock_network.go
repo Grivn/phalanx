@@ -32,6 +32,16 @@ func (_m *MockNetworkService) EXPECT() *MockNetworkServiceMockRecorder {
 	return _m.recorder
 }
 
+// BroadcastCommand mocks base method
+func (_m *MockNetworkService) BroadcastCommand(command *protos.Command) {
+	_m.ctrl.Call(_m, "BroadcastCommand", command)
+}
+
+// BroadcastCommand indicates an expected call of BroadcastCommand
+func (_mr *MockNetworkServiceMockRecorder) BroadcastCommand(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "BroadcastCommand", reflect.TypeOf((*MockNetworkService)(nil).BroadcastCommand), arg0)
+}
+
 // BroadcastPCM mocks base method
 func (_m *MockNetworkService) BroadcastPCM(message *protos.ConsensusMessage) {
 	_m.ctrl.Call(_m, "BroadcastPCM", message)
@@ -50,47 +60,4 @@ func (_m *MockNetworkService) UnicastPCM(message *protos.ConsensusMessage) {
 // UnicastPCM indicates an expected call of UnicastPCM
 func (_mr *MockNetworkServiceMockRecorder) UnicastPCM(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "UnicastPCM", reflect.TypeOf((*MockNetworkService)(nil).UnicastPCM), arg0)
-}
-
-// BroadcastCommand mocks base method
-func (_m *MockNetworkService) BroadcastCommand(command *protos.Command) {
-	_m.ctrl.Call(_m, "BroadcastCommand", command)
-}
-
-// BroadcastCommand indicates an expected call of BroadcastCommand
-func (_mr *MockNetworkServiceMockRecorder) BroadcastCommand(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "BroadcastCommand", reflect.TypeOf((*MockNetworkService)(nil).BroadcastCommand), arg0)
-}
-
-// MockTestSender is a mock of TestSender interface
-type MockTestSender struct {
-	ctrl     *gomock.Controller
-	recorder *MockTestSenderMockRecorder
-}
-
-// MockTestSenderMockRecorder is the mock recorder for MockTestSender
-type MockTestSenderMockRecorder struct {
-	mock *MockTestSender
-}
-
-// NewMockTestSender creates a new mock instance
-func NewMockTestSender(ctrl *gomock.Controller) *MockTestSender {
-	mock := &MockTestSender{ctrl: ctrl}
-	mock.recorder = &MockTestSenderMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use
-func (_m *MockTestSender) EXPECT() *MockTestSenderMockRecorder {
-	return _m.recorder
-}
-
-// BroadcastCommand mocks base method
-func (_m *MockTestSender) BroadcastCommand(command *protos.Command) {
-	_m.ctrl.Call(_m, "BroadcastCommand", command)
-}
-
-// BroadcastCommand indicates an expected call of BroadcastCommand
-func (_mr *MockTestSenderMockRecorder) BroadcastCommand(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "BroadcastCommand", reflect.TypeOf((*MockTestSender)(nil).BroadcastCommand), arg0)
 }
