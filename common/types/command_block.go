@@ -21,7 +21,7 @@ type InnerBlock struct {
 }
 
 func (block InnerBlock) Format() string {
-	return fmt.Sprintf("[Block: command %s, trusted-timestamp %d]", block.Command.Format(), len(block.Command.Content))
+	return fmt.Sprintf("[Block: command %s, trusted-timestamp %d]", block.Command.Format(), block.Timestamp)
 }
 
 // SortableInnerBlocks is a slice of inner block to sort.
