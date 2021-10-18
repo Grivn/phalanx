@@ -57,13 +57,20 @@ func GenerateRandCommand(author uint64, seqNo uint64, count, size int) *protos.C
 func GenerateRandTransaction(size int) *protos.Transaction {
 	payload := make([]byte, size)
 	rand.Read(payload)
-	return GenerateTransaction(payload)
+	return GenerateTransaction(payload, 0)
 }
 
-func GenerateTransaction(payload []byte) *protos.Transaction {
+// GenerateTransaction is used to generate a specific transaction for phalanx protocol.
+// we could generate a transaction with a known timestamp.
+// we would like to generate a transaction with current timestamp if the input value is 0.
+func GenerateTransaction(payload []byte, timestamp int64) *protos.Transaction {
+	if timestamp == 0 {
+		// we don't have an assigned timestamp, try to generate phalanx transaction with current time status.
+		timestamp = time.Now().UnixNano()
+	}
 	return &protos.Transaction{
 		Hash:      CalculatePayloadHash(payload, time.Now().UnixNano()),
 		Payload:   payload,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: timestamp,
 	}
 }
