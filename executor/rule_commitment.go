@@ -55,15 +55,15 @@ func newCommitmentRule(author uint64, n int, recorder *commandRecorder, logger e
 	}
 }
 
-func (cr *commitmentRule) freeWill(executionInfos []*commandInfo) []types.InnerBlock {
+func (cr *commitmentRule) freeWill(executionInfos []*CommandInfo) []types.InnerBlock {
 	if len(executionInfos) == 0 {
 		return nil
 	}
 
 	// free will: init the democracy committee with raw data.
 	for _, eInfo := range executionInfos {
-		cr.logger.Debugf("[%d] execution info %s", cr.author, eInfo.format())
-		for _, pOrder := range eInfo.pOrders {
+		cr.logger.Debugf("[%d] execution info %s", cr.author, eInfo.Format())
+		for _, pOrder := range eInfo.Orders {
 			cr.democracy[pOrder.Author()].ReplaceOrInsert(pOrder)
 			cr.logger.Debugf("[%d]    collected partial order %s", cr.author, pOrder.Format())
 		}
@@ -132,20 +132,20 @@ func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.Inn
 	var sortable types.SortableInnerBlocks
 	for _, digest := range concurrentC {
 		// read the command info from command recorder.
-		info := cr.recorder.readCommandInfo(digest)
+		info := cr.recorder.ReadCommandInfo(digest)
 
 		// generate block, try to fetch the raw command to fulfill the block.
-		block := types.NewInnerBlock(cr.recorder.readCommandRaw(info.curCmd), info.timestamps[cr.fault])
+		block := types.NewInnerBlock(cr.recorder.ReadCommandRaw(info.CurCmd), info.Timestamps[cr.fault])
 		cr.logger.Infof("[%d] generate block %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.
-		cr.recorder.committedStatus(info.curCmd)
+		cr.recorder.CommittedStatus(info.CurCmd)
 
 		// append the current block into sortable slice, waiting for order-determination.
 		sortable = append(sortable, block)
 
 		// remove the partial order from democracy committee.
-		for _, pOrder := range info.pOrders {
+		for _, pOrder := range info.Orders {
 			cr.democracy[pOrder.Author()].Delete(pOrder)
 		}
 	}

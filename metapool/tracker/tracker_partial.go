@@ -1,10 +1,11 @@
 package tracker
 
 import (
+	"sync"
+
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"sync"
 )
 
 // partialTracker is used to record the partial orders current node has received.

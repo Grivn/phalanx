@@ -1,9 +1,10 @@
 package tracker
 
 import (
+	"sync"
+
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
-	"sync"
 )
 
 // commandTracker is used to record the commands current node has received.

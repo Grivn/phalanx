@@ -84,7 +84,7 @@ func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 		if !ei.commandMap[pOrder.CommandDigest()] {
 			// raed the command info.
 			command := ei.reader.ReadCommand(pOrder.CommandDigest())
-			ei.recorder.storeCommand(command)
+			ei.recorder.StoreCommand(command)
 			ei.commandMap[pOrder.CommandDigest()] = true
 		}
 

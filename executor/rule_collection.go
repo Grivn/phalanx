@@ -43,31 +43,31 @@ func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) {
 	commandD := pOrder.CommandDigest()
 
 	// check if current command has been committed or not.
-	if collect.recorder.isCommitted(commandD) {
+	if collect.recorder.IsCommitted(commandD) {
 		collect.logger.Debugf("[%d] committed command %s, ignore it", collect.author, commandD)
 		return
 	}
 
 	// read command info from command recorder.
-	info := collect.recorder.readCommandInfo(commandD)
+	info := collect.recorder.ReadCommandInfo(commandD)
 
-	if info.pOrderCount() >= collect.quorum {
+	if info.OrderCount() >= collect.quorum {
 		// for one command, we only need to collect the partial orders from quorum replicas, ignore the redundant partial order.
 		collect.logger.Debugf("[%d] command %s in quorum sequenced status, ignore it", collect.author, commandD)
 		return
 	}
-	info.pOrderAppend(pOrder)
+	info.OrderAppend(pOrder)
 
 	// check the command status.
-	switch info.pOrderCount() {
+	switch info.OrderCount() {
 	case collect.oneCorrect:
 		// current command has reached correct sequenced status.
-		collect.recorder.correctStatus(commandD)
+		collect.recorder.CorrectStatus(commandD)
 		collect.logger.Infof("[%d] found correct sequenced command %s", collect.author, commandD)
 	case collect.quorum:
 		// current command has reached quorum sequenced status.
-		sort.Sort(info.timestamps)
-		collect.recorder.quorumStatus(commandD)
+		sort.Sort(info.Timestamps)
+		collect.recorder.QuorumStatus(commandD)
 		collect.logger.Infof("[%d] found quorum sequenced command %s", collect.author, commandD)
 	}
 }

@@ -37,15 +37,15 @@ func newExecutionRule(author uint64, n int, recorder *commandRecorder, logger ex
 	}
 }
 
-func (er *executionRule) naturalOrder() []*commandInfo {
+func (er *executionRule) naturalOrder() []*CommandInfo {
 	// here, we would like to check the natural order for quorum sequenced commands.
-	var execution []*commandInfo
+	var execution []*CommandInfo
 
-	qCommandInfos := er.recorder.readQSCInfos()
+	qCommandInfos := er.recorder.ReadQSCInfos()
 
-	cCommandInfos := er.recorder.readCSCInfos()
+	cCommandInfos := er.recorder.ReadCSCInfos()
 
-	wCommandInfos := er.recorder.readWatInfos()
+	wCommandInfos := er.recorder.ReadWatInfos()
 
 	// natural order 1:
 	// there isn't any command which has reached correct sequenced status, which means no one could be the pri-command
@@ -57,7 +57,7 @@ func (er *executionRule) naturalOrder() []*commandInfo {
 
 	// natural order 2&3:
 	for _, qInfo := range qCommandInfos {
-		if qInfo.trusted {
+		if qInfo.Trust {
 			// we have selected all the potential priori commands.
 			execution = append(execution, qInfo)
 			continue
@@ -77,11 +77,11 @@ func (er *executionRule) naturalOrder() []*commandInfo {
 	return execution
 }
 
-func (er *executionRule) priorityCheck(qInfo *commandInfo, wInfos []*commandInfo, cInfos []*commandInfo) bool {
-	defer func(qInfo *commandInfo) {
+func (er *executionRule) priorityCheck(qInfo *CommandInfo, wInfos []*CommandInfo, cInfos []*CommandInfo) bool {
+	defer func(qInfo *CommandInfo) {
 		// current command cannot be a leaf node,
 		// for which it should be selected into execution list or have some priorities.
-		er.recorder.cutLeaf(qInfo)
+		er.recorder.CutLeaf(qInfo)
 	}(qInfo)
 
 	var newPriorities []string
@@ -89,11 +89,11 @@ func (er *executionRule) priorityCheck(qInfo *commandInfo, wInfos []*commandInfo
 	qPointers := make(map[uint64]uint64)
 
 	// initiate the pointer for quorum replicas.
-	for _, pOrder := range qInfo.pOrders {
+	for _, pOrder := range qInfo.Orders {
 		qPointers[pOrder.Author()] = pOrder.Sequence()
 	}
 	for _, wInfo := range wInfos {
-		if qInfo.priCmd[wInfo.curCmd] {
+		if qInfo.PriCmd[wInfo.CurCmd] {
 			// it has already become the priority command of QSC.
 			continue
 		}
@@ -102,7 +102,7 @@ func (er *executionRule) priorityCheck(qInfo *commandInfo, wInfos []*commandInfo
 
 		// check if there are f+1 replicas believe current QSC should be selected before waiting command.
 		for id, seq := range qPointers {
-			pOrder, ok := wInfo.pOrders[id]
+			pOrder, ok := wInfo.Orders[id]
 			if !ok || pOrder.Sequence() < seq {
 				count++
 			}
@@ -113,24 +113,24 @@ func (er *executionRule) priorityCheck(qInfo *commandInfo, wInfos []*commandInfo
 
 		if count < er.oneCorrect {
 			// should make sure a Condorcet Paradox wouldn't occur.
-			helper := newScanner(qInfo)
+			helper := NewScanner(qInfo)
 
 			// only the command in leaf nodes could be involved into cyclic dependency.
-			if er.recorder.isLeaf(qInfo) {
+			if er.recorder.IsLeaf(qInfo) {
 				// if current waiting command has a leaf node equal to current one, a cyclic dependency occurs.
-				if helper.scan() {
-					er.logger.Debugf("[%d] priority command depend on self %s", er.author, qInfo.format())
+				if helper.Scan() {
+					er.logger.Debugf("[%d] priority command depend on self %s", er.author, qInfo.Format())
 					continue
 				}
 			}
 
-			newPriorities = append(newPriorities, wInfo.curCmd)
-			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, wInfo.format(), qInfo.format())
+			newPriorities = append(newPriorities, wInfo.CurCmd)
+			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, wInfo.Format(), qInfo.Format())
 		}
 	}
 
 	for _, cInfo := range cInfos {
-		if qInfo.priCmd[cInfo.curCmd] {
+		if qInfo.PriCmd[cInfo.CurCmd] {
 			// it has already become the priority command of QSC.
 			continue
 		}
@@ -138,7 +138,7 @@ func (er *executionRule) priorityCheck(qInfo *commandInfo, wInfos []*commandInfo
 		count := 0
 
 		for id, seq := range qPointers {
-			pOrder, ok := cInfo.pOrders[id]
+			pOrder, ok := cInfo.Orders[id]
 			if !ok || pOrder.Sequence() < seq {
 				count++
 			}
@@ -149,20 +149,22 @@ func (er *executionRule) priorityCheck(qInfo *commandInfo, wInfos []*commandInfo
 
 		if count < er.oneCorrect {
 			// record the priority command.
-			qInfo.prioriRecord(cInfo)
+			qInfo.PrioriRecord(cInfo)
 
 			// the priority command should become a leaf node,
 			// for which it does not have any prefix commands and has become other command's priority.
-			er.recorder.addLeaf(cInfo)
+			er.recorder.AddLeaf(cInfo)
 
 			// update the priority list.
-			newPriorities = append(newPriorities, cInfo.curCmd)
-			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, cInfo.format(), qInfo.format())
+			newPriorities = append(newPriorities, cInfo.CurCmd)
+			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, cInfo.Format(), qInfo.Format())
+
+			qInfo.AppendLow(cInfo)
 		}
 	}
 
-	if len(qInfo.priCmd) > 0 {
-		er.recorder.potentialByz(qInfo, newPriorities)
+	if len(qInfo.PriCmd) > 0 {
+		er.recorder.PotentialByz(qInfo, newPriorities)
 		return false
 	}
 
