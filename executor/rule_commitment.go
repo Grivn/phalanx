@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"github.com/Grivn/phalanx/internal"
 	"sort"
 
 	"github.com/Grivn/phalanx/common/protos"
@@ -26,17 +27,20 @@ type commitmentRule struct {
 	// quorum indicates the legal size for bft.
 	quorum int
 
-	// recorder is used to record the command info.
-	recorder *commandRecorder
+	// cRecorder is used to record the command info.
+	cRecorder internal.CommandRecorder
 
 	// democracy is used to generate block with free will committee.
 	democracy map[uint64]*btree.BTree
+
+	// reader is used to read raw commands from meta pool.
+	reader internal.MetaReader
 
 	// logger is used to print logs.
 	logger external.Logger
 }
 
-func newCommitmentRule(author uint64, n int, recorder *commandRecorder, logger external.Logger) *commitmentRule {
+func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder, reader internal.MetaReader, logger external.Logger) *commitmentRule {
 	logger.Infof("[%d] initiate free will committee, replica count %d", author, n)
 	democracy := make(map[uint64]*btree.BTree)
 	for i:=0; i<n; i++ {
@@ -49,13 +53,14 @@ func newCommitmentRule(author uint64, n int, recorder *commandRecorder, logger e
 		fault:      types.CalculateFault(n),
 		oneCorrect: types.CalculateOneCorrect(n),
 		quorum:     types.CalculateQuorum(n),
-		recorder:   recorder,
+		cRecorder:  recorder,
 		democracy:  democracy,
+		reader:     reader,
 		logger:     logger,
 	}
 }
 
-func (cr *commitmentRule) freeWill(executionInfos []*CommandInfo) []types.InnerBlock {
+func (cr *commitmentRule) freeWill(executionInfos []*types.CommandInfo) []types.InnerBlock {
 	if len(executionInfos) == 0 {
 		return nil
 	}
@@ -132,14 +137,15 @@ func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.Inn
 	var sortable types.SortableInnerBlocks
 	for _, digest := range concurrentC {
 		// read the command info from command recorder.
-		info := cr.recorder.ReadCommandInfo(digest)
+		info := cr.cRecorder.ReadCommandInfo(digest)
 
 		// generate block, try to fetch the raw command to fulfill the block.
-		block := types.NewInnerBlock(cr.recorder.ReadCommandRaw(info.CurCmd), info.Timestamps[cr.fault])
+		rawCommand := cr.reader.ReadCommand(info.CurCmd)
+		block := types.NewInnerBlock(rawCommand, info.Timestamps[cr.fault])
 		cr.logger.Infof("[%d] generate block %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.
-		cr.recorder.CommittedStatus(info.CurCmd)
+		cr.cRecorder.CommittedStatus(info.CurCmd)
 
 		// append the current block into sortable slice, waiting for order-determination.
 		sortable = append(sortable, block)

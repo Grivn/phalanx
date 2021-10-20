@@ -1,20 +1,18 @@
-package executor
+package recorder
 
 import (
-	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 )
 
 type commandRecorder struct {
 	// author indicates the identifier of current node.
 	author uint64
 
-	// mapRaw is a map for tracking the command content.
-	mapRaw map[string]*protos.Command
-
 	// mapCmd is a map for tracking the command info, including the selected partial order, the priori commands,
 	// the content of current command.
-	mapCmd map[string]*CommandInfo
+	mapCmd map[string]*types.CommandInfo
 
 	// mapCSC is a map for CSC (correct sequenced command), which indicates there is at least one correct replica
 	// has given a partial order for current command.
@@ -31,7 +29,7 @@ type commandRecorder struct {
 	mapWat map[string]bool
 
 	// mapPri the potential priori relation recorder to update the mapWat at the same time the priori command committed.
-	mapPri map[string][]*CommandInfo
+	mapPri map[string][]*types.CommandInfo
 
 	// leaves is a budget map to record the leaf nodes in current execution graph.
 	// we could skip to scan the cyclic dependency for command info which is not a leaf node.
@@ -41,71 +39,48 @@ type commandRecorder struct {
 	logger external.Logger
 }
 
-func newCommandRecorder(author uint64, logger external.Logger) *commandRecorder {
+func NewCommandRecorder(author uint64, logger external.Logger) internal.CommandRecorder {
 	return &commandRecorder{
 		author: author,
-		mapRaw: make(map[string]*protos.Command),
-		mapCmd: make(map[string]*CommandInfo),
+		mapCmd: make(map[string]*types.CommandInfo),
 		mapCSC: make(map[string]bool),
 		mapQSC: make(map[string]bool),
 		mapCmt: make(map[string]bool),
 		mapWat: make(map[string]bool),
-		mapPri: make(map[string][]*CommandInfo),
+		mapPri: make(map[string][]*types.CommandInfo),
 		leaves: make(map[string]bool),
 		logger: logger,
 	}
 }
 
-//=============================== store raw data ===============================================
-
-func (recorder *commandRecorder) StoreCommand(command *protos.Command) {
-	if recorder.mapCmt[command.Digest] {
-		return
-	}
-	recorder.mapRaw[command.Digest] = command
-}
-
 //=============================== read command info ============================================
 
-func (recorder *commandRecorder) ReadCommandRaw(commandD string) *protos.Command {
-	return recorder.mapRaw[commandD]
-}
-
-func (recorder *commandRecorder) ReadCommandInfo(commandD string) *CommandInfo {
+func (recorder *commandRecorder) ReadCommandInfo(commandD string) *types.CommandInfo {
 	info, ok := recorder.mapCmd[commandD]
 	if !ok {
-		info = newCmdInfo(commandD)
+		info = types.NewCmdInfo(commandD)
 		recorder.mapCmd[commandD] = info
 	}
 	return info
 }
 
-func (recorder *commandRecorder) ReadCSCInfos() []*CommandInfo {
+func (recorder *commandRecorder) ReadCSCInfos() []*types.CommandInfo {
 	// select the correct sequenced commands.
-	var commandInfos []*CommandInfo
+	var commandInfos []*types.CommandInfo
 	for digest := range recorder.mapCSC {
 		commandInfos = append(commandInfos, recorder.ReadCommandInfo(digest))
 	}
 	return commandInfos
 }
 
-func (recorder *commandRecorder) ReadWatInfos() []*CommandInfo {
-	// select the commands which have already become QSC, but have some potential priority commands.
-	var commandInfos []*CommandInfo
-	for digest := range recorder.mapWat {
-		commandInfos = append(commandInfos, recorder.ReadCommandInfo(digest))
-	}
-	return commandInfos
-}
-
-func (recorder *commandRecorder) ReadQSCInfos() []*CommandInfo {
+func (recorder *commandRecorder) ReadQSCInfos() []*types.CommandInfo {
 	// when we try to read one quorum sequenced command from recorder, we should check the pri-command at first to make
 	// sure there isn't any potential pri-command.
 	//
 	// here, the commands with potential priori are removed from QSC map temporarily, so that the commands in QSC map
 	// always have a nil pri-command list.
 
-	var commandInfos []*CommandInfo
+	var commandInfos []*types.CommandInfo
 	for digest := range recorder.mapQSC {
 		if recorder.IsCommitted(digest) {
 			continue
@@ -113,6 +88,15 @@ func (recorder *commandRecorder) ReadQSCInfos() []*CommandInfo {
 
 		qCommandInfo := recorder.ReadCommandInfo(digest)
 		commandInfos = append(commandInfos, qCommandInfo)
+	}
+	return commandInfos
+}
+
+func (recorder *commandRecorder) ReadWatInfos() []*types.CommandInfo {
+	// select the commands which have already become QSC, but have some potential priority commands.
+	var commandInfos []*types.CommandInfo
+	for digest := range recorder.mapWat {
+		commandInfos = append(commandInfos, recorder.ReadCommandInfo(digest))
 	}
 	return commandInfos
 }
@@ -136,7 +120,6 @@ func (recorder *commandRecorder) CommittedStatus(commandD string) {
 	recorder.mapCmt[commandD] = true
 	delete(recorder.mapQSC, commandD)
 	delete(recorder.mapCmd, commandD)
-	delete(recorder.mapRaw, commandD)
 
 	recorder.prioriCommit(commandD)
 	delete(recorder.mapPri, commandD)
@@ -163,23 +146,27 @@ func (recorder *commandRecorder) IsCommitted(commandD string) bool {
 	return recorder.mapCmt[commandD]
 }
 
+func (recorder *commandRecorder) IsQuorum(commandD string) bool {
+	return recorder.mapQSC[commandD] || recorder.mapWat[commandD]
+}
+
 //================================ management of leaf nodes =============================================
 
-func (recorder *commandRecorder) AddLeaf(info *CommandInfo) {
+func (recorder *commandRecorder) AddLeaf(info *types.CommandInfo) {
 	recorder.leaves[info.CurCmd] = true
 }
 
-func (recorder *commandRecorder) CutLeaf(info *CommandInfo) {
+func (recorder *commandRecorder) CutLeaf(info *types.CommandInfo) {
 	delete(recorder.leaves, info.CurCmd)
 }
 
-func (recorder *commandRecorder) IsLeaf(info *CommandInfo) bool {
+func (recorder *commandRecorder) IsLeaf(info *types.CommandInfo) bool {
 	return recorder.leaves[info.CurCmd]
 }
 
 //=========================== commands with potential byzantine order =================================
 
-func (recorder *commandRecorder) PotentialByz(info *CommandInfo, newPriorities []string) {
+func (recorder *commandRecorder) PotentialByz(info *types.CommandInfo, newPriorities []string) {
 	// remove the potential commands with potential byzantine order from QSC map.
 	// put it into waiting map.
 	delete(recorder.mapQSC, info.CurCmd)

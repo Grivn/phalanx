@@ -2,7 +2,9 @@ package executor
 
 import (
 	"github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/executor/scanner"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 )
 
 type executionRule struct {
@@ -18,34 +20,34 @@ type executionRule struct {
 	// quorum indicates the legal size for bft.
 	quorum int
 
-	// recorder is used to record the command info.
-	recorder *commandRecorder
+	// cRecorder is used to record the command info.
+	cRecorder internal.CommandRecorder
 
 	// logger is used to print logs.
 	logger external.Logger
 }
 
-func newExecutionRule(author uint64, n int, recorder *commandRecorder, logger external.Logger) *executionRule {
+func newExecutionRule(author uint64, n int, recorder internal.CommandRecorder, logger external.Logger) *executionRule {
 	logger.Infof("[%d] initiate natural order handler, replica count %d", author, n)
 	return &executionRule{
 		author:     author,
 		n:          n,
 		oneCorrect: types.CalculateOneCorrect(n),
 		quorum:     types.CalculateQuorum(n),
-		recorder:	recorder,
+		cRecorder:  recorder,
 		logger:     logger,
 	}
 }
 
-func (er *executionRule) naturalOrder() []*CommandInfo {
+func (er *executionRule) naturalOrder() []*types.CommandInfo {
 	// here, we would like to check the natural order for quorum sequenced commands.
-	var execution []*CommandInfo
+	var execution []*types.CommandInfo
 
-	qCommandInfos := er.recorder.ReadQSCInfos()
+	qCommandInfos := er.cRecorder.ReadQSCInfos()
 
-	cCommandInfos := er.recorder.ReadCSCInfos()
+	cCommandInfos := er.cRecorder.ReadCSCInfos()
 
-	wCommandInfos := er.recorder.ReadWatInfos()
+	wCommandInfos := er.cRecorder.ReadWatInfos()
 
 	// natural order 1:
 	// there isn't any command which has reached correct sequenced status, which means no one could be the pri-command
@@ -77,11 +79,11 @@ func (er *executionRule) naturalOrder() []*CommandInfo {
 	return execution
 }
 
-func (er *executionRule) priorityCheck(qInfo *CommandInfo, wInfos []*CommandInfo, cInfos []*CommandInfo) bool {
-	defer func(qInfo *CommandInfo) {
+func (er *executionRule) priorityCheck(qInfo *types.CommandInfo, wInfos []*types.CommandInfo, cInfos []*types.CommandInfo) bool {
+	defer func(qInfo *types.CommandInfo) {
 		// current command cannot be a leaf node,
 		// for which it should be selected into execution list or have some priorities.
-		er.recorder.CutLeaf(qInfo)
+		er.cRecorder.CutLeaf(qInfo)
 	}(qInfo)
 
 	var newPriorities []string
@@ -113,12 +115,12 @@ func (er *executionRule) priorityCheck(qInfo *CommandInfo, wInfos []*CommandInfo
 
 		if count < er.oneCorrect {
 			// should make sure a Condorcet Paradox wouldn't occur.
-			helper := NewScanner(qInfo)
+			helper := scanner.NewScanner(qInfo)
 
 			// only the command in leaf nodes could be involved into cyclic dependency.
-			if er.recorder.IsLeaf(qInfo) {
+			if er.cRecorder.IsLeaf(qInfo) {
 				// if current waiting command has a leaf node equal to current one, a cyclic dependency occurs.
-				if helper.Scan() {
+				if helper.HasCyclic() {
 					er.logger.Debugf("[%d] priority command depend on self %s", er.author, qInfo.Format())
 					continue
 				}
@@ -153,18 +155,19 @@ func (er *executionRule) priorityCheck(qInfo *CommandInfo, wInfos []*CommandInfo
 
 			// the priority command should become a leaf node,
 			// for which it does not have any prefix commands and has become other command's priority.
-			er.recorder.AddLeaf(cInfo)
+			er.cRecorder.AddLeaf(cInfo)
 
 			// update the priority list.
 			newPriorities = append(newPriorities, cInfo.CurCmd)
 			er.logger.Debugf("[%d] potential natural order: %s <- %s", er.author, cInfo.Format(), qInfo.Format())
 
+			// append the correct sequenced command into current command's lowest list.
 			qInfo.AppendLow(cInfo)
 		}
 	}
 
 	if len(qInfo.PriCmd) > 0 {
-		er.recorder.PotentialByz(qInfo, newPriorities)
+		er.cRecorder.PotentialByz(qInfo, newPriorities)
 		return false
 	}
 

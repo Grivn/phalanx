@@ -9,9 +9,9 @@ import (
 type MetaPool interface {
 	api.Runner
 	LogManager
-	Reader
-	Committer
-	Consensus
+	MetaReader
+	MetaCommitter
+	MetaConsensus
 }
 
 type LogManager interface {
@@ -43,7 +43,7 @@ type RemoteLog interface {
 	ProcessPartial(pOrder *protos.PartialOrder) error
 }
 
-type Reader interface {
+type MetaReader interface {
 	// ReadCommand reads raw command from meta pool.
 	ReadCommand(commandD string) *protos.Command
 
@@ -51,12 +51,12 @@ type Reader interface {
 	ReadPartials(qStream types.QueryStream) []*protos.PartialOrder
 }
 
-type Committer interface {
+type MetaCommitter interface {
 	// Committed notifies meta pool the committed command info.
 	Committed(author uint64, seqNo uint64)
 }
 
-type Consensus interface {
+type MetaConsensus interface {
 	// GenerateProposal generates proposal for total consensus processor.
 	GenerateProposal() (*protos.PartialOrderBatch, error)
 

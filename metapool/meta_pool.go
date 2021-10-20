@@ -84,7 +84,7 @@ type metaPool struct {
 	logger external.Logger
 }
 
-func NewMetaPool(n int, author uint64, sender external.NetworkService, logger external.Logger) *metaPool {
+func NewMetaPool(n int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
 	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
 
 	// initiate committed number tracker.

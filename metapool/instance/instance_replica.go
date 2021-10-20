@@ -55,7 +55,7 @@ type replicaInstance struct {
 	logger external.Logger
 }
 
-func NewReplicaInstance(author, id uint64, pTracker internal.PartialTracker, sender external.NetworkService, logger external.Logger) *replicaInstance {
+func NewReplicaInstance(author, id uint64, pTracker internal.PartialTracker, sender external.NetworkService, logger external.Logger) internal.ReplicaInstance {
 	logger.Infof("[%d] initiate the sub instance of order for replica %d", author, id)
 	return &replicaInstance{
 		author:   author,
