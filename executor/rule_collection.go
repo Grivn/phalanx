@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"github.com/Grivn/phalanx/internal"
 	"sort"
 
 	"github.com/Grivn/phalanx/common/protos"
@@ -18,20 +19,20 @@ type collectionRule struct {
 	// quorum indicates the legal size for bft.
 	quorum int
 
-	// recorder is used to record the command info.
-	recorder *commandRecorder
+	// cRecorder is used to record the command info.
+	cRecorder internal.CommandRecorder
 
 	// logger is used to print logs.
 	logger external.Logger
 }
 
-func newCollectRule(author uint64, n int, recorder *commandRecorder, logger external.Logger) *collectionRule {
+func newCollectRule(author uint64, n int, recorder internal.CommandRecorder, logger external.Logger) *collectionRule {
 	logger.Infof("[%d] initiate partial order collector, replica count %d", author, n)
 	return &collectionRule{
 		author:     author,
 		oneCorrect: types.CalculateOneCorrect(n),
 		quorum:     types.CalculateQuorum(n),
-		recorder:	recorder,
+		cRecorder:  recorder,
 		logger:     logger,
 	}
 }
@@ -43,31 +44,31 @@ func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) {
 	commandD := pOrder.CommandDigest()
 
 	// check if current command has been committed or not.
-	if collect.recorder.isCommitted(commandD) {
+	if collect.cRecorder.IsCommitted(commandD) {
 		collect.logger.Debugf("[%d] committed command %s, ignore it", collect.author, commandD)
 		return
 	}
 
-	// read command info from command recorder.
-	info := collect.recorder.readCommandInfo(commandD)
+	// read command info from command cRecorder.
+	info := collect.cRecorder.ReadCommandInfo(commandD)
 
-	if info.pOrderCount() >= collect.quorum {
+	if info.OrderCount() >= collect.quorum {
 		// for one command, we only need to collect the partial orders from quorum replicas, ignore the redundant partial order.
 		collect.logger.Debugf("[%d] command %s in quorum sequenced status, ignore it", collect.author, commandD)
 		return
 	}
-	info.pOrderAppend(pOrder)
+	info.OrderAppend(pOrder)
 
 	// check the command status.
-	switch info.pOrderCount() {
+	switch info.OrderCount() {
 	case collect.oneCorrect:
 		// current command has reached correct sequenced status.
-		collect.recorder.correctStatus(commandD)
+		collect.cRecorder.CorrectStatus(commandD)
 		collect.logger.Infof("[%d] found correct sequenced command %s", collect.author, commandD)
 	case collect.quorum:
 		// current command has reached quorum sequenced status.
-		sort.Sort(info.timestamps)
-		collect.recorder.quorumStatus(commandD)
+		sort.Sort(info.Timestamps)
+		collect.cRecorder.QuorumStatus(commandD)
 		collect.logger.Infof("[%d] found quorum sequenced command %s", collect.author, commandD)
 	}
 }

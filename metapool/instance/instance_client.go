@@ -4,6 +4,8 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
+
 	"github.com/google/btree"
 )
 
@@ -54,7 +56,7 @@ type clientInstance struct {
 	logger external.Logger
 }
 
-func NewClient(author, id uint64, commandC chan *types.CommandIndex, logger external.Logger) *clientInstance {
+func NewClient(author, id uint64, commandC chan *types.CommandIndex, logger external.Logger) internal.ClientInstance {
 	logger.Infof("[%d] initiate manager for client %d", author, id)
 	committedNo := make(map[uint64]bool)
 	committedNo[uint64(0)] = true

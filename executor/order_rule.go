@@ -4,6 +4,7 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 )
 
 // orderRule contains the essential rules for block generation.
@@ -23,11 +24,11 @@ type orderRule struct {
 	commit *commitmentRule
 }
 
-func newOrderRule(author uint64, n int, recorder *commandRecorder, logger external.Logger) *orderRule {
+func newOrderRule(author uint64, n int, cRecorder internal.CommandRecorder, reader internal.MetaReader, logger external.Logger) *orderRule {
 	return &orderRule{
-		collect: newCollectRule(author, n, recorder, logger),
-		execute: newExecutionRule(author, n, recorder, logger),
-		commit:  newCommitmentRule(author, n, recorder, logger),
+		collect: newCollectRule(author, n, cRecorder, logger),
+		execute: newExecutionRule(author, n, cRecorder, logger),
+		commit:  newCommitmentRule(author, n, cRecorder, reader, logger),
 	}
 }
 

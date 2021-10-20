@@ -1,9 +1,11 @@
 package tracker
 
 import (
+	"sync"
+
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
-	"sync"
+	"github.com/Grivn/phalanx/internal"
 )
 
 // commandTracker is used to record the commands current node has received.
@@ -27,7 +29,7 @@ type commandTracker struct {
 	logger external.Logger
 }
 
-func NewCommandTracker(author uint64, logger external.Logger) *commandTracker {
+func NewCommandTracker(author uint64, logger external.Logger) internal.CommandTracker {
 	logger.Infof("[%d] initiate command tracker", author)
 	return &commandTracker{
 		author:       author,

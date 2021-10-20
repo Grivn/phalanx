@@ -1,10 +1,12 @@
 package txmanager
 
 import (
+	"sync"
+
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"sync"
+	"github.com/Grivn/phalanx/internal"
 )
 
 // txManager is the implement of phalanx client, which is used receive transactions and generate phalanx commands.
@@ -40,7 +42,7 @@ type txManager struct {
 	logger external.Logger
 }
 
-func NewTxManager(n int, author uint64, commandSize int, sender external.NetworkService, logger external.Logger) *txManager {
+func NewTxManager(n int, author uint64, commandSize int, sender external.NetworkService, logger external.Logger) internal.TxManager {
 	return &txManager{n: n, author: author, commandSize: commandSize, sender: sender, logger: logger}
 }
 

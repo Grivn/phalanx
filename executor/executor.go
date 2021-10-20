@@ -1,12 +1,13 @@
 package executor
 
 import (
-	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/internal"
 	"sort"
 	"sync"
 
+	"github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/executor/recorder"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 )
 
 type executorImpl struct {
@@ -23,11 +24,8 @@ type executorImpl struct {
 
 	//============================ order rule for block generation ========================================
 
-	// commandMap is used to record the hash of commands which have been selected into executor.
-	commandMap map[string]bool
-
-	// recorder is used to record the command info.
-	recorder *commandRecorder
+	// cRecorder is used to record the command info.
+	cRecorder internal.CommandRecorder
 
 	// rules is used to generate blocks with phalanx order-rule.
 	rules *orderRule
@@ -35,10 +33,10 @@ type executorImpl struct {
 	//============================= internal interfaces =========================================
 
 	// committer is used to notify client instance the committed sequence number.
-	committer internal.Committer
+	committer internal.MetaCommitter
 
-	// reader is used to read commands and partial orders from the tracker.
-	reader internal.Reader
+	// reader is used to read partial orders from meta pool tracker.
+	reader internal.MetaReader
 
 	//============================== external interfaces ==========================================
 
@@ -50,17 +48,16 @@ type executorImpl struct {
 }
 
 // NewExecutor is used to generator an executor for phalanx.
-func NewExecutor(author uint64, n int, mgr internal.MetaPool, exec external.ExecutionService, logger external.Logger) *executorImpl {
-	recorder := newCommandRecorder(author, logger)
+func NewExecutor(author uint64, n int, mgr internal.MetaPool, exec external.ExecutionService, logger external.Logger) internal.Executor {
+	cRecorder := recorder.NewCommandRecorder(author, logger)
 	return &executorImpl{
-		author:     author,
-		rules:      newOrderRule(author, n, recorder, logger),
-		recorder:   recorder,
-		exec:       exec,
-		committer:  mgr,
-		reader:     mgr,
-		commandMap: make(map[string]bool),
-		logger:     logger,
+		author:    author,
+		rules:     newOrderRule(author, n, cRecorder, mgr, logger),
+		cRecorder: cRecorder,
+		exec:      exec,
+		committer: mgr,
+		reader:    mgr,
+		logger:    logger,
 	}
 }
 
@@ -80,14 +77,6 @@ func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 	partials := ei.reader.ReadPartials(qStream)
 
 	for _, pOrder := range partials {
-
-		if !ei.commandMap[pOrder.CommandDigest()] {
-			// raed the command info.
-			command := ei.reader.ReadCommand(pOrder.CommandDigest())
-			ei.recorder.storeCommand(command)
-			ei.commandMap[pOrder.CommandDigest()] = true
-		}
-
 		blocks := ei.rules.processPartialOrder(pOrder)
 		for _, blk := range blocks {
 			ei.seqNo++

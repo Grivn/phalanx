@@ -2,14 +2,15 @@ package metapool
 
 import (
 	"fmt"
-	"github.com/Grivn/phalanx/metapool/instance"
-	"github.com/Grivn/phalanx/metapool/tracker"
 	"sync"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
+	"github.com/Grivn/phalanx/metapool/instance"
+	"github.com/Grivn/phalanx/metapool/tracker"
 )
 
 // todo pre-trusted order entry
@@ -50,18 +51,18 @@ type metaPool struct {
 
 	// replicas is the module for us to process consensus messages for participates.
 	// when we try to read the partial order to execute, we should read them from each sub instance.
-	replicas map[uint64]instance.ReplicaInstance
+	replicas map[uint64]internal.ReplicaInstance
 
 	// pTracker is used to record the partial orders received by current node.
-	pTracker tracker.PartialTracker
+	pTracker internal.PartialTracker
 
 	//===================================== client commands manager ============================================
 
 	// cTracker is used to record the commands received by current node.
-	cTracker tracker.CommandTracker
+	cTracker internal.CommandTracker
 
 	// clients are used to track the commands send from them.
-	clients map[uint64]instance.ClientInstance
+	clients map[uint64]internal.ClientInstance
 
 	// commandC is used to receive the valid transaction from one client instance.
 	commandC chan *types.CommandIndex
@@ -83,7 +84,7 @@ type metaPool struct {
 	logger external.Logger
 }
 
-func NewMetaPool(n int, author uint64, sender external.NetworkService, logger external.Logger) *metaPool {
+func NewMetaPool(n int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
 	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
 
 	// initiate committed number tracker.
@@ -92,7 +93,7 @@ func NewMetaPool(n int, author uint64, sender external.NetworkService, logger ex
 	// initiate a partial tracker for current node.
 	pTracker := tracker.NewPartialTracker(author, logger)
 
-	subs := make(map[uint64]instance.ReplicaInstance)
+	subs := make(map[uint64]internal.ReplicaInstance)
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 		subs[id] = instance.NewReplicaInstance(author, id, pTracker, sender, logger)
@@ -108,7 +109,7 @@ func NewMetaPool(n int, author uint64, sender external.NetworkService, logger ex
 		replicas: subs,
 		pTracker: pTracker,
 		cTracker: tracker.NewCommandTracker(author, logger),
-		clients:  make(map[uint64]instance.ClientInstance),
+		clients:  make(map[uint64]internal.ClientInstance),
 		commandC: make(chan *types.CommandIndex, 10000),
 		closeC:   make(chan bool),
 		sender:   sender,
