@@ -17,10 +17,11 @@ func GenerateCommand(author uint64, seqNo uint64, txs []*protos.Transaction) *pr
 	for _, tx := range txs {
 		hashList = append(hashList, tx.Hash)
 	}
+
+	// calculate command hash with hash list of transactions and the basic command info.
 	command := &protos.Command{
 		Author:   author,
 		Sequence: seqNo,
-		Content:  txs,
 		HashList: hashList,
 	}
 	payload, err := proto.Marshal(command)
@@ -28,6 +29,9 @@ func GenerateCommand(author uint64, seqNo uint64, txs []*protos.Transaction) *pr
 		return nil
 	}
 	command.Digest = CalculatePayloadHash(payload, 0)
+
+	// append transaction instance list into command.
+	command.Content = txs
 	return command
 }
 
@@ -42,12 +46,13 @@ func GenerateRandCommand(author uint64, seqNo uint64, count, size int) *protos.C
 		hList[i] = tx.Hash
 	}
 
-	command := &protos.Command{Author: author, Sequence: seqNo, Content: tList, HashList: hList}
+	command := &protos.Command{Author: author, Sequence: seqNo, HashList: hList}
 	payload, err := proto.Marshal(command)
 	if err != nil {
 		panic(err)
 	}
 	command.Digest = CalculatePayloadHash(payload, 0)
+	command.Content = tList
 
 	return command
 }
@@ -57,13 +62,16 @@ func GenerateRandCommand(author uint64, seqNo uint64, count, size int) *protos.C
 func GenerateRandTransaction(size int) *protos.Transaction {
 	payload := make([]byte, size)
 	rand.Read(payload)
-	return GenerateTransaction(payload)
+	return GenerateTransaction(payload, 0)
 }
 
-func GenerateTransaction(payload []byte) *protos.Transaction {
+func GenerateTransaction(payload []byte, timestamp int64) *protos.Transaction {
+	if timestamp == 0 {
+		timestamp = time.Now().UnixNano()
+	}
 	return &protos.Transaction{
 		Hash:      CalculatePayloadHash(payload, time.Now().UnixNano()),
 		Payload:   payload,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: timestamp,
 	}
 }

@@ -36,7 +36,7 @@ func phalanxRunner() {
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 		exec := mocks.NewSimpleExecutor(id, types.NewRawLogger())
-		phx[id] = phalanx.NewPhalanxProvider(n, id, types.SingleCommandSize, exec, net, types.NewRawLoggerFile(logDir+"/bft-node-"+strconv.Itoa(i+1)+".log"))
+		phx[id] = phalanx.NewPhalanxProvider(n, id, types.SingleCommandSize, types.DefaultProposerConcurrency, exec, net, types.NewRawLoggerFile(logDir+"/bft-node-"+strconv.Itoa(i+1)+".log"))
 		phx[id].Run()
 	}
 
