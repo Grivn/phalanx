@@ -45,7 +45,7 @@ func (m *Command) Less(item btree.Item) bool {
 }
 
 func (m *Command) Format() string {
-	return fmt.Sprintf("[Command: client %d, sequence %d, digest %s]", m.Author, m.Sequence, m.Digest)
+	return fmt.Sprintf("[Command: proposer %d, sequence %d, digest %s]", m.Author, m.Sequence, m.Digest)
 }
 
 //=============================== Pre-Order ===============================================

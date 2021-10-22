@@ -25,9 +25,6 @@ import (
 type metaPool struct {
 	//===================================== basic information =========================================
 
-	// mutex is used to deal with the concurrent problems of log-manager.
-	mutex sync.Mutex
-
 	// author is the identifier for current node.
 	author uint64
 
@@ -58,14 +55,20 @@ type metaPool struct {
 
 	//===================================== client commands manager ============================================
 
+	// mutex is used to deal with the concurrent problems of client instance for log-manager.
+	mutex sync.RWMutex
+
 	// cTracker is used to record the commands received by current node.
 	cTracker internal.CommandTracker
 
 	// clients are used to track the commands send from them.
-	clients map[uint64]internal.ClientInstance
+	clients sync.Map
 
 	// commandC is used to receive the valid transaction from one client instance.
 	commandC chan *types.CommandIndex
+
+	// voteC is used to receive the vote message from participants.
+	voteC chan *protos.Vote
 
 	// closeC is used to stop log manager.
 	closeC chan bool
@@ -109,8 +112,8 @@ func NewMetaPool(n int, author uint64, sender external.NetworkService, logger ex
 		replicas: subs,
 		pTracker: pTracker,
 		cTracker: tracker.NewCommandTracker(author, logger),
-		clients:  make(map[uint64]internal.ClientInstance),
 		commandC: make(chan *types.CommandIndex, 10000),
+		voteC:    make(chan *protos.Vote),
 		closeC:   make(chan bool),
 		sender:   sender,
 		logger:   logger,
@@ -119,42 +122,40 @@ func NewMetaPool(n int, author uint64, sender external.NetworkService, logger ex
 }
 
 func (mp *metaPool) Run() {
-	for {
-		select {
-		case <-mp.closeC:
-			return
-		case c := <-mp.commandC:
-			if err := mp.tryGeneratePreOrder(c); err != nil {
-				panic(fmt.Sprintf("log manager runtime error: %s", err))
-			}
-		}
+	// start meta pool main worker.
+	go mp.listener()
+
+	// start replica instance coroutine worker.
+	for _, replica := range mp.replicas {
+		replica.Run()
 	}
 }
 
-func (mp *metaPool) Quit() {
-	for _, client := range mp.clients {
-		client.Quit()
-	}
+func (mp *metaPool) Close() {
+	// close client instance.
+	mp.clients.Range(func(key, value interface{}) bool {
+		client, ok := value.(internal.ClientInstance)
+		if !ok {
+			return false
+		}
+		client.Close()
+		return true
+	})
 
+	// close meta pool main worker.
 	select {
 	case <-mp.closeC:
 	default:
 		close(mp.closeC)
 	}
+
+	// close replica instance.
+	for _, replica := range mp.replicas {
+		replica.Close()
+	}
 }
 
-func (mp *metaPool) Committed(author uint64, seqNo uint64) {
-	mp.mutex.Lock()
-	defer mp.mutex.Unlock()
-
-	go mp.clients[author].Commit(seqNo)
-}
-
-//===============================================================
-//                 Processor for Local Logs
-//===============================================================
-
-func (mp *metaPool) ProcessCommand(command *protos.Command) {
+func (mp *metaPool) ReceiveCommand(command *protos.Command) {
 	// record the command with command tracker.
 	mp.cTracker.RecordCommand(command)
 
@@ -166,50 +167,69 @@ func (mp *metaPool) clientInstanceReminder(command *protos.Command) {
 	mp.mutex.Lock()
 	defer mp.mutex.Unlock()
 
+	var client internal.ClientInstance
+
 	// select the client.
-	client, ok := mp.clients[command.Author]
+	value, ok := mp.clients.Load(command.Author)
 	if !ok {
 		// if there is not a client instance, initiate it.
 		client = instance.NewClient(mp.author, command.Author, mp.commandC, mp.logger)
-		mp.clients[command.Author] = client
+		mp.clients.Store(command.Author, client)
+
+		// start client instance coroutine worker.
 		client.Run()
+	} else {
+		// covert value into client instance.
+		client = value.(internal.ClientInstance)
 	}
 
 	// append the transaction into this client.
 	go client.Append(command)
 }
 
-func (mp *metaPool) checkHighOrder() error {
+func (mp *metaPool) Committed(author uint64, seqNo uint64) {
+	mp.mutex.RLock()
+	defer mp.mutex.RUnlock()
 
-	// here, we should make sure the highest sequence number is valid.
-	if mp.highOrder == nil {
-		switch mp.sequence {
-		case 0:
-			// if there isn't any high order, we should make sure that we are trying to generate the first partial order.
-			return nil
-		default:
-			return fmt.Errorf("invalid status for current node, highest order nil, current seqNo %d", mp.sequence)
-		}
+	value, ok := mp.clients.Load(author)
+	if !ok {
+		panic(fmt.Sprintf("cannot find committed client %d", author))
 	}
 
-	if mp.highOrder.Sequence != mp.sequence {
-		return fmt.Errorf("invalid status for current node, highest order %d, current seqNo %d", mp.highOrder.Sequence, mp.sequence)
+	client, ok := value.(internal.ClientInstance)
+	if !ok {
+		panic(fmt.Sprintf("convert into client instance error"))
 	}
 
-	// highest partial order has a valid sequence number.
-	return nil
+	go client.Commit(seqNo)
 }
 
-func (mp *metaPool) updateHighOrder(pre *protos.PreOrder) {
-	mp.highOrder = pre
+func (mp *metaPool) ReceiveVote(vote *protos.Vote) {
+	mp.voteC <- vote
+}
+
+//======================================== meta pool main worker ==================================================
+
+func (mp *metaPool) listener() {
+	for {
+		select {
+		case <-mp.closeC:
+			return
+		case c := <-mp.commandC:
+			if err := mp.tryGeneratePreOrder(c); err != nil {
+				mp.logger.Errorf("[%d] generate pre-order error: %s", mp.author, err)
+			}
+		case vote := <-mp.voteC:
+			if err := mp.processVote(vote); err != nil {
+				mp.logger.Errorf("[%d] process vote error: %s", mp.author, err)
+			}
+		}
+	}
 }
 
 // tryGeneratePreOrder is used to process the command received from one client instance.
 // We would like to assign the latest seqNo for it and generate a pre-order message.
 func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
-	mp.mutex.Lock()
-	defer mp.mutex.Unlock()
-
 	// make sure the highest partial order has a valid status.
 	if err := mp.checkHighOrder(); err != nil {
 		return fmt.Errorf("highest partial order error: %s", err)
@@ -249,12 +269,35 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 	return nil
 }
 
-// ProcessVote is used to process the vote message from others.
-// It could aggregate a agg-signature for one pre-order and generate an order message for one command.
-func (mp *metaPool) ProcessVote(vote *protos.Vote) error {
-	mp.mutex.Lock()
-	defer mp.mutex.Unlock()
+// checkHighOrder is used to check the validation of high order.
+func (mp *metaPool) checkHighOrder() error {
+	// here, we should make sure the highest sequence number is valid.
+	if mp.highOrder == nil {
+		switch mp.sequence {
+		case 0:
+			// if there isn't any high order, we should make sure that we are trying to generate the first partial order.
+			return nil
+		default:
+			return fmt.Errorf("invalid status for current node, highest order nil, current seqNo %d", mp.sequence)
+		}
+	}
 
+	if mp.highOrder.Sequence != mp.sequence {
+		return fmt.Errorf("invalid status for current node, highest order %d, current seqNo %d", mp.highOrder.Sequence, mp.sequence)
+	}
+
+	// highest partial order has a valid sequence number.
+	return nil
+}
+
+// updateHighOrder is used to update the high order of current node.
+func (mp *metaPool) updateHighOrder(pre *protos.PreOrder) {
+	mp.highOrder = pre
+}
+
+// processVote is used to process the vote message from others.
+// It could aggregate an agg-signature for one pre-order and generate an order message for one command.
+func (mp *metaPool) processVote(vote *protos.Vote) error {
 	mp.logger.Debugf("[%d] receive vote %s", mp.author, vote.Format())
 
 	// check the existence of order message
@@ -300,22 +343,16 @@ func (mp *metaPool) ProcessVote(vote *protos.Vote) error {
 // We should make sure that we have never received a pre-order/order message
 // whose sequence number is the same as it yet, and we would like to generate a
 // vote message for it if it's legal for us.
-func (mp *metaPool) ProcessPreOrder(pre *protos.PreOrder) error {
-	mp.mutex.Lock()
-	defer mp.mutex.Unlock()
-
-	return mp.replicas[pre.Author].ReceivePreOrder(pre)
+func (mp *metaPool) ProcessPreOrder(pre *protos.PreOrder) {
+	mp.replicas[pre.Author].ReceivePreOrder(pre)
 }
 
 // ProcessPartial is used to process quorum-cert messages.
 // A valid quorum-cert message, which has a series of valid signature which has reached quorum size,
 // could advance the sequence counter. We should record the advanced counter and put the info of
 // order message into the sequential-pool.
-func (mp *metaPool) ProcessPartial(pOrder *protos.PartialOrder) error {
-	mp.mutex.Lock()
-	defer mp.mutex.Unlock()
-
-	return mp.replicas[pOrder.Author()].ReceivePartial(pOrder)
+func (mp *metaPool) ProcessPartial(pOrder *protos.PartialOrder) {
+	mp.replicas[pOrder.Author()].ReceivePartial(pOrder)
 }
 
 //===============================================================
@@ -363,9 +400,6 @@ func (mp *metaPool) ReadPartials(qStream types.QueryStream) []*protos.PartialOrd
 //=====================================================================
 
 func (mp *metaPool) GenerateProposal() (*protos.PartialOrderBatch, error) {
-	mp.mutex.Lock()
-	defer mp.mutex.Unlock()
-
 	batch := protos.NewPartialOrderBatch(mp.author, mp.n)
 
 	for id, replica := range mp.replicas {

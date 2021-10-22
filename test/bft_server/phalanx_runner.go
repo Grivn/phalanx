@@ -14,6 +14,10 @@ import (
 func phalanxRunner() {
 	n := 4
 
+	commandSize := types.SingleCommandSize
+
+	pConcurrency := types.DefaultProposerConcurrency + 8
+
 	async := false
 
 	nc := make(map[uint64]chan *protos.ConsensusMessage)
@@ -36,7 +40,7 @@ func phalanxRunner() {
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 		exec := mocks.NewSimpleExecutor(id, types.NewRawLogger())
-		phx[id] = phalanx.NewPhalanxProvider(n, id, types.SingleCommandSize, exec, net, types.NewRawLoggerFile(logDir+"/bft-node-"+strconv.Itoa(i+1)+".log"))
+		phx[id] = phalanx.NewPhalanxProvider(n, id, commandSize, pConcurrency, exec, net, types.NewRawLoggerFile(logDir+"/bft-node-"+strconv.Itoa(i+1)+".log"))
 		phx[id].Run()
 	}
 
@@ -59,8 +63,8 @@ func phalanxRunner() {
 
 	num := 1000
 	client := 64
-	//transactionSendInstance(num, client, phx)
-	commandSendInstance(num, client, phx)
+	transactionSendInstance(num, client, phx)
+	//commandSendInstance(num, client, phx)
 
 	time.Sleep(1000 * time.Second)
 }

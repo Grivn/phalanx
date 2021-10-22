@@ -1,13 +1,15 @@
 package phalanx
 
-import (
-	"github.com/Grivn/phalanx/common/api"
-	"github.com/Grivn/phalanx/common/protos"
-)
+import "github.com/Grivn/phalanx/common/protos"
 
 // Provider is the phalanx service provider for all kinds of consensus algorithm, such as PBFT or HS.
 type Provider interface {
-	api.Runner
+	// Start starts phalanx coroutine service.
+	Start()
+
+	// Stop stops phalanx coroutine service.
+	Stop()
+
 	Proposer
 	Communicator
 	Generator

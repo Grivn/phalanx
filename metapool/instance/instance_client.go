@@ -83,7 +83,7 @@ func (client *clientInstance) Run() {
 	client.start()
 }
 
-func (client *clientInstance) Quit() {
+func (client *clientInstance) Close() {
 	client.stop()
 }
 

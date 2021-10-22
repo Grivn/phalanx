@@ -11,12 +11,13 @@ import (
 func transactionSendInstance(num, client int, phx map[uint64]phalanx.Provider) {
 	for i:=0; i<num; i++ {
 		time.Sleep(2*time.Microsecond)
-		for c:=0; c<client; c++ {
-			go transactionSender(uint64(c+1), phx)
+		for id := range phx {
+			go transactionSender(id, phx)
 		}
 	}
 }
 
+//nolint
 func commandSendInstance(num, client int, phx map[uint64]phalanx.Provider) {
 	for i:=0; i<num; i++ {
 		time.Sleep(2*time.Microsecond)

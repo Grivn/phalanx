@@ -34,7 +34,7 @@ type phalanxImpl struct {
 	logger external.Logger
 }
 
-func NewPhalanxProvider(n int, author uint64, commandSize int, exec external.ExecutionService, network external.NetworkService, logger external.Logger) *phalanxImpl {
+func NewPhalanxProvider(n int, author uint64, commandSize int, pConcurrency int, exec external.ExecutionService, network external.NetworkService, logger external.Logger) *phalanxImpl {
 	// todo read crypto key pairs from config files.
 	// initiate key pairs.
 	_ = crypto.SetKeys()
@@ -47,7 +47,7 @@ func NewPhalanxProvider(n int, author uint64, commandSize int, exec external.Exe
 	}
 
 	// initiate tx manager.
-	txMgr := txmanager.NewTxManager(n, author, commandSize, network, mLogs.txManagerLog)
+	txMgr := txmanager.NewTxManager(n, author, commandSize, pConcurrency, network, mLogs.txManagerLog)
 
 	// initiate meta pool.
 	mPool := metapool.NewMetaPool(n, author, network, mLogs.metaPoolLog)
@@ -64,12 +64,14 @@ func NewPhalanxProvider(n int, author uint64, commandSize int, exec external.Exe
 	}
 }
 
-func (phi *phalanxImpl) Run() {
-	go phi.metaPool.Run()
+func (phi *phalanxImpl) Start() {
+	phi.metaPool.Run()
+	phi.txManager.Run()
 }
 
-func (phi *phalanxImpl) Quit() {
-	phi.metaPool.Quit()
+func (phi *phalanxImpl) Stop() {
+	phi.metaPool.Close()
+	phi.txManager.Close()
 }
 
 // ReceiveTransaction is used to process transaction we have received.
@@ -79,7 +81,7 @@ func (phi *phalanxImpl) ReceiveTransaction(tx *protos.Transaction) {
 
 // ReceiveCommand is used to process the commands from clients.
 func (phi *phalanxImpl) ReceiveCommand(command *protos.Command) {
-	phi.metaPool.ProcessCommand(command)
+	phi.metaPool.ReceiveCommand(command)
 }
 
 // ReceiveConsensusMessage is used process the consensus messages from phalanx replica.
@@ -90,25 +92,19 @@ func (phi *phalanxImpl) ReceiveConsensusMessage(message *protos.ConsensusMessage
 		if err := proto.Unmarshal(message.Payload, pre); err != nil {
 			return fmt.Errorf("unmarshal error: %s", err)
 		}
-		if err := phi.metaPool.ProcessPreOrder(pre); err != nil {
-			phi.logger.Errorf("[%d] failed process pre-order, error msg: %s", phi.author, err)
-		}
+		phi.metaPool.ProcessPreOrder(pre)
 	case protos.MessageType_QUORUM_CERT:
 		pOrder := &protos.PartialOrder{}
 		if err := proto.Unmarshal(message.Payload, pOrder); err != nil {
 			return fmt.Errorf("unmarshal error: %s", err)
 		}
-		if err := phi.metaPool.ProcessPartial(pOrder); err != nil {
-			phi.logger.Errorf("[%d] failed process partial-order, error msg: %s", phi.author, err)
-		}
+		phi.metaPool.ProcessPartial(pOrder)
 	case protos.MessageType_VOTE:
 		vote := &protos.Vote{}
 		if err := proto.Unmarshal(message.Payload, vote); err != nil {
 			return fmt.Errorf("unmarshal error: %s", err)
 		}
-		if err := phi.metaPool.ProcessVote(vote); err != nil {
-			phi.logger.Errorf("[%d] failed process vote, error msg: %s", phi.author, err)
-		}
+		phi.metaPool.ReceiveVote(vote)
 	}
 	return nil
 }

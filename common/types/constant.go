@@ -16,4 +16,10 @@ const (
 
 	// DefaultCommandSize is the default batch size for command transactions.
 	DefaultCommandSize int = 500
+
+	// DefaultProposerConcurrency is the default count of proposers for one replica.
+	DefaultProposerConcurrency int = 4
+
+	// SingleProposerConcurrency is used for phalanx test network for only one proposer.
+	SingleProposerConcurrency int = 1
 )

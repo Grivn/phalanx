@@ -3,6 +3,7 @@ package instance
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/event"
@@ -32,6 +33,9 @@ type replicaInstance struct {
 	// trusted indicates the highest verified seqNo.
 	trusted uint64
 
+	// mutex is used to process concurrency problems for highPartialOrder.
+	mutex sync.RWMutex
+
 	// highPartialOrder indicates the highest partial order which has been verified by cluster validators.
 	highPartialOrder *protos.PartialOrder
 
@@ -40,6 +44,14 @@ type replicaInstance struct {
 
 	// recorder is used to track the pre-order/order messages.
 	recorder *btree.BTree
+
+	//====================================== communication channel ===========================================
+
+	preC chan *protos.PreOrder
+
+	partialC chan *protos.PartialOrder
+
+	closeC chan bool
 
 	//======================================= internal modules =========================================
 
@@ -64,16 +76,58 @@ func NewReplicaInstance(author, id uint64, pTracker internal.PartialTracker, sen
 		sequence: uint64(1),
 		recorder: btree.New(2),
 		pTracker: pTracker,
+		preC:     make(chan *protos.PreOrder),
+		partialC: make(chan *protos.PartialOrder),
+		closeC:   make(chan bool),
 		sender:   sender,
 		logger:   logger,
 	}
 }
 
-func (ri *replicaInstance) GetHighOrder() *protos.PartialOrder {
-	return ri.highPartialOrder
+func (ri *replicaInstance) Run() {
+	go ri.listener()
 }
 
-func (ri *replicaInstance) ReceivePreOrder(pre *protos.PreOrder) error {
+func (ri *replicaInstance) Close() {
+	select {
+	case <-ri.closeC:
+	default:
+		close(ri.closeC)
+	}
+}
+
+func (ri *replicaInstance) ReceivePreOrder(pre *protos.PreOrder) {
+	ri.preC <- pre
+}
+
+func (ri *replicaInstance) ReceivePartial(pOrder *protos.PartialOrder) {
+	ri.partialC <- pOrder
+}
+
+func (ri *replicaInstance) GetHighOrder() *protos.PartialOrder {
+	return ri.getHighOrder()
+}
+
+//===================================== coroutine worker =====================================================
+
+func (ri *replicaInstance) listener() {
+	for {
+		select {
+		case <-ri.closeC:
+			return
+		case pre := <-ri.preC:
+			if err := ri.processPreOrder(pre); err != nil {
+				ri.logger.Errorf("[%d] process pre order error: %s", ri.author, err)
+			}
+		case pOrder := <-ri.partialC:
+			if err := ri.processPartial(pOrder); err != nil {
+				ri.logger.Errorf("[%d] process partial order error: %s", ri.author, err)
+			}
+		}
+	}
+}
+
+func (ri *replicaInstance) processPreOrder(pre *protos.PreOrder) error {
 	ri.logger.Infof("[%d] received a pre-order %s", ri.author, pre.Format())
 
 	if ri.sequence > pre.Sequence {
@@ -96,7 +150,7 @@ func (ri *replicaInstance) ReceivePreOrder(pre *protos.PreOrder) error {
 	return ri.processBTree()
 }
 
-func (ri *replicaInstance) ReceivePartial(pOrder *protos.PartialOrder) error {
+func (ri *replicaInstance) processPartial(pOrder *protos.PartialOrder) error {
 	ri.logger.Infof("[%d] received a partial order %s", ri.author, pOrder.Format())
 
 	// verify the signatures of current received partial order.
@@ -150,7 +204,7 @@ func (ri *replicaInstance) processBTree() error {
 		pOrder := ev.Event.(*protos.PartialOrder)
 
 		// verify the validation between current partial order and highest partial order.
-		if err := ri.checkHighestOrder(pOrder); err != nil {
+		if err := ri.checkHighOrder(pOrder); err != nil {
 			return nil
 			//return fmt.Errorf("check higest order failed, %s", err)
 		}
@@ -159,7 +213,7 @@ func (ri *replicaInstance) processBTree() error {
 		ri.pTracker.RecordPartial(pOrder)
 
 		// update the highest partial order for current sub instance.
-		ri.updateHighestOrder(pOrder)
+		ri.updateHighOrder(pOrder)
 
 		ri.recorder.Delete(ev)
 		ri.sequence++
@@ -174,11 +228,23 @@ func (ri *replicaInstance) processBTree() error {
 	}
 }
 
-func (ri *replicaInstance) updateHighestOrder(pOrder *protos.PartialOrder) {
+//========================================== high order management ==============================================
+
+func (ri *replicaInstance) getHighOrder() *protos.PartialOrder {
+	ri.mutex.RLock()
+	defer ri.mutex.RUnlock()
+
+	return ri.highPartialOrder
+}
+
+func (ri *replicaInstance) updateHighOrder(pOrder *protos.PartialOrder) {
+	ri.mutex.Lock()
+	defer ri.mutex.Unlock()
+
 	ri.highPartialOrder = pOrder
 }
 
-func (ri *replicaInstance) checkHighestOrder(pOrder *protos.PartialOrder) error {
+func (ri *replicaInstance) checkHighOrder(pOrder *protos.PartialOrder) error {
 	if pOrder.Sequence() == 1 {
 		// the first partial order for current sub instance.
 		return nil
