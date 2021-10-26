@@ -20,7 +20,6 @@ func GenerateCommand(author uint64, seqNo uint64, txs []*protos.Transaction) *pr
 	command := &protos.Command{
 		Author:   author,
 		Sequence: seqNo,
-		Content:  txs,
 		HashList: hashList,
 	}
 	payload, err := proto.Marshal(command)
@@ -28,6 +27,7 @@ func GenerateCommand(author uint64, seqNo uint64, txs []*protos.Transaction) *pr
 		return nil
 	}
 	command.Digest = CalculatePayloadHash(payload, 0)
+	command.Content = txs
 	return command
 }
 
@@ -42,12 +42,13 @@ func GenerateRandCommand(author uint64, seqNo uint64, count, size int) *protos.C
 		hList[i] = tx.Hash
 	}
 
-	command := &protos.Command{Author: author, Sequence: seqNo, Content: tList, HashList: hList}
+	command := &protos.Command{Author: author, Sequence: seqNo, HashList: hList}
 	payload, err := proto.Marshal(command)
 	if err != nil {
 		panic(err)
 	}
 	command.Digest = CalculatePayloadHash(payload, 0)
+	command.Content = tList
 
 	return command
 }
