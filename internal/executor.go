@@ -62,9 +62,3 @@ type PriorityManager interface {
 	// PotentialByz add priorities for current command.
 	PotentialByz(info *types.CommandInfo, newPriorities []string)
 }
-
-//================================== Cyclic Scanner ==============================================
-
-type CondorcetScanner interface {
-	HasCyclic() bool
-}

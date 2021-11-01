@@ -89,3 +89,8 @@ func (ci *CommandInfo) AppendLow(info *CommandInfo) {
 	// append partial order into our lowest list.
 	ci.LowCmd[info.CurCmd] = info
 }
+
+func (ci *CommandInfo) HasLow(digest string) bool {
+	_, ok := ci.LowCmd[digest]
+	return ok
+}
