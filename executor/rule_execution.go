@@ -2,7 +2,6 @@ package executor
 
 import (
 	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/executor/scanner"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
 )
@@ -114,13 +113,11 @@ func (er *executionRule) priorityCheck(qInfo *types.CommandInfo, wInfos []*types
 		}
 
 		if count < er.oneCorrect {
-			// should make sure a Condorcet Paradox wouldn't occur.
-			helper := scanner.NewScanner(qInfo)
-
 			// only the command in leaf nodes could be involved into cyclic dependency.
 			if er.cRecorder.IsLeaf(qInfo) {
-				// if current waiting command has a leaf node equal to current one, a cyclic dependency occurs.
-				if helper.HasCyclic() {
+				// if Wait info has a low command equal to QSC info, there is a potential cyclic dependency for QSC info.
+				// Condorcet's Paradox may occur, just skip the priority check and just accept the QSC info.
+				if wInfo.HasLow(qInfo.CurCmd) {
 					er.logger.Debugf("[%d] priority command depend on self %s", er.author, qInfo.Format())
 					continue
 				}
@@ -150,9 +147,6 @@ func (er *executionRule) priorityCheck(qInfo *types.CommandInfo, wInfos []*types
 		}
 
 		if count < er.oneCorrect {
-			// record the priority command.
-			qInfo.PrioriRecord(cInfo)
-
 			// the priority command should become a leaf node,
 			// for which it does not have any prefix commands and has become other command's priority.
 			er.cRecorder.AddLeaf(cInfo)

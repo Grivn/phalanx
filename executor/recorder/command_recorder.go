@@ -174,10 +174,28 @@ func (recorder *commandRecorder) PotentialByz(info *types.CommandInfo, newPriori
 
 	// update the priority map for current QSC.
 	for _, priori := range newPriorities {
+		// record the priority command.
+		info.PriCmd[priori] = true
+
+		// record the priority execution tracing map.
 		recorder.mapPri[priori] = append(recorder.mapPri[priori], info)
 
+		// update current node low command map.
 		for digest, cmd := range recorder.mapCmd[priori].LowCmd {
 			info.LowCmd[digest] = cmd
+		}
+	}
+
+	// update the low command map of current command's children.
+	if recorder.leaves[info.CurCmd] {
+		for _, nextCmd := range recorder.mapPri[info.CurCmd] {
+			// remove current QSC from its children's low command map.
+			delete(nextCmd.LowCmd, info.CurCmd)
+
+			// append the low commands of current QSC info into its children's low map.
+			for digest, cmd := range info.LowCmd {
+				nextCmd.LowCmd[digest] = cmd
+			}
 		}
 	}
 }
