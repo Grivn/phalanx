@@ -64,6 +64,7 @@ func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) {
 	case collect.oneCorrect:
 		// current command has reached correct sequenced status.
 		collect.cRecorder.CorrectStatus(commandD)
+		collect.cRecorder.AddLeaf(commandD)
 		collect.logger.Infof("[%d] found correct sequenced command %s", collect.author, commandD)
 	case collect.quorum:
 		// current command has reached quorum sequenced status.

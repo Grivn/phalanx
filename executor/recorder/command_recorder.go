@@ -29,11 +29,15 @@ type commandRecorder struct {
 	mapWat map[string]bool
 
 	// mapPri the potential priori relation recorder to update the mapWat at the same time the priori command committed.
-	mapPri map[string][]*types.CommandInfo
+	mapPri map[string]map[string]*types.CommandInfo
 
 	// leaves is a budget map to record the leaf nodes in current execution graph.
 	// we could skip to scan the cyclic dependency for command info which is not a leaf node.
 	leaves map[string]bool
+
+	leafGroup map[string]map[string]*types.CommandInfo
+
+	traceLeaf map[string]map[string]bool
 
 	// logger is used to print logs.
 	logger external.Logger
@@ -47,8 +51,10 @@ func NewCommandRecorder(author uint64, logger external.Logger) internal.CommandR
 		mapQSC: make(map[string]bool),
 		mapCmt: make(map[string]bool),
 		mapWat: make(map[string]bool),
-		mapPri: make(map[string][]*types.CommandInfo),
+		mapPri: make(map[string]map[string]*types.CommandInfo),
+		leafGroup: make(map[string]map[string]*types.CommandInfo),
 		leaves: make(map[string]bool),
+		traceLeaf: make(map[string]map[string]bool),
 		logger: logger,
 	}
 }
@@ -152,16 +158,19 @@ func (recorder *commandRecorder) IsQuorum(commandD string) bool {
 
 //================================ management of leaf nodes =============================================
 
-func (recorder *commandRecorder) AddLeaf(info *types.CommandInfo) {
-	recorder.leaves[info.CurCmd] = true
+func (recorder *commandRecorder) AddLeaf(digest string) {
+	recorder.leaves[digest] = true
+	recorder.leafGroup[digest] = make(map[string]*types.CommandInfo)
+	recorder.traceLeaf[digest] = make(map[string]bool)
 }
 
 func (recorder *commandRecorder) CutLeaf(info *types.CommandInfo) {
 	delete(recorder.leaves, info.CurCmd)
+	delete(recorder.leafGroup, info.CurCmd)
 }
 
-func (recorder *commandRecorder) IsLeaf(info *types.CommandInfo) bool {
-	return recorder.leaves[info.CurCmd]
+func (recorder *commandRecorder) IsLeaf(digest string) bool {
+	return recorder.leaves[digest]
 }
 
 //=========================== commands with potential byzantine order =================================
@@ -177,25 +186,83 @@ func (recorder *commandRecorder) PotentialByz(info *types.CommandInfo, newPriori
 		// record the priority command.
 		info.PriCmd[priori] = true
 
-		// record the priority execution tracing map.
-		recorder.mapPri[priori] = append(recorder.mapPri[priori], info)
+		recorder.updatePrioriMap(priori, info)
 
-		// update current node low command map.
-		for digest, cmd := range recorder.mapCmd[priori].LowCmd {
-			info.LowCmd[digest] = cmd
-		}
-	}
+		// the priority command is a leaf node.
+		if recorder.IsLeaf(priori) {
+			lGroup := recorder.leafGroup[priori]
+			lGroup[info.CurCmd] = info
+			recorder.traceLeaf[info.CurCmd][priori] = true
 
-	// update the low command map of current command's children.
-	if recorder.leaves[info.CurCmd] {
-		for _, nextCmd := range recorder.mapPri[info.CurCmd] {
-			// remove current QSC from its children's low command map.
-			delete(nextCmd.LowCmd, info.CurCmd)
-
-			// append the low commands of current QSC info into its children's low map.
-			for digest, cmd := range info.LowCmd {
-				nextCmd.LowCmd[digest] = cmd
+			// current command is a leaf node.
+			if recorder.IsLeaf(info.CurCmd) {
+				curLGroup := recorder.leafGroup[info.CurCmd]
+				for _, v := range curLGroup {
+					lGroup[v.CurCmd] = v
+					recorder.traceLeaf[v.CurCmd][priori] = true
+				}
+			}
+		} else {
+			for leafD := range recorder.traceLeaf[priori] {
+				if !recorder.IsLeaf(leafD) {
+					continue
+				}
+				lGroup := recorder.leafGroup[leafD]
+				recorder.logger.Debugf("trace leaf group %s to %s", priori, leafD)
+				lGroup[info.CurCmd] = info
+				recorder.traceLeaf[info.CurCmd][leafD] = true
 			}
 		}
+
+		// update current node low command map.
+		//info.TransitiveLow(recorder.mapCmd[priori])
+		//for digest, cmd := range recorder.mapCmd[priori].LowCmd {
+		//	// record the priority execution tracing map.
+		//	//recorder.mapPri[digest] = append(recorder.mapPri[digest], info)
+		//	recorder.updatePrioriMap(digest, info)
+		//
+		//	info.LowCmd[digest] = cmd
+		//}
 	}
+
+	//
+	//// update the low command map of current command's children.
+	//if recorder.leaves[info.CurCmd] {
+	//	lGroup := recorder.leafGroup[info.CurCmd]
+	//
+	//	if lGroup == nil {
+	//		return
+	//	}
+	//
+	//	for _, nextCmd := range lGroup {
+	//		// remove current QSC from its children's low command map.
+	//		recorder.logger.Debugf("[%d] update children's low map, %s", recorder.author, nextCmd.Format())
+	//
+	//		// append the low commands of current QSC info into its children's low map.
+	//		for digest, cmd := range info.LowCmd {
+	//			// record the priority execution tracing map.
+	//			//recorder.mapPri[digest] = append(recorder.mapPri[digest], info)
+	//			recorder.updatePrioriMap(digest, info)
+	//
+	//			nextCmd.LowCmd[digest] = cmd
+	//		}
+	//	}
+	//}
+}
+
+func (recorder *commandRecorder) CheckLeaves(curInfo, checkInfo *types.CommandInfo) bool {
+	lGroup := recorder.leafGroup[curInfo.CurCmd]
+
+	_, ok := lGroup[checkInfo.CurCmd]
+	return ok
+}
+
+func (recorder *commandRecorder) updatePrioriMap(priori string, info *types.CommandInfo) {
+	// record the priority execution tracing map.
+	prioriMap, ok := recorder.mapPri[priori]
+	if !ok {
+		prioriMap = make(map[string]*types.CommandInfo)
+		recorder.mapPri[priori] = prioriMap
+	}
+	prioriMap[info.CurCmd] = info
 }

@@ -57,8 +57,8 @@ func phalanxRunner() {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	num := 1000
-	client := 64
+	num := 10
+	client := 1280
 	//transactionSendInstance(num, client, phx)
 	commandSendInstance(num, client, phx)
 
