@@ -152,16 +152,16 @@ func (recorder *commandRecorder) IsQuorum(commandD string) bool {
 
 //================================ management of leaf nodes =============================================
 
-func (recorder *commandRecorder) AddLeaf(info *types.CommandInfo) {
-	recorder.leaves[info.CurCmd] = true
+func (recorder *commandRecorder) AddLeaf(digest string) {
+	recorder.leaves[digest] = true
 }
 
 func (recorder *commandRecorder) CutLeaf(info *types.CommandInfo) {
 	delete(recorder.leaves, info.CurCmd)
 }
 
-func (recorder *commandRecorder) IsLeaf(info *types.CommandInfo) bool {
-	return recorder.leaves[info.CurCmd]
+func (recorder *commandRecorder) IsLeaf(digest string) bool {
+	return recorder.leaves[digest]
 }
 
 //=========================== commands with potential byzantine order =================================
@@ -174,6 +174,8 @@ func (recorder *commandRecorder) PotentialByz(info *types.CommandInfo, newPriori
 
 	// update the priority map for current QSC.
 	for _, priori := range newPriorities {
+		info.PriCmd[priori] = true
+
 		recorder.mapPri[priori] = append(recorder.mapPri[priori], info)
 
 		for digest, cmd := range recorder.mapCmd[priori].LowCmd {

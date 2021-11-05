@@ -49,13 +49,13 @@ type InfoStatus interface {
 
 type LeafManager interface {
 	// AddLeaf adds a leaf command info node.
-	AddLeaf(info *types.CommandInfo)
+	AddLeaf(digest string)
 
 	// CutLeaf cuts a leaf command info node.
 	CutLeaf(info *types.CommandInfo)
 
 	// IsLeaf returns if current command info is a leaf node.
-	IsLeaf(info *types.CommandInfo) bool
+	IsLeaf(digest string) bool
 }
 
 type PriorityManager interface {

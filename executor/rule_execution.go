@@ -118,7 +118,7 @@ func (er *executionRule) priorityCheck(qInfo *types.CommandInfo, wInfos []*types
 			helper := scanner.NewScanner(qInfo)
 
 			// only the command in leaf nodes could be involved into cyclic dependency.
-			if er.cRecorder.IsLeaf(qInfo) {
+			if er.cRecorder.IsLeaf(qInfo.CurCmd) {
 				// if current waiting command has a leaf node equal to current one, a cyclic dependency occurs.
 				if helper.HasCyclic() {
 					er.logger.Debugf("[%d] priority command depend on self %s", er.author, qInfo.Format())
@@ -150,12 +150,7 @@ func (er *executionRule) priorityCheck(qInfo *types.CommandInfo, wInfos []*types
 		}
 
 		if count < er.oneCorrect {
-			// record the priority command.
-			qInfo.PrioriRecord(cInfo)
-
-			// the priority command should become a leaf node,
-			// for which it does not have any prefix commands and has become other command's priority.
-			er.cRecorder.AddLeaf(cInfo)
+			er.cRecorder.AddLeaf(cInfo.CurCmd)
 
 			// update the priority list.
 			newPriorities = append(newPriorities, cInfo.CurCmd)
@@ -166,7 +161,7 @@ func (er *executionRule) priorityCheck(qInfo *types.CommandInfo, wInfos []*types
 		}
 	}
 
-	if len(qInfo.PriCmd) > 0 {
+	if len(newPriorities) > 0 {
 		er.cRecorder.PotentialByz(qInfo, newPriorities)
 		return false
 	}
