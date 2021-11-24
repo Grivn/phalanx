@@ -68,9 +68,11 @@ type PriorityManager interface {
 }
 
 type QueueManager interface {
+	// PushBack pushes the partial orders into FIFO order queue for each node.
 	PushBack(pOrder *protos.PartialOrder) error
+
+	// FrontCommands selects commands which is possible to be committed at first.
 	FrontCommands() []string
-	QuorumFilter(commands []string) []string
 }
 
 //================================== Cyclic Scanner ==============================================
