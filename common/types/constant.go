@@ -16,4 +16,7 @@ const (
 
 	// DefaultCommandSize is the default batch size for command transactions.
 	DefaultCommandSize int = 500
+
+	// DefaultMulti is the default multi proposers for tx manager.
+	DefaultMulti int = 4
 )
