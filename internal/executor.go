@@ -1,6 +1,9 @@
 package internal
 
-import "github.com/Grivn/phalanx/common/types"
+import (
+	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
+)
 
 type Executor interface {
 	// CommitStream is used to commit the partial order stream.
@@ -14,6 +17,7 @@ type CommandRecorder interface {
 	InfoStatus
 	LeafManager
 	PriorityManager
+	QueueManager
 }
 
 type InfoReader interface {
@@ -49,18 +53,24 @@ type InfoStatus interface {
 
 type LeafManager interface {
 	// AddLeaf adds a leaf command info node.
-	AddLeaf(info *types.CommandInfo)
+	AddLeaf(digest string)
 
 	// CutLeaf cuts a leaf command info node.
 	CutLeaf(info *types.CommandInfo)
 
 	// IsLeaf returns if current command info is a leaf node.
-	IsLeaf(info *types.CommandInfo) bool
+	IsLeaf(digest string) bool
 }
 
 type PriorityManager interface {
 	// PotentialByz add priorities for current command.
 	PotentialByz(info *types.CommandInfo, newPriorities []string)
+}
+
+type QueueManager interface {
+	PushBack(pOrder *protos.PartialOrder) error
+	FrontCommands() []string
+	QuorumFilter(commands []string) []string
 }
 
 //================================== Cyclic Scanner ==============================================

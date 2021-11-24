@@ -2,10 +2,10 @@ package phalanx
 
 import (
 	"fmt"
+	"github.com/Grivn/phalanx/executor/execsimple"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
-	"github.com/Grivn/phalanx/executor"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/metapool"
@@ -53,13 +53,13 @@ func NewPhalanxProvider(n int, author uint64, commandSize int, exec external.Exe
 	mPool := metapool.NewMetaPool(n, author, network, mLogs.metaPoolLog)
 
 	// initiate executor.
-	exe := executor.NewExecutor(author, n, mPool, exec, mLogs.executorLog)
+	executor := execsimple.NewExecutor(author, n, mPool, exec, mLogs.executorLog)
 
 	return &phalanxImpl{
 		author:    author,
 		txManager: txMgr,
 		metaPool:  mPool,
-		executor:  exe,
+		executor:  executor,
 		logger:    logger,
 	}
 }

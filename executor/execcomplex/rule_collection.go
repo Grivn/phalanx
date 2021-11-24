@@ -1,4 +1,4 @@
-package executor
+package execcomplex
 
 import (
 	"github.com/Grivn/phalanx/internal"
@@ -37,7 +37,7 @@ func newCollectRule(author uint64, n int, recorder internal.CommandRecorder, log
 	}
 }
 
-func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) {
+func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) bool {
 	collect.logger.Infof("[%d] collect partial order: %s", collect.author, pOrder.Format())
 
 	// find the digest for current command the partial order refers to.
@@ -46,7 +46,7 @@ func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) {
 	// check if current command has been committed or not.
 	if collect.cRecorder.IsCommitted(commandD) {
 		collect.logger.Debugf("[%d] committed command %s, ignore it", collect.author, commandD)
-		return
+		return false
 	}
 
 	// read command info from command cRecorder.
@@ -55,7 +55,7 @@ func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) {
 	if info.OrderCount() >= collect.quorum {
 		// for one command, we only need to collect the partial orders from quorum replicas, ignore the redundant partial order.
 		collect.logger.Debugf("[%d] command %s in quorum sequenced status, ignore it", collect.author, commandD)
-		return
+		return false
 	}
 	info.OrderAppend(pOrder)
 
@@ -71,4 +71,5 @@ func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) {
 		collect.cRecorder.QuorumStatus(commandD)
 		collect.logger.Infof("[%d] found quorum sequenced command %s", collect.author, commandD)
 	}
+	return true
 }

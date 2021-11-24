@@ -1,4 +1,4 @@
-package executor
+package execcomplex
 
 import (
 	"sort"
@@ -49,7 +49,7 @@ type executorImpl struct {
 
 // NewExecutor is used to generator an executor for phalanx.
 func NewExecutor(author uint64, n int, mgr internal.MetaPool, exec external.ExecutionService, logger external.Logger) internal.Executor {
-	cRecorder := recorder.NewCommandRecorder(author, logger)
+	cRecorder := recorder.NewCommandRecorder(author, n, logger)
 	return &executorImpl{
 		author:    author,
 		rules:     newOrderRule(author, n, cRecorder, mgr, logger),

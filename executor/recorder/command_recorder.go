@@ -1,6 +1,9 @@
 package recorder
 
 import (
+	"container/list"
+	"fmt"
+	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
@@ -35,11 +38,22 @@ type commandRecorder struct {
 	// we could skip to scan the cyclic dependency for command info which is not a leaf node.
 	leaves map[string]bool
 
+	// FIFOQueue is used to record partial orders from each node.
+	FIFOQueue map[uint64]*list.List
+
+	//
+	oneCorrect int
+
 	// logger is used to print logs.
 	logger external.Logger
 }
 
-func NewCommandRecorder(author uint64, logger external.Logger) internal.CommandRecorder {
+func NewCommandRecorder(author uint64, n int, logger external.Logger) internal.CommandRecorder {
+	set := make(map[uint64]*list.List)
+	for i:=0; i<n; i++ {
+		id := uint64(i+1)
+		set[id] = list.New()
+	}
 	return &commandRecorder{
 		author: author,
 		mapCmd: make(map[string]*types.CommandInfo),
@@ -49,6 +63,8 @@ func NewCommandRecorder(author uint64, logger external.Logger) internal.CommandR
 		mapWat: make(map[string]bool),
 		mapPri: make(map[string][]*types.CommandInfo),
 		leaves: make(map[string]bool),
+		oneCorrect: types.CalculateOneCorrect(n),
+		FIFOQueue: set,
 		logger: logger,
 	}
 }
@@ -152,16 +168,16 @@ func (recorder *commandRecorder) IsQuorum(commandD string) bool {
 
 //================================ management of leaf nodes =============================================
 
-func (recorder *commandRecorder) AddLeaf(info *types.CommandInfo) {
-	recorder.leaves[info.CurCmd] = true
+func (recorder *commandRecorder) AddLeaf(digest string) {
+	recorder.leaves[digest] = true
 }
 
 func (recorder *commandRecorder) CutLeaf(info *types.CommandInfo) {
 	delete(recorder.leaves, info.CurCmd)
 }
 
-func (recorder *commandRecorder) IsLeaf(info *types.CommandInfo) bool {
-	return recorder.leaves[info.CurCmd]
+func (recorder *commandRecorder) IsLeaf(digest string) bool {
+	return recorder.leaves[digest]
 }
 
 //=========================== commands with potential byzantine order =================================
@@ -174,10 +190,95 @@ func (recorder *commandRecorder) PotentialByz(info *types.CommandInfo, newPriori
 
 	// update the priority map for current QSC.
 	for _, priori := range newPriorities {
+		info.PriCmd[priori] = true
+
 		recorder.mapPri[priori] = append(recorder.mapPri[priori], info)
 
 		for digest, cmd := range recorder.mapCmd[priori].LowCmd {
 			info.LowCmd[digest] = cmd
 		}
 	}
+}
+
+
+func (recorder *commandRecorder) PushBack(pOrder *protos.PartialOrder) error {
+	if recorder.IsCommitted(pOrder.CommandDigest()) {
+		// ignore committed command.
+		return nil
+	}
+
+	queue, ok := recorder.FIFOQueue[pOrder.Author()]
+
+	if !ok {
+		return fmt.Errorf("cannot find order queue of node %d", pOrder.Author())
+	}
+
+	queue.PushBack(pOrder)
+	return nil
+}
+
+func (recorder *commandRecorder) FrontCommands() []string {
+	var fronts []string
+
+	counts := make(map[string]int)
+
+	for _, queue := range recorder.FIFOQueue {
+
+		for {
+			if queue.Len() == 0 {
+				break
+			}
+
+			e := queue.Front()
+
+			pOrder, ok := e.Value.(*protos.PartialOrder)
+
+			if !ok {
+				queue.Remove(e)
+				continue
+			}
+
+			if recorder.IsCommitted(pOrder.CommandDigest()) {
+				queue.Remove(e)
+				continue
+			}
+
+			fronts = append(fronts, pOrder.CommandDigest())
+
+			counts[pOrder.CommandDigest()]++
+
+			recorder.logger.Infof("[%d] select node %d front command %s", recorder.author, pOrder.Author(), pOrder.CommandDigest())
+			break
+		}
+	}
+
+	var correct []string
+
+	for digest, count := range counts {
+		if count < recorder.oneCorrect {
+			continue
+		}
+		correct = append(correct, digest)
+	}
+
+	recorder.logger.Debugf("[%d] correct front commands %v", recorder.author, correct)
+
+	if len(correct) == 0 {
+		// fallback returned values.
+		return fronts
+	}
+
+	return correct
+}
+
+func (recorder *commandRecorder) QuorumFilter(commands []string) []string {
+	var res []string
+
+	for _, digest := range commands {
+		if recorder.IsQuorum(digest) {
+			res = append(res, digest)
+		}
+	}
+
+	return res
 }
