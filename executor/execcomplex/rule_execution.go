@@ -1,4 +1,4 @@
-package executor
+package execcomplex
 
 import (
 	"github.com/Grivn/phalanx/common/types"

@@ -1,4 +1,4 @@
-package executor
+package execcomplex
 
 import (
 	"github.com/Grivn/phalanx/common/protos"
@@ -35,7 +35,9 @@ func newOrderRule(author uint64, n int, cRecorder internal.CommandRecorder, read
 // processPartialOrder is used to process partial order with order rules.
 func (rule *orderRule) processPartialOrder(pOrder *protos.PartialOrder) []types.InnerBlock {
 	// order rule 1: collection rule, collect the partial order.
-	rule.collect.collectPartials(pOrder)
+	if collected := rule.collect.collectPartials(pOrder); !collected {
+		return nil
+	}
 
 	var blocks []types.InnerBlock
 	for {
