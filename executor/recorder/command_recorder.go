@@ -44,6 +44,8 @@ type commandRecorder struct {
 	//
 	oneCorrect int
 
+	quorum int
+
 	// logger is used to print logs.
 	logger external.Logger
 }
@@ -64,6 +66,7 @@ func NewCommandRecorder(author uint64, n int, logger external.Logger) internal.C
 		mapPri: make(map[string][]*types.CommandInfo),
 		leaves: make(map[string]bool),
 		oneCorrect: types.CalculateOneCorrect(n),
+		quorum: types.CalculateQuorum(n),
 		FIFOQueue: set,
 		logger: logger,
 	}
@@ -166,6 +169,10 @@ func (recorder *commandRecorder) IsQuorum(commandD string) bool {
 	return recorder.mapQSC[commandD] || recorder.mapWat[commandD]
 }
 
+func (recorder *commandRecorder) IsCorrect(commandD string) bool {
+	return recorder.mapCSC[commandD]
+}
+
 //================================ management of leaf nodes =============================================
 
 func (recorder *commandRecorder) AddLeaf(digest string) {
@@ -200,7 +207,9 @@ func (recorder *commandRecorder) PotentialByz(info *types.CommandInfo, newPriori
 	}
 }
 
+//=================================== queue manager ===============================================
 
+// PushBack pushes the partial orders into FIFO order queue for each node.
 func (recorder *commandRecorder) PushBack(pOrder *protos.PartialOrder) error {
 	if recorder.IsCommitted(pOrder.CommandDigest()) {
 		// ignore committed command.
@@ -217,6 +226,7 @@ func (recorder *commandRecorder) PushBack(pOrder *protos.PartialOrder) error {
 	return nil
 }
 
+// FrontCommands selects commands which is possible to be committed at first.
 func (recorder *commandRecorder) FrontCommands() []string {
 	var fronts []string
 
@@ -252,6 +262,12 @@ func (recorder *commandRecorder) FrontCommands() []string {
 		}
 	}
 
+	if len(fronts) < recorder.quorum {
+		// less than quorum participants provide partial order queue,
+		// we cannot find any command info in quorum status, just return nil list.
+		return nil
+	}
+
 	var correct []string
 
 	for digest, count := range counts {
@@ -261,24 +277,47 @@ func (recorder *commandRecorder) FrontCommands() []string {
 		correct = append(correct, digest)
 	}
 
-	recorder.logger.Debugf("[%d] correct front commands %v", recorder.author, correct)
-
 	if len(correct) == 0 {
-		// fallback returned values.
+		// we cannot find any command in correct status, just return all the front command digests.
+		var unverified []string
+		for digest := range counts {
+			unverified = append(unverified, digest)
+		}
+		recorder.logger.Debugf("[%d] unverified front digest %v", recorder.author, unverified)
+		return recorder.frontFilter(unverified)
+	}
+
+	recorder.logger.Debugf("[%d] correct front digest %v", recorder.author, correct)
+	return recorder.frontFilter(correct)
+}
+
+func (recorder *commandRecorder) frontFilter(fronts []string) []string {
+	if len(fronts) == 0 {
+		return nil
+	}
+
+	if len(fronts) == 1 {
+		// don't need to filter front digest.
 		return fronts
 	}
 
-	return correct
-}
+	var filtered []string
 
-func (recorder *commandRecorder) QuorumFilter(commands []string) []string {
-	var res []string
+	for _, digest := range fronts {
+		if recorder.IsCorrect(digest) {
+			// we should make sure that there aren't any commands in correct status.
+			recorder.logger.Debugf("[%d] found correct status command %s, skip execution", recorder.author, digest)
+			filtered = nil
+			break
+		}
 
-	for _, digest := range commands {
 		if recorder.IsQuorum(digest) {
-			res = append(res, digest)
+			// we should select the command ordered by at least quorum participants.
+			recorder.logger.Debugf("[%d] select quorum status command %s", recorder.author, digest)
+			filtered = append(filtered, digest)
 		}
 	}
 
-	return res
+	recorder.logger.Infof("[%d] filtered front digest %v", recorder.author, filtered)
+	return filtered
 }

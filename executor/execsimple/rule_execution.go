@@ -41,11 +41,9 @@ func newExecutionRule(author uint64, n int, recorder internal.CommandRecorder, l
 func (er *executionRule) execution() []*types.CommandInfo {
 	commands := er.cRecorder.FrontCommands()
 
-	qCommands := er.cRecorder.QuorumFilter(commands)
-
 	var execution []*types.CommandInfo
 
-	for _, digest := range qCommands {
+	for _, digest := range commands {
 		info := er.cRecorder.ReadCommandInfo(digest)
 		execution = append(execution, info)
 	}
