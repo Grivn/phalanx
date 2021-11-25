@@ -62,3 +62,11 @@ func (pt *partialTracker) ReadPartial(idx types.QueryIndex) *protos.PartialOrder
 	delete(pt.partialMap, idx)
 	return pOrder
 }
+
+func (pt *partialTracker) IsExist(idx types.QueryIndex) bool {
+	pt.mutex.RLock()
+	defer pt.mutex.RUnlock()
+
+	_, ok := pt.partialMap[idx]
+	return ok
+}
