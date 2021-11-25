@@ -102,4 +102,5 @@ type CommandTracker interface {
 type PartialTracker interface {
 	RecordPartial(pOrder *protos.PartialOrder)
 	ReadPartial(idx types.QueryIndex) *protos.PartialOrder
+	IsExist(idx types.QueryIndex) bool
 }

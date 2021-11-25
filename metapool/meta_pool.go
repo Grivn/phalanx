@@ -410,8 +410,11 @@ func (mp *metaPool) VerifyProposal(batch *protos.PartialOrderBatch) (types.Query
 			return nil, fmt.Errorf("invalid partial order seqNo, proposedNo %d, partial seqNo %d", no, pOrder.Sequence())
 		}
 
-		if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, mp.quorum); err != nil {
-			return nil, fmt.Errorf("invalid high partial order received from %d: %s", batch.Author, err)
+		qIndex := types.QueryIndex{Author: pOrder.Author(), SeqNo: pOrder.Sequence()}
+		if !mp.pTracker.IsExist(qIndex) {
+			if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, mp.quorum); err != nil {
+				return nil, fmt.Errorf("invalid high partial order received from %d: %s", batch.Author, err)
+			}
 		}
 
 		updated = true
