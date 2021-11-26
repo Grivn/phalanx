@@ -57,10 +57,10 @@ func phalanxRunner() {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	num := 1000
-	client := 16
-	//transactionSendInstance(num, client, phx)
-	commandSendInstance(num, client, phx)
+	num := 10000
+	//client := 16
+	transactionSendInstance(num, n, phx)
+	//commandSendInstance(num, client, phx)
 
 	time.Sleep(1000 * time.Second)
 }

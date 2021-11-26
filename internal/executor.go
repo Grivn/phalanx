@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 )
 
@@ -69,7 +68,7 @@ type PriorityManager interface {
 
 type QueueManager interface {
 	// PushBack pushes the partial orders into FIFO order queue for each node.
-	PushBack(pOrder *protos.PartialOrder) error
+	PushBack(oInfo types.OrderInfo) error
 
 	// FrontCommands selects commands which is possible to be committed at first.
 	FrontCommands() []string

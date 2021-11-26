@@ -5,6 +5,7 @@ import (
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
+	"sync"
 
 	"github.com/google/btree"
 )
@@ -17,6 +18,8 @@ import (
 // which means we should process (n+1)th tx should be processed
 // after the procession for (n)th tx has been finished.
 type clientInstance struct {
+	mutex sync.Mutex
+
 	//=============================== basic information =================================
 
 	// author indicates the consensus node identifier.
@@ -34,21 +37,12 @@ type clientInstance struct {
 	committedNo uint64
 
 	// commands is used to record the command according to its indicator.
-	commandStream *btree.BTree
+	commands *btree.BTree
 
 	//============================ communication channel ========================================
 
-	// receiveC is used to receive command.
-	receiveC chan *types.CommandIndex
-
 	// commandC is used to propose command towards log-manager.
-	commandC chan *types.CommandIndex
-
-	// committedC is used to receive the committed seqNo.
-	committedC chan uint64
-
-	// closeC is used to stop the listener for current client.
-	closeC chan bool
+	commandC chan<- *types.CommandIndex
 
 	//============================== external interfaces =======================================
 
@@ -56,86 +50,52 @@ type clientInstance struct {
 	logger external.Logger
 }
 
-func NewClient(author, id uint64, commandC chan *types.CommandIndex, logger external.Logger) internal.ClientInstance {
+func NewClient(author, id uint64, commandC chan<- *types.CommandIndex, logger external.Logger) internal.ClientInstance {
 	logger.Infof("[%d] initiate manager for client %d", author, id)
 	committedNo := make(map[uint64]bool)
 	committedNo[uint64(0)] = true
 	return &clientInstance{
-		author: author,
-		id:     id,
-
-		proposedNo:    uint64(0),
-		committedNo:   uint64(0),
-		commandStream: btree.New(2),
-
-		receiveC:   make(chan *types.CommandIndex, 1000),
-		committedC: make(chan uint64),
-		commandC:   commandC,
-		closeC:     make(chan bool),
-
-		logger: logger,
+		author:      author,
+		id:          id,
+		proposedNo:  uint64(0),
+		committedNo: uint64(0),
+		commands:    btree.New(2),
+		commandC:    commandC,
+		logger:      logger,
 	}
 }
 
-//======================================= interfaces of client instance =======================================
+func (client *clientInstance) Commit(seqNo uint64) int {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
 
-func (client *clientInstance) Run() {
-	client.start()
+	client.logger.Debugf("[%d] client %d committed sequence number %d", client.author, client.id, seqNo)
+
+	if seqNo != client.committedNo+1 {
+		client.logger.Errorf("[%d] invalid committed sequence number, expect %d, committed %d", client.committedNo+1, seqNo)
+	}
+
+	client.committedNo = maxUint64(client.committedNo, seqNo)
+
+	if c := client.minCommand(); c != nil {
+		client.feedBack(c)
+	}
+
+	return client.commands.Len()
 }
 
-func (client *clientInstance) Quit() {
-	client.stop()
-}
+func (client *clientInstance) Append(command *protos.Command) int {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
 
-func (client *clientInstance) Commit(seqNo uint64) {
-	client.committedC <- seqNo
-}
-
-func (client *clientInstance) Append(command *protos.Command) {
 	cIndex := types.NewCommandIndex(command)
 
-	client.receiveC <- cIndex
-}
-
-//========================================= implement of client instance ===============================================
-
-func (client *clientInstance) start() {
-	go client.listener()
-}
-
-func (client *clientInstance) stop() {
-	select {
-	case <-client.closeC:
-	default:
-		close(client.closeC)
+	client.commands.ReplaceOrInsert(cIndex)
+	client.logger.Debugf("[%d] received command %s", client.author, cIndex.Format())
+	if c := client.minCommand(); c != nil {
+		client.feedBack(c)
 	}
-}
-
-func (client *clientInstance) listener() {
-	for {
-		select {
-		case <-client.closeC:
-			return
-		case cIndex := <-client.receiveC:
-			client.commandStream.ReplaceOrInsert(cIndex)
-			client.logger.Debugf("[%d] received command %s", client.author, cIndex.Format())
-			if c := client.minCommand(); c != nil {
-				client.feedBack(c)
-			}
-		case committed := <-client.committedC:
-			client.logger.Debugf("[%d] client %d committed sequence number %d", client.author, client.id, committed)
-
-			if committed != client.committedNo+1 {
-				client.logger.Errorf("[%d] invalid committed sequence number, expect %d, committed %d", client.committedNo+1, committed)
-			}
-
-			client.committedNo = maxUint64(client.committedNo, committed)
-
-			if c := client.minCommand(); c != nil {
-				client.feedBack(c)
-			}
-		}
-	}
+	return client.commands.Len()
 }
 
 func (client *clientInstance) minCommand() *types.CommandIndex {
@@ -144,7 +104,7 @@ func (client *clientInstance) minCommand() *types.CommandIndex {
 		return nil
 	}
 
-	item := client.commandStream.Min()
+	item := client.commands.Min()
 	if item == nil {
 		return nil
 	}
@@ -155,7 +115,7 @@ func (client *clientInstance) minCommand() *types.CommandIndex {
 	}
 
 	if cIndex.SeqNo == client.proposedNo+1 {
-		client.commandStream.Delete(item)
+		client.commands.Delete(item)
 		client.proposedNo++
 		return cIndex
 	}

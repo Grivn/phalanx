@@ -4,7 +4,6 @@ import (
 	"github.com/Grivn/phalanx/internal"
 	"sort"
 
-	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 
@@ -68,9 +67,9 @@ func (cr *commitmentRule) freeWill(executionInfos []*types.CommandInfo) []types.
 	// free will: init the democracy committee with raw data.
 	for _, eInfo := range executionInfos {
 		cr.logger.Debugf("[%d] execution info %s", cr.author, eInfo.Format())
-		for _, pOrder := range eInfo.Orders {
-			cr.democracy[pOrder.Author()].ReplaceOrInsert(pOrder)
-			cr.logger.Debugf("[%d]    collected partial order %s", cr.author, pOrder.Format())
+		for _, oInfo := range eInfo.Orders {
+			cr.democracy[oInfo.Author].ReplaceOrInsert(oInfo)
+			cr.logger.Debugf("[%d]    collected partial order %s", cr.author, oInfo.Format())
 		}
 	}
 
@@ -104,8 +103,8 @@ func (cr *commitmentRule) generateConcurrentC() []string {
 			continue
 		}
 
-		pOrder := item.(*protos.PartialOrder)
-		counter[pOrder.CommandDigest()]++
+		oInfo := item.(types.OrderInfo)
+		counter[oInfo.Command]++
 	}
 
 	// if there is at least one correct node (f+1) believing one specific command should be the front,
@@ -151,8 +150,8 @@ func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.Inn
 		sortable = append(sortable, block)
 
 		// remove the partial order from democracy committee.
-		for _, pOrder := range info.Orders {
-			cr.democracy[pOrder.Author()].Delete(pOrder)
+		for _, oInfo := range info.Orders {
+			cr.democracy[oInfo.Author].Delete(oInfo)
 		}
 	}
 

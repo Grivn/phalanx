@@ -50,7 +50,7 @@ func NewPhalanxProvider(n int, multi int, author uint64, commandSize int, exec e
 	txMgr := txmanager.NewTxManager(multi, author, commandSize, network, mLogs.txManagerLog)
 
 	// initiate meta pool.
-	mPool := metapool.NewMetaPool(n, author, network, mLogs.metaPoolLog)
+	mPool := metapool.NewMetaPool(n, multi, author, network, mLogs.metaPoolLog)
 
 	// initiate executor.
 	executor := execsimple.NewExecutor(author, n, mPool, exec, mLogs.executorLog)

@@ -1,7 +1,6 @@
 package execsimple
 
 import (
-	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 
 	"github.com/Grivn/phalanx/external"
@@ -33,24 +32,24 @@ func newOrderRule(author uint64, n int, cRecorder internal.CommandRecorder, read
 }
 
 // processPartialOrder is used to process partial order with order rules.
-func (rule *orderRule) processPartialOrder(pOrder *protos.PartialOrder) []types.InnerBlock {
-	// order rule 1: collection rule, collect the partial order.
-	if collected := rule.collect.collectPartials(pOrder); !collected {
+func (rule *orderRule) processPartialOrder(oInfo types.OrderInfo) []types.InnerBlock {
+	// order rule 1: collection rule, collect the partial order info.
+	if collected := rule.collect.collectPartials(oInfo); !collected {
 		return nil
 	}
 
 	var blocks []types.InnerBlock
 	for {
 		// order rule 2: execution rule, select commands to execute with natural order.
-		executionList := rule.execute.execution()
+		cStream := rule.execute.execution()
 
-		if len(executionList) == 0 {
+		if len(cStream) == 0 {
 			// there isn't an executable sequenced command.
 			break
 		}
 
 		// order rule 3: commitment rule, generate ordered blocks with free will.
-		blocks = append(blocks, rule.commit.freeWill(executionList)...)
+		blocks = append(blocks, rule.commit.freeWill(cStream)...)
 	}
 
 

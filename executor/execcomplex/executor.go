@@ -24,6 +24,9 @@ type executorImpl struct {
 
 	//============================ order rule for block generation ========================================
 
+	//
+	orderSeq map[uint64]uint64
+
 	// cRecorder is used to record the command info.
 	cRecorder internal.CommandRecorder
 
@@ -49,6 +52,13 @@ type executorImpl struct {
 
 // NewExecutor is used to generator an executor for phalanx.
 func NewExecutor(author uint64, n int, mgr internal.MetaPool, exec external.ExecutionService, logger external.Logger) internal.Executor {
+	orderSeq := make(map[uint64]uint64)
+
+	for i:=0; i<n; i++ {
+		id := uint64(i+1)
+		orderSeq[id] = uint64(1)
+	}
+
 	cRecorder := recorder.NewCommandRecorder(author, n, logger)
 	return &executorImpl{
 		author:    author,
@@ -58,6 +68,7 @@ func NewExecutor(author uint64, n int, mgr internal.MetaPool, exec external.Exec
 		committer: mgr,
 		reader:    mgr,
 		logger:    logger,
+		orderSeq:  orderSeq,
 	}
 }
 
@@ -76,8 +87,21 @@ func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 
 	partials := ei.reader.ReadPartials(qStream)
 
+	var oStream types.OrderStream
+
 	for _, pOrder := range partials {
-		blocks := ei.rules.processPartialOrder(pOrder)
+		startNo := ei.orderSeq[pOrder.Author()]
+
+		infos, endNo := types.NewOrderInfos(startNo, pOrder)
+
+		ei.orderSeq[pOrder.Author()] = endNo
+		oStream = append(oStream, infos...)
+	}
+	sort.Sort(oStream)
+	ei.logger.Debugf("[%d] commit order info stream len %d: %v", ei.author, len(oStream), oStream)
+
+	for _, oInfo := range oStream {
+		blocks := ei.rules.processPartialOrder(oInfo)
 		for _, blk := range blocks {
 			ei.seqNo++
 			ei.exec.CommandExecution(blk.Command, ei.seqNo, blk.Timestamp)

@@ -4,7 +4,6 @@ import (
 	"github.com/Grivn/phalanx/internal"
 	"sort"
 
-	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 
@@ -60,17 +59,17 @@ func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder, 
 	}
 }
 
-func (cr *commitmentRule) freeWill(executionInfos []*types.CommandInfo) []types.InnerBlock {
-	if len(executionInfos) == 0 {
+func (cr *commitmentRule) freeWill(cStream types.CommandStream) []types.InnerBlock {
+	if len(cStream) == 0 {
 		return nil
 	}
 
 	// free will: init the democracy committee with raw data.
-	for _, eInfo := range executionInfos {
-		cr.logger.Debugf("[%d] execution info %s", cr.author, eInfo.Format())
-		for _, pOrder := range eInfo.Orders {
-			cr.democracy[pOrder.Author()].ReplaceOrInsert(pOrder)
-			cr.logger.Debugf("[%d]    collected partial order %s", cr.author, pOrder.Format())
+	for _, command := range cStream {
+		cr.logger.Debugf("[%d] execution info %s", cr.author, command.Format())
+		for _, oInfo := range command.Orders {
+			cr.democracy[oInfo.Author].ReplaceOrInsert(oInfo)
+			cr.logger.Debugf("[%d]    collected partial order %s", cr.author, oInfo.Format())
 		}
 	}
 
@@ -81,7 +80,7 @@ func (cr *commitmentRule) freeWill(executionInfos []*types.CommandInfo) []types.
 		sub := cr.generateSortedBlocks(concurrentC)
 		blocks = append(blocks, sub...)
 
-		if len(blocks) == len(executionInfos) {
+		if len(blocks) == len(cStream) {
 			break
 		}
 	}
@@ -104,8 +103,8 @@ func (cr *commitmentRule) generateConcurrentC() []string {
 			continue
 		}
 
-		pOrder := item.(*protos.PartialOrder)
-		counter[pOrder.CommandDigest()]++
+		oInfo := item.(types.OrderInfo)
+		counter[oInfo.Command]++
 	}
 
 	// if there is at least one correct node (f+1) believing one specific command should be the front,
@@ -151,8 +150,8 @@ func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.Inn
 		sortable = append(sortable, block)
 
 		// remove the partial order from democracy committee.
-		for _, pOrder := range info.Orders {
-			cr.democracy[pOrder.Author()].Delete(pOrder)
+		for _, oInfo := range info.Orders {
+			cr.democracy[oInfo.Author].Delete(oInfo)
 		}
 	}
 

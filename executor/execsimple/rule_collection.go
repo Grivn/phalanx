@@ -4,7 +4,6 @@ import (
 	"github.com/Grivn/phalanx/internal"
 	"sort"
 
-	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 )
@@ -37,11 +36,11 @@ func newCollectRule(author uint64, n int, recorder internal.CommandRecorder, log
 	}
 }
 
-func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) bool {
-	collect.logger.Infof("[%d] collect partial order: %s", collect.author, pOrder.Format())
+func (collect *collectionRule) collectPartials(oInfo types.OrderInfo) bool {
+	collect.logger.Infof("[%d] collect partial order: %s", collect.author, oInfo.Format())
 
 	// find the digest for current command the partial order refers to.
-	commandD := pOrder.CommandDigest()
+	commandD := oInfo.Command
 
 	// check if current command has been committed or not.
 	if collect.cRecorder.IsCommitted(commandD) {
@@ -50,14 +49,14 @@ func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) bool
 	}
 
 	// push back partial order into recorder.queue.
-	if err := collect.cRecorder.PushBack(pOrder); err != nil {
+	if err := collect.cRecorder.PushBack(oInfo); err != nil {
 		collect.logger.Errorf("[%d] push back partial order failed: %s", collect.author, err)
 		return false
 	}
 
 	// read command info from command cRecorder.
 	info := collect.cRecorder.ReadCommandInfo(commandD)
-	info.OrderAppend(pOrder)
+	info.OrderAppend(oInfo)
 
 	// check the command status.
 	switch info.OrderCount() {
