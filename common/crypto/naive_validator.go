@@ -71,7 +71,7 @@ func CheckDigest(pre *protos.PreOrder) error {
 
 // CalculateDigest is used to calculate the digest
 func CalculateDigest(pre *protos.PreOrder) (string, error) {
-	payload, err := proto.Marshal(&protos.PreOrder{Author: pre.Author, Sequence: pre.Sequence, CommandDigest: pre.CommandDigest, Timestamp: pre.Timestamp, ParentDigest: pre.ParentDigest})
+	payload, err := proto.Marshal(&protos.PreOrder{Author: pre.Author, Sequence: pre.Sequence, CommandList: pre.CommandList, TimestampList: pre.TimestampList, ParentDigest: pre.ParentDigest})
 	if err != nil {
 		return "", err
 	}

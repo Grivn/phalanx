@@ -29,6 +29,9 @@ type executorImpl struct {
 	// rules is used to generate blocks with phalanx order-rule.
 	rules *orderRule
 
+	//
+	orderSeq map[uint64]uint64
+
 	//============================= internal interfaces =========================================
 
 	// committer is used to notify client instance the committed sequence number.
@@ -47,6 +50,13 @@ type executorImpl struct {
 }
 
 func NewExecutor(author uint64, n int, mgr internal.MetaPool, exec external.ExecutionService, logger external.Logger) *executorImpl {
+	orderSeq := make(map[uint64]uint64)
+
+	for i:=0; i<n; i++ {
+		id := uint64(i+1)
+		orderSeq[id] = uint64(0)
+	}
+
 	cRecorder := recorder.NewCommandRecorder(author, n, logger)
 	return &executorImpl{
 		author:    author,
@@ -56,6 +66,7 @@ func NewExecutor(author uint64, n int, mgr internal.MetaPool, exec external.Exec
 		committer: mgr,
 		reader:    mgr,
 		logger:    logger,
+		orderSeq:  orderSeq,
 	}
 }
 
@@ -69,13 +80,25 @@ func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 		return nil
 	}
 
-	sort.Sort(qStream)
 	ei.logger.Debugf("[%d] commit query stream len %d: %v", ei.author, len(qStream), qStream)
 
 	partials := ei.reader.ReadPartials(qStream)
 
+	var oStream types.OrderStream
+
 	for _, pOrder := range partials {
-		blocks := ei.rules.processPartialOrder(pOrder)
+		startNo := ei.orderSeq[pOrder.Author()]
+
+		infos, endNo := types.NewOrderInfos(startNo, pOrder)
+
+		ei.orderSeq[pOrder.Author()] = endNo
+		oStream = append(oStream, infos...)
+	}
+	sort.Sort(oStream)
+	ei.logger.Debugf("[%d] commit order info stream len %d: %v", ei.author, len(oStream), oStream)
+
+	for _, oInfo := range oStream {
+		blocks := ei.rules.processPartialOrder(oInfo)
 		for _, blk := range blocks {
 			ei.seqNo++
 			ei.exec.CommandExecution(blk.Command, ei.seqNo, blk.Timestamp)

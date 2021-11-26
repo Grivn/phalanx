@@ -3,6 +3,7 @@ package metapool
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
@@ -34,6 +35,9 @@ type metaPool struct {
 	// n indicates the number of participants in current cluster.
 	n int
 
+	// multi indicates the number of proposers each node maintains.
+	multi int
+
 	//==================================== sub-chain management =============================================
 
 	// quorum is the legal size for current node.
@@ -56,6 +60,12 @@ type metaPool struct {
 	// pTracker is used to record the partial orders received by current node.
 	pTracker internal.PartialTracker
 
+	// commandList is used to record the commands' waiting list according to receive order.
+	commandList []string
+
+	// timestampList is used to record the timestamps when the command has been selected into waiting list.
+	timestampList []int64
+
 	//===================================== client commands manager ============================================
 
 	// cTracker is used to record the commands received by current node.
@@ -64,11 +74,22 @@ type metaPool struct {
 	// clients are used to track the commands send from them.
 	clients map[uint64]internal.ClientInstance
 
+	// isActive indicates the active client instance which has pending commands to be committed.
+	isActive map[uint64]bool
+
 	// commandC is used to receive the valid transaction from one client instance.
 	commandC chan *types.CommandIndex
 
 	// closeC is used to stop log manager.
 	closeC chan bool
+
+	//=================================== local timer service ========================================
+
+	// timer is used to control the timeout event to generate order with commands in waiting list.
+	timer *localTimer
+
+	// timeoutC is used to receive timeout event.
+	timeoutC <-chan bool
 
 	//======================================= consensus manager ============================================
 
@@ -84,7 +105,7 @@ type metaPool struct {
 	logger external.Logger
 }
 
-func NewMetaPool(n int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
+func NewMetaPool(n, multi int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
 	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
 
 	// initiate committed number tracker.
@@ -100,9 +121,12 @@ func NewMetaPool(n int, author uint64, sender external.NetworkService, logger ex
 		committedTracker[id] = 0
 	}
 
+	timeoutC := make(chan bool)
+
 	return &metaPool{
 		author:   author,
 		n:        n,
+		multi:    multi,
 		quorum:   types.CalculateQuorum(n),
 		sequence: uint64(0),
 		aggMap:   make(map[string]*protos.PartialOrder),
@@ -110,7 +134,10 @@ func NewMetaPool(n int, author uint64, sender external.NetworkService, logger ex
 		pTracker: pTracker,
 		cTracker: tracker.NewCommandTracker(author, logger),
 		clients:  make(map[uint64]internal.ClientInstance),
+		isActive: make(map[uint64]bool),
 		commandC: make(chan *types.CommandIndex, 10000),
+		timer:    newLocalTimer(timeoutC, 500*time.Millisecond),
+		timeoutC: timeoutC,
 		closeC:   make(chan bool),
 		sender:   sender,
 		logger:   logger,
@@ -127,15 +154,16 @@ func (mp *metaPool) Run() {
 			if err := mp.tryGeneratePreOrder(c); err != nil {
 				panic(fmt.Sprintf("log manager runtime error: %s", err))
 			}
+		case <-mp.timeoutC:
+			if err := mp.tryGeneratePreOrder(nil); err != nil {
+				panic(fmt.Sprintf("log manager runtime error: %s", err))
+			}
 		}
 	}
 }
 
 func (mp *metaPool) Quit() {
-	for _, client := range mp.clients {
-		client.Quit()
-	}
-
+	mp.timer.stopTimer()
 	select {
 	case <-mp.closeC:
 	default:
@@ -147,7 +175,11 @@ func (mp *metaPool) Committed(author uint64, seqNo uint64) {
 	mp.mutex.Lock()
 	defer mp.mutex.Unlock()
 
-	go mp.clients[author].Commit(seqNo)
+	remain := mp.clients[author].Commit(seqNo)
+
+	if remain == 0 {
+		delete(mp.isActive, author)
+	}
 }
 
 //===============================================================
@@ -172,11 +204,15 @@ func (mp *metaPool) clientInstanceReminder(command *protos.Command) {
 		// if there is not a client instance, initiate it.
 		client = instance.NewClient(mp.author, command.Author, mp.commandC, mp.logger)
 		mp.clients[command.Author] = client
-		client.Run()
 	}
+	mp.isActive[command.Author] = true
 
 	// append the transaction into this client.
-	go client.Append(command)
+	remain := client.Append(command)
+
+	if remain == 0 {
+		delete(mp.isActive, command.Author)
+	}
 }
 
 func (mp *metaPool) checkHighOrder() error {
@@ -210,6 +246,29 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 	mp.mutex.Lock()
 	defer mp.mutex.Unlock()
 
+	if cIndex == nil {
+		// timeout event generate order.
+		return mp.generateOrder()
+	}
+
+	if len(mp.commandList) == 0 {
+		mp.timer.startTimer()
+	}
+
+	// command list with receive-order.
+	mp.commandList = append(mp.commandList, cIndex.Digest)
+	mp.timestampList = append(mp.timestampList, time.Now().UnixNano())
+
+	if len(mp.commandList) < len(mp.isActive) {
+		// skip
+		return nil
+	}
+	mp.timer.stopTimer()
+	return mp.generateOrder()
+}
+
+func (mp *metaPool) generateOrder() error {
+
 	// make sure the highest partial order has a valid status.
 	if err := mp.checkHighOrder(); err != nil {
 		return fmt.Errorf("highest partial order error: %s", err)
@@ -219,12 +278,16 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 	mp.sequence++
 
 	// generate pre order message.
-	pre := protos.NewPreOrder(mp.author, mp.sequence, cIndex.Digest, mp.highOrder)
+	pre := protos.NewPreOrder(mp.author, mp.sequence, mp.commandList, mp.timestampList, mp.highOrder)
 	digest, err := crypto.CalculateDigest(pre)
 	if err != nil {
 		return fmt.Errorf("pre order marshal error: %s", err)
 	}
 	pre.Digest = digest
+
+	// reset receive-order lists.
+	mp.commandList = nil
+	mp.timestampList = nil
 
 	// generate self-signature for current pre-order
 	signature, err := crypto.PrivSign(types.StringToBytes(pre.Digest), int(mp.author))

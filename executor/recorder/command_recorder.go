@@ -3,7 +3,6 @@ package recorder
 import (
 	"container/list"
 	"fmt"
-	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
@@ -210,19 +209,19 @@ func (recorder *commandRecorder) PotentialByz(info *types.CommandInfo, newPriori
 //=================================== queue manager ===============================================
 
 // PushBack pushes the partial orders into FIFO order queue for each node.
-func (recorder *commandRecorder) PushBack(pOrder *protos.PartialOrder) error {
-	if recorder.IsCommitted(pOrder.CommandDigest()) {
+func (recorder *commandRecorder) PushBack(oInfo types.OrderInfo) error {
+	if recorder.IsCommitted(oInfo.Command) {
 		// ignore committed command.
 		return nil
 	}
 
-	queue, ok := recorder.FIFOQueue[pOrder.Author()]
+	queue, ok := recorder.FIFOQueue[oInfo.Author]
 
 	if !ok {
-		return fmt.Errorf("cannot find order queue of node %d", pOrder.Author())
+		return fmt.Errorf("cannot find order queue of node %d", oInfo.Author)
 	}
 
-	queue.PushBack(pOrder)
+	queue.PushBack(oInfo)
 	return nil
 }
 
@@ -241,23 +240,23 @@ func (recorder *commandRecorder) FrontCommands() []string {
 
 			e := queue.Front()
 
-			pOrder, ok := e.Value.(*protos.PartialOrder)
+			orderInfo, ok := e.Value.(types.OrderInfo)
 
 			if !ok {
 				queue.Remove(e)
 				continue
 			}
 
-			if recorder.IsCommitted(pOrder.CommandDigest()) {
+			if recorder.IsCommitted(orderInfo.Command) {
 				queue.Remove(e)
 				continue
 			}
 
-			fronts = append(fronts, pOrder.CommandDigest())
+			fronts = append(fronts, orderInfo.Command)
 
-			counts[pOrder.CommandDigest()]++
+			counts[orderInfo.Command]++
 
-			recorder.logger.Infof("[%d] select node %d front command %s", recorder.author, pOrder.Author(), pOrder.CommandDigest())
+			recorder.logger.Infof("[%d] select node %d front command %s", recorder.author, orderInfo.Author, orderInfo.Command)
 			break
 		}
 	}

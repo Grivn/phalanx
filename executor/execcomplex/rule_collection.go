@@ -4,7 +4,6 @@ import (
 	"github.com/Grivn/phalanx/internal"
 	"sort"
 
-	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 )
@@ -37,11 +36,11 @@ func newCollectRule(author uint64, n int, recorder internal.CommandRecorder, log
 	}
 }
 
-func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) bool {
-	collect.logger.Infof("[%d] collect partial order: %s", collect.author, pOrder.Format())
+func (collect *collectionRule) collectPartials(oInfo types.OrderInfo) bool {
+	collect.logger.Infof("[%d] collect partial order: %s", collect.author, oInfo.Format())
 
 	// find the digest for current command the partial order refers to.
-	commandD := pOrder.CommandDigest()
+	commandD := oInfo.Command
 
 	// check if current command has been committed or not.
 	if collect.cRecorder.IsCommitted(commandD) {
@@ -57,7 +56,7 @@ func (collect *collectionRule) collectPartials(pOrder *protos.PartialOrder) bool
 		collect.logger.Debugf("[%d] command %s in quorum sequenced status, ignore it", collect.author, commandD)
 		return false
 	}
-	info.OrderAppend(pOrder)
+	info.OrderAppend(oInfo)
 
 	// check the command status.
 	switch info.OrderCount() {

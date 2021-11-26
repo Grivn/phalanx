@@ -2,7 +2,6 @@ package protos
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/btree"
@@ -51,7 +50,7 @@ func (m *Command) Format() string {
 //=============================== Pre-Order ===============================================
 
 func (m *PreOrder) Format() string {
-	return fmt.Sprintf("[PreOrder: author %d, sequence %d, digest %s, command %s]", m.Author, m.Sequence, m.Digest, m.CommandDigest)
+	return fmt.Sprintf("[PreOrder: author %d, sequence %d, digest %s, command list %v, timestamp list %v]", m.Author, m.Sequence, m.Digest, m.CommandList, m.TimestampList)
 }
 
 //=============================== Vote ====================================================
@@ -62,10 +61,10 @@ func (m *Vote) Format() string {
 
 //=============================== Partial Order ===============================================
 
-func (m *PartialOrder) Less(item btree.Item) bool {
-	// for b-tree initiation
-	return m.PreOrder.Sequence < (item.(*PartialOrder)).PreOrder.Sequence
-}
+//func (m *PartialOrder) Less(item btree.Item) bool {
+//	// for b-tree initiation
+//	return m.PreOrder.Sequence < (item.(*PartialOrder)).PreOrder.Sequence
+//}
 
 func (m *PartialOrder) Author() uint64 {
 	return m.PreOrder.Author
@@ -75,20 +74,20 @@ func (m *PartialOrder) PreOrderDigest() string {
 	return m.PreOrder.Digest
 }
 
-func (m *PartialOrder) CommandDigest() string {
-	return m.PreOrder.CommandDigest
+func (m *PartialOrder) CommandList() []string {
+	return m.PreOrder.CommandList
 }
 
 func (m *PartialOrder) Sequence() uint64 {
 	return m.PreOrder.Sequence
 }
 
-func (m *PartialOrder) Timestamp() int64 {
-	return m.PreOrder.Timestamp
+func (m *PartialOrder) TimestampList() []int64 {
+	return m.PreOrder.TimestampList
 }
 
 func (m *PartialOrder) Format() string {
-	return fmt.Sprintf("[PartialOrder: author %d, sequence %d, command %s]", m.Author(), m.Sequence(), m.CommandDigest())
+	return fmt.Sprintf("[PartialOrder: author %d, sequence %d, command list %v, timestamp list %v]", m.Author(), m.Sequence(), m.CommandList(), m.TimestampList())
 }
 
 func (m *PartialOrder) ParentDigest() string {
@@ -115,11 +114,11 @@ func NewNopPartialOrder() *PartialOrder {
 	return &PartialOrder{PreOrder: NewNopPreOrder(), QC: NewQuorumCert()}
 }
 
-func NewPreOrder(author uint64, sequence uint64, commandDigest string, previous *PreOrder) *PreOrder {
+func NewPreOrder(author uint64, sequence uint64, commandList []string, timestampList []int64, previous *PreOrder) *PreOrder {
 	if previous == nil {
 		previous = &PreOrder{Digest: "GENESIS PRE ORDER"}
 	}
-	return &PreOrder{Author: author, Sequence: sequence, CommandDigest: commandDigest, Timestamp: time.Now().UnixNano(), ParentDigest: previous.Digest}
+	return &PreOrder{Author: author, Sequence: sequence, CommandList: commandList, TimestampList: timestampList, ParentDigest: previous.Digest}
 }
 
 func NewNopPreOrder() *PreOrder {

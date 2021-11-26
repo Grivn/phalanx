@@ -91,8 +91,8 @@ func (er *executionRule) priorityCheck(qInfo *types.CommandInfo, wInfos []*types
 	qPointers := make(map[uint64]uint64)
 
 	// initiate the pointer for quorum replicas.
-	for _, pOrder := range qInfo.Orders {
-		qPointers[pOrder.Author()] = pOrder.Sequence()
+	for _, oInfo := range qInfo.Orders {
+		qPointers[oInfo.Author] = oInfo.Sequence
 	}
 	for _, wInfo := range wInfos {
 		if qInfo.PriCmd[wInfo.CurCmd] {
@@ -104,8 +104,8 @@ func (er *executionRule) priorityCheck(qInfo *types.CommandInfo, wInfos []*types
 
 		// check if there are f+1 replicas believe current QSC should be selected before waiting command.
 		for id, seq := range qPointers {
-			pOrder, ok := wInfo.Orders[id]
-			if !ok || pOrder.Sequence() < seq {
+			oInfo, ok := wInfo.Orders[id]
+			if !ok || oInfo.Sequence < seq {
 				count++
 			}
 			if count == er.oneCorrect {
@@ -140,8 +140,8 @@ func (er *executionRule) priorityCheck(qInfo *types.CommandInfo, wInfos []*types
 		count := 0
 
 		for id, seq := range qPointers {
-			pOrder, ok := cInfo.Orders[id]
-			if !ok || pOrder.Sequence() < seq {
+			oInfo, ok := cInfo.Orders[id]
+			if !ok || oInfo.Sequence < seq {
 				count++
 			}
 			if count == er.oneCorrect {

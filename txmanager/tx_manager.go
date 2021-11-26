@@ -32,7 +32,7 @@ func NewTxManager(multi int, author uint64, commandSize int, sender external.Net
 
 	txC := make(chan *protos.Transaction)
 
-	base := int(author-1)*multi+1
+	base := int(author-1)*multi
 
 	for i:=base; i<base+multi; i++ {
 		id := uint64(i+1)

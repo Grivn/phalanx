@@ -38,15 +38,13 @@ func newExecutionRule(author uint64, n int, recorder internal.CommandRecorder, l
 	}
 }
 
-func (er *executionRule) execution() []*types.CommandInfo {
+func (er *executionRule) execution() (cStream types.CommandStream) {
 	commands := er.cRecorder.FrontCommands()
-
-	var execution []*types.CommandInfo
 
 	for _, digest := range commands {
 		info := er.cRecorder.ReadCommandInfo(digest)
-		execution = append(execution, info)
+		cStream = append(cStream, info)
 	}
 
-	return execution
+	return cStream
 }
