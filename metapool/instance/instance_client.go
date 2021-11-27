@@ -6,6 +6,7 @@ import (
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
 	"sync"
+	"sync/atomic"
 
 	"github.com/google/btree"
 )
@@ -18,6 +19,7 @@ import (
 // which means we should process (n+1)th tx should be processed
 // after the procession for (n)th tx has been finished.
 type clientInstance struct {
+	// mutex is used to resolve concurrency problems.
 	mutex sync.Mutex
 
 	//=============================== basic information =================================
@@ -44,13 +46,20 @@ type clientInstance struct {
 	// commandC is used to propose command towards log-manager.
 	commandC chan<- *types.CommandIndex
 
+	// isActive indicates current client instance's status.
+	// if it is true, there is a command from current client waiting to be processed.
+	isActive bool
+
+	// activeCount indicates the number of active client instance.
+	activeCount *int64
+
 	//============================== external interfaces =======================================
 
 	// logger is used to print logs.
 	logger external.Logger
 }
 
-func NewClient(author, id uint64, commandC chan<- *types.CommandIndex, logger external.Logger) internal.ClientInstance {
+func NewClient(author, id uint64, commandC chan<- *types.CommandIndex, activeCount *int64, logger external.Logger) internal.ClientInstance {
 	logger.Infof("[%d] initiate manager for client %d", author, id)
 	committedNo := make(map[uint64]bool)
 	committedNo[uint64(0)] = true
@@ -61,6 +70,8 @@ func NewClient(author, id uint64, commandC chan<- *types.CommandIndex, logger ex
 		committedNo: uint64(0),
 		commands:    btree.New(2),
 		commandC:    commandC,
+		isActive:    false,
+		activeCount: activeCount,
 		logger:      logger,
 	}
 }
@@ -77,8 +88,15 @@ func (client *clientInstance) Commit(seqNo uint64) int {
 
 	client.committedNo = maxUint64(client.committedNo, seqNo)
 
-	if c := client.minCommand(); c != nil {
+	c := client.minCommand()
+
+	if c != nil {
+		client.activate()
 		client.feedBack(c)
+	}
+
+	if client.commands.Len() == 0 {
+		client.hibernate()
 	}
 
 	return client.commands.Len()
@@ -92,9 +110,18 @@ func (client *clientInstance) Append(command *protos.Command) int {
 
 	client.commands.ReplaceOrInsert(cIndex)
 	client.logger.Debugf("[%d] received command %s", client.author, cIndex.Format())
-	if c := client.minCommand(); c != nil {
+
+	c := client.minCommand()
+
+	if c != nil {
+		client.activate()
 		client.feedBack(c)
 	}
+
+	if client.commands.Len() == 0 {
+		client.hibernate()
+	}
+
 	return client.commands.Len()
 }
 
@@ -120,6 +147,24 @@ func (client *clientInstance) minCommand() *types.CommandIndex {
 		return cIndex
 	}
 	return nil
+}
+
+func (client *clientInstance) activate() {
+	if client.isActive {
+		return
+	}
+	val := atomic.AddInt64(client.activeCount, 1)
+	client.isActive = true
+	client.logger.Debugf("[%d] activate client %d, total active instance", client.author, client.id, val)
+}
+
+func (client *clientInstance) hibernate() {
+	if !client.isActive {
+		return
+	}
+	val := atomic.AddInt64(client.activeCount, -1)
+	client.isActive = false
+	client.logger.Debugf("[%d] hibernate client %d, total active instance", client.author, client.id, val)
 }
 
 func (client *clientInstance) feedBack(cIndex *types.CommandIndex) {

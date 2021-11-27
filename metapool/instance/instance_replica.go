@@ -3,6 +3,7 @@ package instance
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/event"
@@ -16,6 +17,9 @@ import (
 
 // replicaInstance is used to process the remote log, each instance would be used for one replica.
 type replicaInstance struct {
+	// mutex is used to resolve concurrency problems.
+	mutex sync.RWMutex
+
 	//===================================== basic information =========================================
 
 	// author is the local node's identifier.
@@ -70,10 +74,15 @@ func NewReplicaInstance(author, id uint64, pTracker internal.PartialTracker, sen
 }
 
 func (ri *replicaInstance) GetHighOrder() *protos.PartialOrder {
+	ri.mutex.RLock()
+	defer ri.mutex.RUnlock()
 	return ri.highPartialOrder
 }
 
 func (ri *replicaInstance) ReceivePreOrder(pre *protos.PreOrder) error {
+	ri.mutex.Lock()
+	defer ri.mutex.Unlock()
+
 	ri.logger.Infof("[%d] received a pre-order %s", ri.author, pre.Format())
 
 	if ri.sequence > pre.Sequence {
@@ -97,6 +106,9 @@ func (ri *replicaInstance) ReceivePreOrder(pre *protos.PreOrder) error {
 }
 
 func (ri *replicaInstance) ReceivePartial(pOrder *protos.PartialOrder) error {
+	ri.mutex.Lock()
+	defer ri.mutex.Unlock()
+
 	ri.logger.Infof("[%d] received a partial order %s", ri.author, pOrder.Format())
 
 	// verify the signatures of current received partial order.
