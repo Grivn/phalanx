@@ -3,6 +3,7 @@ package metapool
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -74,8 +75,8 @@ type metaPool struct {
 	// clients are used to track the commands send from them.
 	clients map[uint64]internal.ClientInstance
 
-	// isActive indicates the active client instance which has pending commands to be committed.
-	isActive map[uint64]bool
+	// active indicates the number of active client instance.
+	active *int64
 
 	// commandC is used to receive the valid transaction from one client instance.
 	commandC chan *types.CommandIndex
@@ -108,12 +109,17 @@ type metaPool struct {
 func NewMetaPool(n, multi int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
 	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
 
+	// initiate communication channel.
+	commandC := make(chan *types.CommandIndex)
+	timeoutC := make(chan bool)
+
 	// initiate committed number tracker.
 	committedTracker := make(map[uint64]uint64)
 
 	// initiate a partial tracker for current node.
 	pTracker := tracker.NewPartialTracker(author, logger)
 
+	// initiate replica instances.
 	subs := make(map[uint64]internal.ReplicaInstance)
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
@@ -121,7 +127,17 @@ func NewMetaPool(n, multi int, author uint64, sender external.NetworkService, lo
 		committedTracker[id] = 0
 	}
 
-	timeoutC := make(chan bool)
+	// initiate active client count pointer.
+	active := new(int64)
+	*active = int64(0)
+
+	// initiate client instances.
+	clients := make(map[uint64]internal.ClientInstance)
+	for i:=0; i<n*multi; i++ {
+		id := uint64(i+1)
+		client := instance.NewClient(author, id, commandC, active, logger)
+		clients[id] = client
+	}
 
 	return &metaPool{
 		author:   author,
@@ -133,15 +149,15 @@ func NewMetaPool(n, multi int, author uint64, sender external.NetworkService, lo
 		replicas: subs,
 		pTracker: pTracker,
 		cTracker: tracker.NewCommandTracker(author, logger),
-		clients:  make(map[uint64]internal.ClientInstance),
-		isActive: make(map[uint64]bool),
-		commandC: make(chan *types.CommandIndex, 10000),
+		clients:  clients,
+		commandC: commandC,
 		timer:    newLocalTimer(timeoutC, 500*time.Millisecond),
 		timeoutC: timeoutC,
 		closeC:   make(chan bool),
 		sender:   sender,
 		logger:   logger,
 		commitNo: committedTracker,
+		active:   active,
 	}
 }
 
@@ -172,14 +188,7 @@ func (mp *metaPool) Quit() {
 }
 
 func (mp *metaPool) Committed(author uint64, seqNo uint64) {
-	mp.mutex.Lock()
-	defer mp.mutex.Unlock()
-
-	remain := mp.clients[author].Commit(seqNo)
-
-	if remain == 0 {
-		delete(mp.isActive, author)
-	}
+	mp.clients[author].Commit(seqNo)
 }
 
 //===============================================================
@@ -195,24 +204,18 @@ func (mp *metaPool) ProcessCommand(command *protos.Command) {
 }
 
 func (mp *metaPool) clientInstanceReminder(command *protos.Command) {
-	mp.mutex.Lock()
-	defer mp.mutex.Unlock()
-
 	// select the client.
 	client, ok := mp.clients[command.Author]
 	if !ok {
 		// if there is not a client instance, initiate it.
-		client = instance.NewClient(mp.author, command.Author, mp.commandC, mp.logger)
+		// NOTE: concurrency problem.
+		mp.logger.Errorf("[%d] don't have client instance %d, initiate it", mp.author, command.Author)
+		client = instance.NewClient(mp.author, command.Author, mp.commandC, mp.active, mp.logger)
 		mp.clients[command.Author] = client
 	}
-	mp.isActive[command.Author] = true
 
 	// append the transaction into this client.
-	remain := client.Append(command)
-
-	if remain == 0 {
-		delete(mp.isActive, command.Author)
-	}
+	client.Append(command)
 }
 
 func (mp *metaPool) checkHighOrder() error {
@@ -251,23 +254,22 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 		return mp.generateOrder()
 	}
 
-	if len(mp.commandList) == 0 {
-		mp.timer.startTimer()
-	}
-
 	// command list with receive-order.
 	mp.commandList = append(mp.commandList, cIndex.Digest)
 	mp.timestampList = append(mp.timestampList, time.Now().UnixNano())
 
-	if len(mp.commandList) < len(mp.isActive) {
-		// skip
+	if len(mp.commandList) < int(atomic.LoadInt64(mp.active)) {
+		// skip.
 		return nil
 	}
-	mp.timer.stopTimer()
 	return mp.generateOrder()
 }
 
 func (mp *metaPool) generateOrder() error {
+	if len(mp.commandList) == 0 {
+		// skip.
+		return nil
+	}
 
 	// make sure the highest partial order has a valid status.
 	if err := mp.checkHighOrder(); err != nil {
@@ -364,9 +366,6 @@ func (mp *metaPool) ProcessVote(vote *protos.Vote) error {
 // whose sequence number is the same as it yet, and we would like to generate a
 // vote message for it if it's legal for us.
 func (mp *metaPool) ProcessPreOrder(pre *protos.PreOrder) error {
-	mp.mutex.Lock()
-	defer mp.mutex.Unlock()
-
 	return mp.replicas[pre.Author].ReceivePreOrder(pre)
 }
 
@@ -375,9 +374,6 @@ func (mp *metaPool) ProcessPreOrder(pre *protos.PreOrder) error {
 // could advance the sequence counter. We should record the advanced counter and put the info of
 // order message into the sequential-pool.
 func (mp *metaPool) ProcessPartial(pOrder *protos.PartialOrder) error {
-	mp.mutex.Lock()
-	defer mp.mutex.Unlock()
-
 	return mp.replicas[pOrder.Author()].ReceivePartial(pOrder)
 }
 
@@ -426,9 +422,6 @@ func (mp *metaPool) ReadPartials(qStream types.QueryStream) []*protos.PartialOrd
 //=====================================================================
 
 func (mp *metaPool) GenerateProposal() (*protos.PartialOrderBatch, error) {
-	mp.mutex.Lock()
-	defer mp.mutex.Unlock()
-
 	batch := protos.NewPartialOrderBatch(mp.author, mp.n)
 
 	for id, replica := range mp.replicas {
