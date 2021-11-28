@@ -155,7 +155,7 @@ func (client *clientInstance) activate() {
 	}
 	val := atomic.AddInt64(client.activeCount, 1)
 	client.isActive = true
-	client.logger.Debugf("[%d] activate client %d, total active instance", client.author, client.id, val)
+	client.logger.Debugf("[%d] activate client %d, total active instance %d", client.author, client.id, val)
 }
 
 func (client *clientInstance) hibernate() {
@@ -164,7 +164,7 @@ func (client *clientInstance) hibernate() {
 	}
 	val := atomic.AddInt64(client.activeCount, -1)
 	client.isActive = false
-	client.logger.Debugf("[%d] hibernate client %d, total active instance", client.author, client.id, val)
+	client.logger.Debugf("[%d] hibernate client %d, total active instance %d", client.author, client.id, val)
 }
 
 func (client *clientInstance) feedBack(cIndex *types.CommandIndex) {
