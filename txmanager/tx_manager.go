@@ -32,15 +32,10 @@ func NewTxManager(multi int, author uint64, commandSize int, sender external.Net
 
 	txC := make(chan *protos.Transaction)
 
-	base := int(author-1)*multi
+	id := uint64(multi*(int(author)-1)+1)
 
-	for i:=base; i<base+multi; i++ {
-		id := uint64(i+1)
-
-		proposer := newProposer(id, commandSize, txC, sender, logger)
-
-		proposers = append(proposers, proposer)
-	}
+	proposer := newProposer(id, multi, commandSize, txC, sender, logger)
+	proposers = append(proposers, proposer)
 
 	return &txManager{author: author, proposers: proposers, txC: txC, logger: logger}
 }
