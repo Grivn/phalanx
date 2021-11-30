@@ -18,9 +18,6 @@ type executorImpl struct {
 	// author indicates the identifier of current node.
 	author uint64
 
-	// seqNo is used to track the sequence number for blocks.
-	seqNo uint64
-
 	//============================ order rule for block generation ========================================
 
 	// cRecorder is used to record the command info.
@@ -34,16 +31,10 @@ type executorImpl struct {
 
 	//============================= internal interfaces =========================================
 
-	// committer is used to notify client instance the committed sequence number.
-	committer internal.MetaCommitter
-
 	// reader is used to read partial orders from meta pool tracker.
 	reader internal.MetaReader
 
 	//============================== external interfaces ==========================================
-
-	// exec is used to execute the block.
-	exec external.ExecutionService
 
 	// logger is used to print logs.
 	logger external.Logger
@@ -60,10 +51,8 @@ func NewExecutor(author uint64, n int, mgr internal.MetaPool, exec external.Exec
 	cRecorder := recorder.NewCommandRecorder(author, n, logger)
 	return &executorImpl{
 		author:    author,
-		rules:     newOrderRule(author, n, cRecorder, mgr, logger),
+		rules:     newOrderRule(author, n, cRecorder, mgr, mgr, exec, logger),
 		cRecorder: cRecorder,
-		exec:      exec,
-		committer: mgr,
 		reader:    mgr,
 		logger:    logger,
 		orderSeq:  orderSeq,
@@ -97,14 +86,17 @@ func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 	sort.Sort(oStream)
 	ei.logger.Debugf("[%d] commit order info stream len %d: %v", ei.author, len(oStream), oStream)
 
+	updated := false
 	for _, oInfo := range oStream {
-		blocks := ei.rules.processPartialOrder(oInfo)
-		for _, blk := range blocks {
-			ei.seqNo++
-			ei.exec.CommandExecution(blk.Command, ei.seqNo, blk.Timestamp)
-			ei.committer.Committed(blk.Command.Author, blk.Command.Sequence)
-		}
+		// order rule 1: collection rule, collect the partial order info.
+		updated = ei.rules.collect.collectPartials(oInfo)
 	}
+
+	if !updated {
+		return nil
+	}
+
+	ei.rules.processPartialOrder()
 
 	return nil
 }

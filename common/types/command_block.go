@@ -7,12 +7,15 @@ import (
 )
 
 // NewInnerBlock generates the phalanx inner block to commit.
-func NewInnerBlock(command *protos.Command, timestamp int64) InnerBlock {
-	return InnerBlock{Command: command, Timestamp: timestamp}
+func NewInnerBlock(seqNo uint64, command *protos.Command, timestamp int64) InnerBlock {
+	return InnerBlock{SeqNo: seqNo, Command: command, Timestamp: timestamp}
 }
 
 // InnerBlock is an executed block for phalanx.
 type InnerBlock struct {
+	// SeqNo is the sequential number for current inner block.
+	SeqNo uint64
+
 	// Command is the content of current block.
 	Command *protos.Command
 
@@ -21,7 +24,7 @@ type InnerBlock struct {
 }
 
 func (block InnerBlock) Format() string {
-	return fmt.Sprintf("[Block: command %s, trusted-timestamp %d]", block.Command.Format(), block.Timestamp)
+	return fmt.Sprintf("[Block: no. %d, command %s, trusted-timestamp %d]", block.SeqNo, block.Command.Format(), block.Timestamp)
 }
 
 // SortableInnerBlocks is a slice of inner block to sort.

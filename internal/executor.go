@@ -71,7 +71,7 @@ type QueueManager interface {
 	PushBack(oInfo types.OrderInfo) error
 
 	// FrontCommands selects commands which is possible to be committed at first.
-	FrontCommands() []string
+	FrontCommands() ([]string, bool)
 }
 
 //================================== Cyclic Scanner ==============================================

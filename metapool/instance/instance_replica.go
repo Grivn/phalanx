@@ -45,6 +45,8 @@ type replicaInstance struct {
 	// recorder is used to track the pre-order/order messages.
 	recorder *btree.BTree
 
+	voted uint64
+
 	//======================================= internal modules =========================================
 
 	// pTracker is used to record the partial orders from current sub instance node.
@@ -66,6 +68,7 @@ func NewReplicaInstance(author, id uint64, pTracker internal.PartialTracker, sen
 		id:       id,
 		trusted:  uint64(0),
 		sequence: uint64(1),
+		voted:    uint64(0),
 		recorder: btree.New(2),
 		pTracker: pTracker,
 		sender:   sender,
@@ -148,6 +151,7 @@ func (ri *replicaInstance) processBTree() error {
 		// generate and send vote to the pre-order author
 		vote := &protos.Vote{Author: ri.author, Digest: pre.Digest, Certification: sig}
 		ri.logger.Infof("[%d] voted %s for %s", ri.author, vote.Format(), pre.Format())
+		ri.recorder.Delete(item)
 
 		cm, err := protos.PackVote(vote, pre.Author)
 		if err != nil {

@@ -12,7 +12,7 @@ import (
 )
 
 func phalanxRunner() {
-	n := 4
+	n := 12
 
 	async := false
 
@@ -57,7 +57,7 @@ func phalanxRunner() {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	num := 10000
+	num := 1000
 	//client := 16
 	transactionSendInstance(num, n, phx)
 	//commandSendInstance(num, client, phx)
