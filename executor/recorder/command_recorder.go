@@ -226,7 +226,7 @@ func (recorder *commandRecorder) PushBack(oInfo types.OrderInfo) error {
 }
 
 // FrontCommands selects commands which is possible to be committed at first.
-func (recorder *commandRecorder) FrontCommands() []string {
+func (recorder *commandRecorder) FrontCommands() ([]string, bool) {
 	var fronts []string
 
 	counts := make(map[string]int)
@@ -256,7 +256,7 @@ func (recorder *commandRecorder) FrontCommands() []string {
 
 			counts[orderInfo.Command]++
 
-			recorder.logger.Infof("[%d] select node %d front command %s", recorder.author, orderInfo.Author, orderInfo.Command)
+			recorder.logger.Infof("[%d] select front command %s from node %d", recorder.author, orderInfo.Command, orderInfo.Author)
 			break
 		}
 	}
@@ -264,7 +264,7 @@ func (recorder *commandRecorder) FrontCommands() []string {
 	if len(fronts) < recorder.quorum {
 		// less than quorum participants provide partial order queue,
 		// we cannot find any command info in quorum status, just return nil list.
-		return nil
+		return nil, true
 	}
 
 	var correct []string
@@ -283,11 +283,11 @@ func (recorder *commandRecorder) FrontCommands() []string {
 			unverified = append(unverified, digest)
 		}
 		recorder.logger.Debugf("[%d] unverified front digest %v", recorder.author, unverified)
-		return recorder.frontFilter(unverified)
+		return recorder.frontFilter(unverified), false
 	}
 
 	recorder.logger.Debugf("[%d] correct front digest %v", recorder.author, correct)
-	return recorder.frontFilter(correct)
+	return recorder.frontFilter(correct), true
 }
 
 func (recorder *commandRecorder) frontFilter(fronts []string) []string {

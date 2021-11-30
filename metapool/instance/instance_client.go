@@ -85,14 +85,13 @@ func (client *clientInstance) Commit(seqNo uint64) int {
 	if seqNo != client.committedNo+1 {
 		client.logger.Errorf("[%d] invalid committed sequence number, expect %d, committed %d", client.committedNo+1, seqNo)
 	}
-
 	client.committedNo = maxUint64(client.committedNo, seqNo)
 
 	c := client.minCommand()
 
 	if c != nil {
-		client.activate()
 		client.feedBack(c)
+		client.activate()
 	}
 
 	if client.commands.Len() == 0 {
@@ -114,8 +113,8 @@ func (client *clientInstance) Append(command *protos.Command) int {
 	c := client.minCommand()
 
 	if c != nil {
-		client.activate()
 		client.feedBack(c)
+		client.activate()
 	}
 
 	if client.commands.Len() == 0 {

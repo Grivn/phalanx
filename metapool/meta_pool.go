@@ -110,7 +110,7 @@ func NewMetaPool(n, multi int, author uint64, sender external.NetworkService, lo
 	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
 
 	// initiate communication channel.
-	commandC := make(chan *types.CommandIndex)
+	commandC := make(chan *types.CommandIndex, 100)
 	timeoutC := make(chan bool)
 
 	// initiate committed number tracker.
@@ -151,7 +151,7 @@ func NewMetaPool(n, multi int, author uint64, sender external.NetworkService, lo
 		cTracker: tracker.NewCommandTracker(author, logger),
 		clients:  clients,
 		commandC: commandC,
-		timer:    newLocalTimer(timeoutC, 500*time.Millisecond),
+		timer:    newLocalTimer(author, timeoutC, 50*time.Millisecond, logger),
 		timeoutC: timeoutC,
 		closeC:   make(chan bool),
 		sender:   sender,
@@ -251,7 +251,12 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 
 	if cIndex == nil {
 		// timeout event generate order.
+		mp.logger.Debugf("[%d] partial order generation timer expired", mp.author)
 		return mp.generateOrder()
+	}
+
+	if len(mp.commandList) == 0 {
+		mp.timer.startTimer()
 	}
 
 	// command list with receive-order.
@@ -262,6 +267,8 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 		// skip.
 		return nil
 	}
+	mp.timer.stopTimer()
+
 	return mp.generateOrder()
 }
 
@@ -303,7 +310,7 @@ func (mp *metaPool) generateOrder() error {
 
 	mp.logger.Infof("[%d] generate pre-order %s", mp.author, pre.Format())
 
-	// update the highest pre order for current node.
+	// update the highest pre-order for current node.
 	mp.updateHighOrder(pre)
 
 	cm, err := protos.PackPreOrder(pre)
@@ -342,7 +349,7 @@ func (mp *metaPool) ProcessVote(vote *protos.Vote) error {
 
 	// check the quorum size for proof-certs
 	if len(pOrder.QC.Certs) == mp.quorum {
-		mp.logger.Debugf("[%d] found quorum votes for pre-order %s, generate quorum order", mp.author, pOrder.PreOrderDigest())
+		mp.logger.Debugf("[%d] found quorum votes, generate quorum order %s", mp.author, pOrder.Format())
 		delete(mp.aggMap, vote.Digest)
 
 		cm, err := protos.PackPartialOrder(pOrder)

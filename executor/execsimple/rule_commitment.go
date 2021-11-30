@@ -26,6 +26,9 @@ type commitmentRule struct {
 	// quorum indicates the legal size for bft.
 	quorum int
 
+	// seqNo is used to track the sequence number for blocks.
+	seqNo uint64
+
 	// cRecorder is used to record the command info.
 	cRecorder internal.CommandRecorder
 
@@ -52,6 +55,7 @@ func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder, 
 		fault:      types.CalculateFault(n),
 		oneCorrect: types.CalculateOneCorrect(n),
 		quorum:     types.CalculateQuorum(n),
+		seqNo:      uint64(0),
 		cRecorder:  recorder,
 		democracy:  democracy,
 		reader:     reader,
@@ -59,103 +63,32 @@ func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder, 
 	}
 }
 
-func (cr *commitmentRule) freeWill(cStream types.CommandStream) []types.InnerBlock {
-	if len(cStream) == 0 {
+func (cr *commitmentRule) freeWill(frontStream types.CommandStream) []types.InnerBlock {
+	if len(frontStream) == 0 {
 		return nil
 	}
 
-	// free will: init the democracy committee with raw data.
-	for _, command := range cStream {
-		cr.logger.Debugf("[%d] execution info %s", cr.author, command.Format())
-		for _, oInfo := range command.Orders {
-			cr.democracy[oInfo.Author].ReplaceOrInsert(oInfo)
-			cr.logger.Debugf("[%d]    collected partial order %s", cr.author, oInfo.Format())
-		}
-	}
-
-	// free will: trying to generate blocks.
-	var blocks []types.InnerBlock
-	for {
-		concurrentC := cr.generateConcurrentC()
-		sub := cr.generateSortedBlocks(concurrentC)
-		blocks = append(blocks, sub...)
-
-		if len(blocks) == len(cStream) {
-			break
-		}
-	}
-
-	return blocks
-}
-
-func (cr *commitmentRule) generateConcurrentC() []string {
-	// free will:
-	// we would like to find the first concurrent command set in current democracy committee,
-	// and produce a slice for concurrent commands' digest for advanced processing.
-	var concurrentC []string
-	counter := make(map[string]int)
-
-	// read the front command of partial order on each replica.
-	for _, will := range cr.democracy {
-		item := will.Min()
-
-		if item == nil {
-			continue
-		}
-
-		oInfo := item.(types.OrderInfo)
-		counter[oInfo.Command]++
-	}
-
-	// if there is at least one correct node (f+1) believing one specific command should be the front,
-	// we should put it into concurrent slice. the one correct set could make sure that it is a preference from
-	// correct node, and we would like to put it first.
-	for digest, count := range counter {
-		if count >= cr.oneCorrect {
-			concurrentC = append(concurrentC, digest)
-			cr.logger.Debugf("[%d] concurrent command set append %s", cr.author, digest)
-		}
-	}
-
-	// if there is not any command selected into concurrent slice, it means we cannot find a correct set for
-	// concurrent command, so that put all the command in the front of replica's partial order into the concurrent
-	// slice.
-	if len(concurrentC) == 0 {
-		for digest := range counter {
-			concurrentC = append(concurrentC, digest)
-			cr.logger.Debugf("[%d] concurrent command set append %s", cr.author, digest)
-		}
-	}
-	return concurrentC
-}
-
-func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.InnerBlock {
 	// free will:
 	// generate blocks and sort according to the trusted timestamp
 	// here, the command-pair with natural order cannot take part in concurrent command set.
 	var sortable types.SortableInnerBlocks
-	for _, digest := range concurrentC {
-		// read the command info from command recorder.
-		info := cr.cRecorder.ReadCommandInfo(digest)
+	for _, frontC := range frontStream {
 
 		// generate block, try to fetch the raw command to fulfill the block.
-		rawCommand := cr.reader.ReadCommand(info.CurCmd)
-		block := types.NewInnerBlock(rawCommand, info.Timestamps[cr.fault])
+		cr.seqNo++
+		rawCommand := cr.reader.ReadCommand(frontC.CurCmd)
+		block := types.NewInnerBlock(cr.seqNo, rawCommand, frontC.Timestamps[cr.fault])
 		cr.logger.Infof("[%d] generate block %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.
-		cr.cRecorder.CommittedStatus(info.CurCmd)
+		cr.cRecorder.CommittedStatus(frontC.CurCmd)
 
 		// append the current block into sortable slice, waiting for order-determination.
 		sortable = append(sortable, block)
-
-		// remove the partial order from democracy committee.
-		for _, oInfo := range info.Orders {
-			cr.democracy[oInfo.Author].Delete(oInfo)
-		}
 	}
 
 	// determine the order of commands which do not have any natural orders according to trusted timestamp.
 	sort.Sort(sortable)
+
 	return sortable
 }
