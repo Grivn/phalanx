@@ -3,7 +3,6 @@ package metapool
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -263,7 +262,7 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 	mp.commandList = append(mp.commandList, cIndex.Digest)
 	mp.timestampList = append(mp.timestampList, time.Now().UnixNano())
 
-	if len(mp.commandList) < int(atomic.LoadInt64(mp.active)) {
+	if len(mp.commandList) < int(1) {
 		// skip.
 		return nil
 	}
