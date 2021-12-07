@@ -1,11 +1,10 @@
 package execsimple
 
 import (
-	"github.com/Grivn/phalanx/internal"
-	"sort"
-
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
+	"sort"
 
 	"github.com/google/btree"
 )
@@ -26,8 +25,8 @@ type commitmentRule struct {
 	// quorum indicates the legal size for bft.
 	quorum int
 
-	// seqNo is used to track the sequence number for blocks.
-	seqNo uint64
+	// frontNo is used to track the sequence number for front stream.
+	frontNo uint64
 
 	// cRecorder is used to record the command info.
 	cRecorder internal.CommandRecorder
@@ -55,7 +54,7 @@ func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder, 
 		fault:      types.CalculateFault(n),
 		oneCorrect: types.CalculateOneCorrect(n),
 		quorum:     types.CalculateQuorum(n),
-		seqNo:      uint64(0),
+		frontNo:    uint64(0),
 		cRecorder:  recorder,
 		democracy:  democracy,
 		reader:     reader,
@@ -63,21 +62,22 @@ func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder, 
 	}
 }
 
-func (cr *commitmentRule) freeWill(frontStream types.CommandStream) []types.InnerBlock {
-	if len(frontStream) == 0 {
-		return nil
+func (cr *commitmentRule) freeWill(frontStream types.FrontStream) ([]types.InnerBlock, uint64) {
+	if len(frontStream.Stream) == 0 {
+		return nil, cr.frontNo
 	}
+
+	cr.frontNo++
 
 	// free will:
 	// generate blocks and sort according to the trusted timestamp
 	// here, the command-pair with natural order cannot take part in concurrent command set.
 	var sortable types.SortableInnerBlocks
-	for _, frontC := range frontStream {
+	for _, frontC := range frontStream.Stream {
 
 		// generate block, try to fetch the raw command to fulfill the block.
-		cr.seqNo++
 		rawCommand := cr.reader.ReadCommand(frontC.CurCmd)
-		block := types.NewInnerBlock(cr.seqNo, rawCommand, frontC.Timestamps[cr.fault])
+		block := types.NewInnerBlock(cr.frontNo, frontStream.Safe, rawCommand, frontC.Timestamps[cr.fault])
 		cr.logger.Infof("[%d] generate block %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.
@@ -90,5 +90,5 @@ func (cr *commitmentRule) freeWill(frontStream types.CommandStream) []types.Inne
 	// determine the order of commands which do not have any natural orders according to trusted timestamp.
 	sort.Sort(sortable)
 
-	return sortable
+	return sortable, cr.frontNo
 }

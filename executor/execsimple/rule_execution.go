@@ -40,22 +40,23 @@ func newExecutionRule(author uint64, n int, recorder internal.CommandRecorder, l
 	}
 }
 
-func (er *executionRule) execution() (cStream types.CommandStream) {
+func (er *executionRule) execution() types.FrontStream {
 
 	// read the front set.
-	commands, verified := er.cRecorder.FrontCommands()
+	commands, safe := er.cRecorder.FrontCommands()
 
+	var cStream types.CommandStream
 	for _, digest := range commands {
 		info := er.cRecorder.ReadCommandInfo(digest)
 		cStream = append(cStream, info)
 	}
 
-	if !verified {
+	if !safe {
 		// we cannot make sure the validation of front set.
 		cStream = er.selection(cStream)
 	}
 
-	return cStream
+	return types.FrontStream{Safe: safe, Stream: cStream}
 }
 
 func (er *executionRule) selection(unverifiedStream types.CommandStream) types.CommandStream {

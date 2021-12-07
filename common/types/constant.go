@@ -18,5 +18,5 @@ const (
 	DefaultCommandSize int = 500
 
 	// DefaultMulti is the default multi proposers for tx manager.
-	DefaultMulti int = 1
+	DefaultMulti int = 4
 )

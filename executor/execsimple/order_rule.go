@@ -11,6 +11,9 @@ type orderRule struct {
 	// author indicates the identifier of current node.
 	author uint64
 
+	// seqNo indicates the order of inner blocks.
+	seqNo uint64
+
 	//======================== order rules ======================================
 
 	// collect indicates the collection rule of phalanx:
@@ -59,17 +62,18 @@ func (rule *orderRule) processPartialOrder() {
 		// order rule 2: execution rule, select commands to execute with natural order.
 		frontStream := rule.execute.execution()
 
-		if len(frontStream) == 0 {
-			// there isn't an executable sequenced command.
+		// order rule 3: commitment rule, generate ordered blocks with free will.
+		blocks, frontNo := rule.commit.freeWill(frontStream)
+		if len(blocks) == 0 {
+			// there isn't a committed inner block.
 			break
 		}
 
-		// order rule 3: commitment rule, generate ordered blocks with free will.
-		blocks := rule.commit.freeWill(frontStream)
-
 		// commit blocks.
+		rule.logger.Debugf("[%d] commit front group, front-no. %d, safe %v, blocks count %d", rule.author, frontNo, frontStream.Safe, len(blocks))
 		for _, blk := range blocks {
-			rule.exec.CommandExecution(blk.Command, blk.SeqNo, blk.Timestamp)
+			rule.seqNo++
+			rule.exec.CommandExecution(blk, rule.seqNo)
 			rule.reload.Committed(blk.Command.Author, blk.Command.Sequence)
 		}
 	}

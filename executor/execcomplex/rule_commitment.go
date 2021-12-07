@@ -140,7 +140,7 @@ func (cr *commitmentRule) generateSortedBlocks(concurrentC []string) []types.Inn
 
 		// generate block, try to fetch the raw command to fulfill the block.
 		rawCommand := cr.reader.ReadCommand(info.CurCmd)
-		block := types.NewInnerBlock(rawCommand, info.Timestamps[cr.fault])
+		block := types.NewInnerBlock(0, true, rawCommand, info.Timestamps[cr.fault])
 		cr.logger.Infof("[%d] generate block %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.

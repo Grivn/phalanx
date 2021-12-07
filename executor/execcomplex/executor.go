@@ -104,7 +104,7 @@ func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 		blocks := ei.rules.processPartialOrder(oInfo)
 		for _, blk := range blocks {
 			ei.seqNo++
-			ei.exec.CommandExecution(blk.Command, ei.seqNo, blk.Timestamp)
+			ei.exec.CommandExecution(blk, ei.seqNo)
 			ei.committer.Committed(blk.Command.Author, blk.Command.Sequence)
 		}
 	}
