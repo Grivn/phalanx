@@ -64,6 +64,7 @@ func (pt *partialTracker) ReadPartial(idx types.QueryIndex) *protos.PartialOrder
 }
 
 func (pt *partialTracker) IsExist(idx types.QueryIndex) bool {
+	return false
 	pt.mutex.RLock()
 	defer pt.mutex.RUnlock()
 

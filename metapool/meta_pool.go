@@ -3,7 +3,6 @@ package metapool
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -263,7 +262,7 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 	mp.commandList = append(mp.commandList, cIndex.Digest)
 	mp.timestampList = append(mp.timestampList, time.Now().UnixNano())
 
-	if len(mp.commandList) < int(atomic.LoadInt64(mp.active)) {
+	if len(mp.commandList) < int(1) {
 		// skip.
 		return nil
 	}
@@ -464,7 +463,9 @@ func (mp *metaPool) VerifyProposal(batch *protos.PartialOrderBatch) (types.Query
 		if no <= mp.commitNo[id] {
 			// committed previous partial order for node id, including partial number 0.
 			mp.logger.Debugf("[%d] haven't updated committed partial order for node %d", mp.author, id)
-			continue
+			//continue
+		} else {
+			updated = true
 		}
 
 		pOrder := batch.HighOrders[index]
@@ -474,13 +475,16 @@ func (mp *metaPool) VerifyProposal(batch *protos.PartialOrderBatch) (types.Query
 		}
 
 		qIndex := types.QueryIndex{Author: pOrder.Author(), SeqNo: pOrder.Sequence()}
+		if pOrder.PreOrderDigest() == "Nop Pre Order" {
+			continue
+		}
 		if !mp.pTracker.IsExist(qIndex) {
 			if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, mp.quorum); err != nil {
 				return nil, fmt.Errorf("invalid high partial order received from %d: %s", batch.Author, err)
 			}
 		}
 
-		updated = true
+		//updated = true
 	}
 
 	if !updated {
