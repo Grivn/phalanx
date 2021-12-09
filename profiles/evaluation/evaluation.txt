@@ -1,0 +1,17 @@
+Batch Size 100
+
+HS
+52435.170155 tx/s. 65.911664 ms.(96.60837209302325.)
+
+Phalanx-HS-P4
+83743.718538 tx/s. 67.624593 ms.
+Ave. Throughput is 83880.576312 tx/s.
+Ave. Latency is 66.582227 ms.
+Ave. Latency of Phalanx
+     Select Command 40.919184 ms.
+     Generate Order Log 47.576186 ms.
+     Commit Order Log 10.982855 ms.
+     Commit Command Info 5.149098 ms.
+Phalanx Command Rate
+     Safe Committed Commands 36856(93.840866%)
+     Risk Committed Commands 2419(6.159134%)
