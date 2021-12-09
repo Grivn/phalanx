@@ -28,6 +28,8 @@ message Command {
   repeated Transaction Content = 4;
   // HashList is the list of instructions in current command.
   repeated string HashList = 5;
+  // GTime is the timestamp when command is generated.
+  int64 GTime = 6;
 }
 
 //======================================================
@@ -103,6 +105,8 @@ message PartialOrder {
   PreOrder PreOrder = 1;
   // QC is a proof for current partial order.
   QuorumCert QC = 2;
+  // OrderedTime records the timestamp when current partial order is generated.
+  int64 OrderedTime = 3;
 }
 
 //======================================================

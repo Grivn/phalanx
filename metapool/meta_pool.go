@@ -2,6 +2,7 @@ package metapool
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -28,7 +29,7 @@ type metaPool struct {
 	//===================================== basic information =========================================
 
 	// mutex is used to deal with the concurrent problems of log-manager.
-	mutex sync.Mutex
+	mutex sync.RWMutex
 
 	// author is the identifier for current node.
 	author uint64
@@ -61,11 +62,8 @@ type metaPool struct {
 	// pTracker is used to record the partial orders received by current node.
 	pTracker internal.PartialTracker
 
-	// commandList is used to record the commands' waiting list according to receive order.
-	commandList []string
-
-	// timestampList is used to record the timestamps when the command has been selected into waiting list.
-	timestampList []int64
+	// commandSet is used to record the commands' waiting list according to receive order.
+	commandSet types.CommandSet
 
 	//===================================== client commands manager ============================================
 
@@ -96,6 +94,20 @@ type metaPool struct {
 
 	// commitNo indicates the maximum committed number for each participant's partial order.
 	commitNo map[uint64]uint64
+
+	//======================================= metrics tools ===========================================
+
+	// totalCommands is the number of commands selected into partial order.
+	totalCommands int
+
+	// totalSelectLatency is the total latency of interval since receive command to generate pre-order.
+	totalSelectLatency int64
+
+	// totalOrderLogs is the number of order logs.
+	totalOrderLogs int
+
+	// totalLatency is the total latency of the generation of trusted order logs.
+	totalLatency int64
 
 	//======================================= external tools ===========================================
 
@@ -255,15 +267,14 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 		return mp.generateOrder()
 	}
 
-	if len(mp.commandList) == 0 {
+	if len(mp.commandSet) == 0 {
 		mp.timer.startTimer()
 	}
 
 	// command list with receive-order.
-	mp.commandList = append(mp.commandList, cIndex.Digest)
-	mp.timestampList = append(mp.timestampList, time.Now().UnixNano())
+	mp.commandSet = append(mp.commandSet, cIndex)
 
-	if len(mp.commandList) < int(atomic.LoadInt64(mp.active)) {
+	if len(mp.commandSet) < int(atomic.LoadInt64(mp.active)) {
 		// skip.
 		return nil
 	}
@@ -273,7 +284,7 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 }
 
 func (mp *metaPool) generateOrder() error {
-	if len(mp.commandList) == 0 {
+	if len(mp.commandSet) == 0 {
 		// skip.
 		return nil
 	}
@@ -286,8 +297,20 @@ func (mp *metaPool) generateOrder() error {
 	// advance the sequence number.
 	mp.sequence++
 
+	nowT := time.Now().UnixNano()
+	digestList := make([]string, len(mp.commandSet))
+	timestampList := make([]int64, len(mp.commandSet))
+
+	sort.Sort(mp.commandSet)
+	for i, cIndex := range mp.commandSet {
+		digestList[i] = cIndex.Digest
+		timestampList[i] = cIndex.RTime
+		mp.totalCommands++
+		mp.totalSelectLatency += nowT - cIndex.RTime
+	}
+
 	// generate pre order message.
-	pre := protos.NewPreOrder(mp.author, mp.sequence, mp.commandList, mp.timestampList, mp.highOrder)
+	pre := protos.NewPreOrder(mp.author, mp.sequence, digestList, timestampList, mp.highOrder)
 	digest, err := crypto.CalculateDigest(pre)
 	if err != nil {
 		return fmt.Errorf("pre order marshal error: %s", err)
@@ -295,8 +318,7 @@ func (mp *metaPool) generateOrder() error {
 	pre.Digest = digest
 
 	// reset receive-order lists.
-	mp.commandList = nil
-	mp.timestampList = nil
+	mp.commandSet = nil
 
 	// generate self-signature for current pre-order
 	signature, err := crypto.PrivSign(types.StringToBytes(pre.Digest), int(mp.author))
@@ -349,6 +371,12 @@ func (mp *metaPool) ProcessVote(vote *protos.Vote) error {
 
 	// check the quorum size for proof-certs
 	if len(pOrder.QC.Certs) == mp.quorum {
+		pOrder.SetOrderedTime()
+
+		// collect metrics.
+		mp.totalOrderLogs++
+		mp.totalLatency += pOrder.OrderedTime - pOrder.TimestampList()[0]
+
 		mp.logger.Debugf("[%d] found quorum votes, generate quorum order %s", mp.author, pOrder.Format())
 		delete(mp.aggMap, vote.Digest)
 
@@ -506,4 +534,28 @@ func (mp *metaPool) VerifyProposal(batch *protos.PartialOrderBatch) (types.Query
 	}
 
 	return qStream, nil
+}
+
+// QueryMetrics returns the metrics info of meta pool.
+func (mp *metaPool) QueryMetrics() types.MetricsInfo {
+	mp.mutex.RLock()
+	defer mp.mutex.RUnlock()
+	return types.MetricsInfo{
+		AvePackOrderLatency: mp.avePackOrderLatency(),
+		AveOrderLatency:     mp.aveOrderLatency(),
+	}
+}
+
+func (mp *metaPool) avePackOrderLatency() float64 {
+	if mp.totalCommands == 0 {
+		return 0
+	}
+	return types.NanoToMillisecond(mp.totalSelectLatency / int64(mp.totalCommands))
+}
+
+func (mp *metaPool) aveOrderLatency() float64 {
+	if mp.totalOrderLogs == 0 {
+		return 0
+	}
+	return types.NanoToMillisecond(mp.totalLatency / int64(mp.totalOrderLogs))
 }

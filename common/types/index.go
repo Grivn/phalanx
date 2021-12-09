@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Grivn/phalanx/common/protos"
 
@@ -20,10 +21,13 @@ type CommandIndex struct {
 
 	// Digest indicates the identifier of current command.
 	Digest string
+
+	// RTime is the receiving time for current command.
+	RTime int64
 }
 
 func NewCommandIndex(command *protos.Command) *CommandIndex {
-	return &CommandIndex{Author: command.Author, SeqNo: command.Sequence, Digest: command.Digest}
+	return &CommandIndex{Author: command.Author, SeqNo: command.Sequence, Digest: command.Digest, RTime: time.Now().UnixNano()}
 }
 
 func (index *CommandIndex) Less(item btree.Item) bool {
@@ -32,6 +36,15 @@ func (index *CommandIndex) Less(item btree.Item) bool {
 
 func (index *CommandIndex) Format() string {
 	return fmt.Sprintf("[CommandIndex: client %d, sequence %d, digest %s]", index.Author, index.SeqNo, index.Digest)
+}
+
+type CommandSet []*CommandIndex
+
+func (set CommandSet) Len() int { return len(set) }
+func (set CommandSet) Swap(i, j int) { set[i], set[j] = set[j], set[i] }
+func (set CommandSet) Less(i, j int) bool {
+	// sort according to author.
+	return set[i].RTime < set[j].RTime
 }
 
 //=============================================== Query Index ==========================================================

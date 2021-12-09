@@ -42,6 +42,12 @@ type orderRule struct {
 
 	// logger is used to print logs.
 	logger external.Logger
+
+	// totalSafeCommit tracks the number of command committed from safe path.
+	totalSafeCommit int
+
+	// totalRiskCommit tracks the number of command committed from risk path.
+	totalRiskCommit int
 }
 
 func newOrderRule(author uint64, n int, cRecorder internal.CommandRecorder, reader internal.MetaReader, committer internal.MetaCommitter, exec external.ExecutionService, logger external.Logger) *orderRule {
@@ -72,6 +78,11 @@ func (rule *orderRule) processPartialOrder() {
 		// commit blocks.
 		rule.logger.Debugf("[%d] commit front group, front-no. %d, safe %v, blocks count %d", rule.author, frontNo, frontStream.Safe, len(blocks))
 		for _, blk := range blocks {
+			if blk.Safe {
+				rule.totalSafeCommit++
+			} else {
+				rule.totalRiskCommit++
+			}
 			rule.seqNo++
 			rule.exec.CommandExecution(blk, rule.seqNo)
 			rule.reload.Committed(blk.Command.Author, blk.Command.Sequence)

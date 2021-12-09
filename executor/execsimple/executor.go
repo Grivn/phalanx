@@ -7,11 +7,12 @@ import (
 	"github.com/Grivn/phalanx/internal"
 	"sort"
 	"sync"
+	"time"
 )
 
 type executorImpl struct {
 	// mutex is used to deal with the concurrent problems of executor.
-	mutex sync.Mutex
+	mutex sync.RWMutex
 
 	//============================ basic information =============================================
 
@@ -26,13 +27,21 @@ type executorImpl struct {
 	// rules is used to generate blocks with phalanx order-rule.
 	rules *orderRule
 
-	//
+	// orderSeq tracks the real committed partial order sequence number.
 	orderSeq map[uint64]uint64
 
 	//============================= internal interfaces =========================================
 
 	// reader is used to read partial orders from meta pool tracker.
 	reader internal.MetaReader
+
+	//============================= metrics =================================
+
+	// totalLogs tracks the number of committed partial order logs.
+	totalLogs int
+
+	// totalLatency tracks the total latency since partial order generation to commitment.
+	totalLatency int64
 
 	//============================== external interfaces ==========================================
 
@@ -76,6 +85,10 @@ func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 	var oStream types.OrderStream
 
 	for _, pOrder := range partials {
+		// collect order log metrics.
+		ei.totalLogs++
+		ei.totalLatency += time.Now().UnixNano() - pOrder.OrderedTime
+
 		startNo := ei.orderSeq[pOrder.Author()]
 
 		infos, endNo := types.NewOrderInfos(startNo, pOrder)
@@ -99,4 +112,33 @@ func (ei *executorImpl) CommitStream(qStream types.QueryStream) error {
 	ei.rules.processPartialOrder()
 
 	return nil
+}
+
+// QueryMetrics returns metrics info of executor.
+func (ei *executorImpl) QueryMetrics() types.MetricsInfo {
+	ei.mutex.RLock()
+	defer ei.mutex.RUnlock()
+
+	return types.MetricsInfo{
+		AveLogLatency:         ei.aveLogLatency(),
+		AveCommandInfoLatency: ei.aveCommandInfoLatency(),
+		SafeCommandCount:      ei.rules.totalSafeCommit,
+		RiskCommandCount:      ei.rules.totalRiskCommit,
+	}
+}
+
+// aveOrderLatency returns average latency of partial orders to be committed.
+func (ei *executorImpl) aveLogLatency() float64 {
+	if ei.totalLogs == 0 {
+		return 0
+	}
+	return types.NanoToMillisecond(ei.totalLatency / int64(ei.totalLogs))
+}
+
+// aveCommandInfoLatency returns average latency of command info to be committed.
+func (ei *executorImpl) aveCommandInfoLatency() float64 {
+	if ei.rules.commit.totalCommandInfo == 0 {
+		return 0
+	}
+	return types.NanoToMillisecond(ei.rules.commit.totalLatency / int64(ei.rules.commit.totalCommandInfo))
 }

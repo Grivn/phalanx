@@ -3,6 +3,7 @@ package phalanx
 import (
 	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
 )
 
 // Provider is the phalanx service provider for all kinds of consensus algorithm, such as PBFT or HS.
@@ -12,6 +13,9 @@ type Provider interface {
 	Communicator
 	Generator
 	Executor
+
+	// QueryMetrics returns the metrics info of phalanx.
+	QueryMetrics() types.MetricsInfo
 }
 
 // Proposer is used to generate phalanx commands by the transactions received.

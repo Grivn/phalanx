@@ -5,6 +5,7 @@ import (
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
 	"sort"
+	"time"
 
 	"github.com/google/btree"
 )
@@ -39,6 +40,12 @@ type commitmentRule struct {
 
 	// logger is used to print logs.
 	logger external.Logger
+
+	// totalCommandInfo is the number of committed command info.
+	totalCommandInfo int
+
+	// totalLatency is the total latency since command info generation to be committed.
+	totalLatency int64
 }
 
 func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder, reader internal.MetaReader, logger external.Logger) *commitmentRule {
@@ -74,6 +81,8 @@ func (cr *commitmentRule) freeWill(frontStream types.FrontStream) ([]types.Inner
 	// here, the command-pair with natural order cannot take part in concurrent command set.
 	var sortable types.SortableInnerBlocks
 	for _, frontC := range frontStream.Stream {
+		cr.totalCommandInfo++
+		cr.totalLatency += time.Now().UnixNano() - frontC.GTime
 
 		// generate block, try to fetch the raw command to fulfill the block.
 		rawCommand := cr.reader.ReadCommand(frontC.CurCmd)

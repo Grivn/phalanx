@@ -28,6 +28,7 @@ func GenerateCommand(author uint64, seqNo uint64, txs []*protos.Transaction) *pr
 	}
 	command.Digest = CalculatePayloadHash(payload, 0)
 	command.Content = txs
+	command.GTime = time.Now().UnixNano()
 	return command
 }
 

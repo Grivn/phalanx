@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"time"
 )
 
 // sortableTimestamps is a sortable slice for free will trusted timestamp generation.
@@ -28,6 +29,9 @@ type CommandInfo struct {
 
 	// Trust indicates if we have checked the potential priori command for it.
 	Trust bool
+
+	// GTime is the timestamp to generate current command info.
+	GTime int64
 }
 
 type CommandStream []*CommandInfo
@@ -39,6 +43,7 @@ func NewCmdInfo(commandD string) *CommandInfo {
 		LowCmd: make(map[string]*CommandInfo),
 		Orders: make(map[uint64]OrderInfo),
 		Trust:  false,
+		GTime:  time.Now().UnixNano(),
 	}
 }
 

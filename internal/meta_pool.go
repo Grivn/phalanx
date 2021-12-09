@@ -12,6 +12,9 @@ type MetaPool interface {
 	MetaReader
 	MetaCommitter
 	MetaConsensus
+
+	// QueryMetrics returns the metrics info of meta pool.
+	QueryMetrics() types.MetricsInfo
 }
 
 type LogManager interface {

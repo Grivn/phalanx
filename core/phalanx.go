@@ -2,6 +2,7 @@ package phalanx
 
 import (
 	"fmt"
+	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/executor/execsimple"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -130,4 +131,18 @@ func (phi *phalanxImpl) CommitProposal(pBatch *protos.PartialOrderBatch) error {
 	}
 
 	return phi.executor.CommitStream(qStream)
+}
+
+// QueryMetrics returns the metrics info of phalanx.
+func (phi *phalanxImpl) QueryMetrics() types.MetricsInfo {
+	execMetrics := phi.executor.QueryMetrics()
+	metaMetrics := phi.metaPool.QueryMetrics()
+	return types.MetricsInfo{
+		AvePackOrderLatency:   metaMetrics.AvePackOrderLatency,
+		AveOrderLatency:       metaMetrics.AveOrderLatency,
+		AveLogLatency:         execMetrics.AveLogLatency,
+		AveCommandInfoLatency: execMetrics.AveCommandInfoLatency,
+		SafeCommandCount:      execMetrics.SafeCommandCount,
+		RiskCommandCount:      execMetrics.RiskCommandCount,
+	}
 }

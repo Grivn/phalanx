@@ -2,6 +2,7 @@ package protos
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/btree"
@@ -61,11 +62,6 @@ func (m *Vote) Format() string {
 
 //=============================== Partial Order ===============================================
 
-//func (m *PartialOrder) Less(item btree.Item) bool {
-//	// for b-tree initiation
-//	return m.PreOrder.Sequence < (item.(*PartialOrder)).PreOrder.Sequence
-//}
-
 func (m *PartialOrder) Author() uint64 {
 	return m.PreOrder.Author
 }
@@ -84,6 +80,10 @@ func (m *PartialOrder) Sequence() uint64 {
 
 func (m *PartialOrder) TimestampList() []int64 {
 	return m.PreOrder.TimestampList
+}
+
+func (m *PartialOrder) SetOrderedTime() {
+	m.OrderedTime = time.Now().UnixNano()
 }
 
 func (m *PartialOrder) Format() string {

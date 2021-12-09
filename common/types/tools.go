@@ -7,6 +7,27 @@ import (
 	"time"
 )
 
+// MetricsInfo tracks the metrics info of phalanx.
+type MetricsInfo struct {
+	// AvePackOrderLatency indicates interval since receive command to generate pre-order.
+	AvePackOrderLatency float64
+
+	// AveOrderLatency indicates interval since receive command to generate partial order.
+	AveOrderLatency float64
+
+	// AveLogLatency indicates interval since generate partial order to commit partial order.
+	AveLogLatency float64
+
+	// AveCommandInfoLatency indicates since generate command info to commit command.
+	AveCommandInfoLatency float64
+
+	// SafeCommandCount indicates the number of command committed from safe path.
+	SafeCommandCount int
+
+	// RiskCommandCount indicates the number of command committed from risk path.
+	RiskCommandCount int
+}
+
 //============================= Calculate Basic Information ===========================================
 
 // CalculateFault calculates the upper fault amount in byzantine system with n nodes.
