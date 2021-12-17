@@ -87,16 +87,19 @@ func (client *clientInstance) Commit(seqNo uint64) int {
 	}
 	client.committedNo = maxUint64(client.committedNo, seqNo)
 
-	c := client.minCommand()
-
-	if c != nil {
-		client.feedBack(c)
-		client.activate()
-	}
-
 	if client.commands.Len() == 0 {
 		client.hibernate()
 	}
+	//c := client.minCommand()
+	//
+	//if c != nil {
+	//	client.feedBack(c)
+	//	client.activate()
+	//}
+	//
+	//if client.commands.Len() == 0 {
+	//	client.hibernate()
+	//}
 
 	return client.commands.Len()
 }
@@ -112,13 +115,14 @@ func (client *clientInstance) Append(command *protos.Command) int {
 
 	c := client.minCommand()
 
-	if c != nil {
+	for {
+		if c == nil {
+			break
+		}
+
 		client.feedBack(c)
 		client.activate()
-	}
-
-	if client.commands.Len() == 0 {
-		client.hibernate()
+		c = client.minCommand()
 	}
 
 	return client.commands.Len()
@@ -126,9 +130,9 @@ func (client *clientInstance) Append(command *protos.Command) int {
 
 func (client *clientInstance) minCommand() *types.CommandIndex {
 
-	if client.committedNo < client.proposedNo {
-		return nil
-	}
+	//if client.committedNo < client.proposedNo {
+	//	return nil
+	//}
 
 	item := client.commands.Min()
 	if item == nil {

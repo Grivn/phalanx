@@ -36,7 +36,7 @@ func phalanxRunner() {
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 		exec := mocks.NewSimpleExecutor(id, types.NewRawLogger())
-		phx[id] = phalanx.NewPhalanxProvider(n, types.DefaultMulti, id, types.SingleCommandSize, exec, net, types.NewRawLoggerFile(logDir+"/bft-node-"+strconv.Itoa(i+1)+".log"))
+		phx[id] = phalanx.NewPhalanxProvider(n, types.DefaultMulti, types.DefaultLogCount, types.DefaultMemSize, id, types.SingleCommandSize, exec, net, types.NewRawLoggerFile(logDir+"/bft-node-"+strconv.Itoa(i+1)+".log"))
 		phx[id].Run()
 	}
 
@@ -57,7 +57,7 @@ func phalanxRunner() {
 	}
 	go cluster(sendC, bftCs, closeC)
 
-	num := 1000
+	num := 100
 	//client := 16
 	transactionSendInstance(num, n, phx)
 	//commandSendInstance(num, client, phx)

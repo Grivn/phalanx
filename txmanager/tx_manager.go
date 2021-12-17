@@ -15,8 +15,14 @@ type txManager struct {
 
 	//====================================== command generator ============================================
 
+	//
+	txCount int32
+
+	//
+	memSize int32
+
 	// proposers are the proposer instances to generate commands.
-	proposers []*proposerImpl
+	proposers map[uint64]*proposerImpl
 
 	// txC is used to submit transactions.
 	txC chan<- *protos.Transaction
@@ -27,8 +33,8 @@ type txManager struct {
 	logger external.Logger
 }
 
-func NewTxManager(multi int, author uint64, commandSize int, sender external.NetworkService, logger external.Logger) internal.TxManager {
-	var proposers []*proposerImpl
+func NewTxManager(multi int, author uint64, commandSize int, memSize int, sender external.NetworkService, logger external.Logger) internal.TxManager {
+	proposers := make(map[uint64]*proposerImpl)
 
 	txC := make(chan *protos.Transaction)
 
@@ -37,9 +43,9 @@ func NewTxManager(multi int, author uint64, commandSize int, sender external.Net
 	for i:=base; i<base+multi; i++ {
 		id := uint64(i+1)
 
-		proposer := newProposer(id, commandSize, txC, sender, logger)
+		proposer := newProposer(id, commandSize, memSize, txC, sender, logger)
 
-		proposers = append(proposers, proposer)
+		proposers[id] = proposer
 	}
 
 	return &txManager{author: author, proposers: proposers, txC: txC, logger: logger}
@@ -55,6 +61,14 @@ func (txMgr *txManager) Quit() {
 	for _, proposer := range txMgr.proposers {
 		proposer.quit()
 	}
+}
+
+func (txMgr *txManager) Reply(command *protos.Command) {
+	proposer, ok := txMgr.proposers[command.Author]
+	if !ok {
+		return
+	}
+	proposer.reply(command)
 }
 
 func (txMgr *txManager) ProcessTransaction(tx *protos.Transaction) {

@@ -49,7 +49,7 @@ type executorImpl struct {
 	logger external.Logger
 }
 
-func NewExecutor(author uint64, n int, mgr internal.MetaPool, exec external.ExecutionService, logger external.Logger) *executorImpl {
+func NewExecutor(author uint64, n int, mgr internal.MetaPool, manager internal.TxManager, exec external.ExecutionService, logger external.Logger) *executorImpl {
 	orderSeq := make(map[uint64]uint64)
 
 	for i:=0; i<n; i++ {
@@ -60,7 +60,7 @@ func NewExecutor(author uint64, n int, mgr internal.MetaPool, exec external.Exec
 	cRecorder := recorder.NewCommandRecorder(author, n, logger)
 	return &executorImpl{
 		author:    author,
-		rules:     newOrderRule(author, n, cRecorder, mgr, mgr, exec, logger),
+		rules:     newOrderRule(author, n, cRecorder, mgr, mgr, manager, exec, logger),
 		cRecorder: cRecorder,
 		reader:    mgr,
 		logger:    logger,

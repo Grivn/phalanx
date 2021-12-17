@@ -40,6 +40,9 @@ type metaPool struct {
 	// multi indicates the number of proposers each node maintains.
 	multi int
 
+	//
+	logCount int
+
 	//==================================== sub-chain management =============================================
 
 	// quorum is the legal size for current node.
@@ -118,7 +121,7 @@ type metaPool struct {
 	logger external.Logger
 }
 
-func NewMetaPool(n, multi int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
+func NewMetaPool(n, multi int, logCount int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
 	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
 
 	// initiate communication channel.
@@ -155,6 +158,7 @@ func NewMetaPool(n, multi int, author uint64, sender external.NetworkService, lo
 		author:   author,
 		n:        n,
 		multi:    multi,
+		logCount: logCount,
 		quorum:   types.CalculateQuorum(n),
 		sequence: uint64(0),
 		aggMap:   make(map[string]*protos.PartialOrder),
@@ -227,7 +231,7 @@ func (mp *metaPool) clientInstanceReminder(command *protos.Command) {
 	}
 
 	// append the transaction into this client.
-	client.Append(command)
+	go client.Append(command)
 }
 
 func (mp *metaPool) checkHighOrder() error {
@@ -274,7 +278,7 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 	// command list with receive-order.
 	mp.commandSet = append(mp.commandSet, cIndex)
 
-	if len(mp.commandSet) < int(atomic.LoadInt64(mp.active)) {
+	if len(mp.commandSet) < int(atomic.LoadInt64(mp.active))*mp.logCount {
 		// skip.
 		return nil
 	}

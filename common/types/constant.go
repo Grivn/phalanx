@@ -19,4 +19,10 @@ const (
 
 	// DefaultMulti is the default multi proposers for tx manager.
 	DefaultMulti int = 4
+
+	//
+	DefaultLogCount int = 5
+
+	//
+	DefaultMemSize int = 50000
 )

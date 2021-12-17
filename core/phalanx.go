@@ -35,7 +35,7 @@ type phalanxImpl struct {
 	logger external.Logger
 }
 
-func NewPhalanxProvider(n int, multi int, author uint64, commandSize int, exec external.ExecutionService, network external.NetworkService, logger external.Logger) *phalanxImpl {
+func NewPhalanxProvider(n int, multi int, logCount int, memSize int, author uint64, commandSize int, exec external.ExecutionService, network external.NetworkService, logger external.Logger) *phalanxImpl {
 	// todo read crypto key pairs from config files.
 	// initiate key pairs.
 	_ = crypto.SetKeys()
@@ -48,13 +48,13 @@ func NewPhalanxProvider(n int, multi int, author uint64, commandSize int, exec e
 	}
 
 	// initiate tx manager.
-	txMgr := txmanager.NewTxManager(multi, author, commandSize, network, mLogs.txManagerLog)
+	txMgr := txmanager.NewTxManager(multi, author, commandSize, memSize, network, mLogs.txManagerLog)
 
 	// initiate meta pool.
-	mPool := metapool.NewMetaPool(n, multi, author, network, mLogs.metaPoolLog)
+	mPool := metapool.NewMetaPool(n, multi, logCount, author, network, mLogs.metaPoolLog)
 
 	// initiate executor.
-	executor := execsimple.NewExecutor(author, n, mPool, exec, mLogs.executorLog)
+	executor := execsimple.NewExecutor(author, n, mPool, txMgr, exec, mLogs.executorLog)
 
 	return &phalanxImpl{
 		author:    author,

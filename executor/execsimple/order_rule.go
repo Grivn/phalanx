@@ -35,6 +35,9 @@ type orderRule struct {
 	// reload is used to notify client instance the committed sequence number.
 	reload internal.MetaCommitter
 
+	//
+	txMgr internal.TxManager
+
 	//============================== external interfaces ==========================================
 
 	// exec is used to execute the block.
@@ -50,7 +53,7 @@ type orderRule struct {
 	totalRiskCommit int
 }
 
-func newOrderRule(author uint64, n int, cRecorder internal.CommandRecorder, reader internal.MetaReader, committer internal.MetaCommitter, exec external.ExecutionService, logger external.Logger) *orderRule {
+func newOrderRule(author uint64, n int, cRecorder internal.CommandRecorder, reader internal.MetaReader, committer internal.MetaCommitter, manager internal.TxManager, exec external.ExecutionService, logger external.Logger) *orderRule {
 	return &orderRule{
 		author:  author,
 		collect: newCollectRule(author, n, cRecorder, logger),
@@ -59,6 +62,7 @@ func newOrderRule(author uint64, n int, cRecorder internal.CommandRecorder, read
 		reload:  committer,
 		exec:    exec,
 		logger:  logger,
+		txMgr:   manager,
 	}
 }
 
@@ -86,6 +90,7 @@ func (rule *orderRule) processPartialOrder() {
 			rule.seqNo++
 			rule.exec.CommandExecution(blk, rule.seqNo)
 			rule.reload.Committed(blk.Command.Author, blk.Command.Sequence)
+			rule.txMgr.Reply(blk.Command)
 		}
 	}
 }
