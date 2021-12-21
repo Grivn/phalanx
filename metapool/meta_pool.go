@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -278,7 +277,7 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 	// command list with receive-order.
 	mp.commandSet = append(mp.commandSet, cIndex)
 
-	if len(mp.commandSet) < int(atomic.LoadInt64(mp.active))*mp.logCount {
+	if len(mp.commandSet) < mp.logCount {
 		// skip.
 		return nil
 	}
