@@ -118,9 +118,12 @@ type metaPool struct {
 
 	// logger is used to print logs.
 	logger external.Logger
+
+	//
+	byz bool
 }
 
-func NewMetaPool(n, multi int, logCount int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
+func NewMetaPool(byz bool, duration time.Duration, n, multi int, logCount int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
 	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
 
 	// initiate communication channel.
@@ -166,13 +169,14 @@ func NewMetaPool(n, multi int, logCount int, author uint64, sender external.Netw
 		cTracker: tracker.NewCommandTracker(author, logger),
 		clients:  clients,
 		commandC: commandC,
-		timer:    newLocalTimer(author, timeoutC, 50*time.Millisecond, logger),
+		timer:    newLocalTimer(author, timeoutC, duration, logger),
 		timeoutC: timeoutC,
 		closeC:   make(chan bool),
 		sender:   sender,
 		logger:   logger,
 		commitNo: committedTracker,
 		active:   active,
+		byz:      byz,
 	}
 }
 
@@ -305,9 +309,25 @@ func (mp *metaPool) generateOrder() error {
 	timestampList := make([]int64, len(mp.commandSet))
 
 	sort.Sort(mp.commandSet)
+	if mp.byz {
+		timeSet := make([]int64, len(mp.commandSet))
+		byz := make(types.ByzCommandSet, len(mp.commandSet))
+		for index, command := range mp.commandSet {
+			timeSet[index] = command.OTime
+		}
+		for index, command := range mp.commandSet {
+			byz[index] = command
+		}
+		sort.Sort(byz)
+		mp.commandSet = nil
+		for index, command := range byz {
+			command.OTime = timeSet[index]
+			mp.commandSet = append(mp.commandSet, command)
+		}
+	}
 	for i, cIndex := range mp.commandSet {
 		digestList[i] = cIndex.Digest
-		timestampList[i] = cIndex.RTime
+		timestampList[i] = cIndex.OTime
 		mp.totalCommands++
 		mp.totalSelectLatency += nowT - cIndex.RTime
 	}

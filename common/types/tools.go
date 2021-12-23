@@ -26,6 +26,18 @@ type MetricsInfo struct {
 
 	// RiskCommandCount indicates the number of command committed from risk path.
 	RiskCommandCount int
+
+	// FrontAttackFromRisk records the front attacked command requests from risk path.
+	FrontAttackFromRisk int
+
+	// FrontAttackFromSafe records the front attacked command requests from safe path.
+	FrontAttackFromSafe int
+
+	// FrontAttackIntervalRisk records the front attacked command requests of interval relationship from risk path.
+	FrontAttackIntervalRisk int
+
+	// FrontAttackIntervalSafe records the front attacked command requests of interval relationship from safe path.
+	FrontAttackIntervalSafe int
 }
 
 //============================= Calculate Basic Information ===========================================

@@ -13,6 +13,8 @@ import (
 
 func phalanxRunner() {
 	n := 12
+	byzRange := 1
+	oLeader := uint64(0)
 
 	async := false
 
@@ -36,7 +38,11 @@ func phalanxRunner() {
 	for i:=0; i<n; i++ {
 		id := uint64(i+1)
 		exec := mocks.NewSimpleExecutor(id, types.NewRawLogger())
-		phx[id] = phalanx.NewPhalanxProvider(n, types.DefaultMulti, types.DefaultLogCount, types.DefaultMemSize, id, types.SingleCommandSize, exec, net, types.NewRawLoggerFile(logDir+"/bft-node-"+strconv.Itoa(i+1)+".log"))
+		byz := false
+		if id <= uint64(byzRange) {
+			byz = true
+		}
+		phx[id] = phalanx.NewPhalanxProvider(oLeader, byz, types.DefaultTimeDuration, types.DefaultInterval, types.DefaultTimeDuration, n, types.DefaultMulti, types.DefaultLogCount, types.DefaultMemSize, id, types.SingleCommandSize, exec, net, types.NewRawLoggerFile(logDir+"/bft-node-"+strconv.Itoa(i+1)+".log"))
 		phx[id].Run()
 	}
 

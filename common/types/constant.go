@@ -6,7 +6,7 @@ import (
 
 const (
 	// DefaultTimeDuration is the default time duration for proposal generation.
-	DefaultTimeDuration = 2 * time.Millisecond
+	DefaultTimeDuration = 50 * time.Millisecond
 
 	// DefaultLogRotation is the default log rotation for proposal generation.
 	DefaultLogRotation int = 10000
@@ -25,4 +25,7 @@ const (
 
 	//
 	DefaultMemSize int = 50000
+
+	//
+	DefaultInterval int = 10
 )

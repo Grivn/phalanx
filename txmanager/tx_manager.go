@@ -4,6 +4,7 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
+	"time"
 )
 
 // txManager is the implement of phalanx client, which is used receive transactions and generate phalanx commands.
@@ -33,17 +34,25 @@ type txManager struct {
 	logger external.Logger
 }
 
-func NewTxManager(multi int, author uint64, commandSize int, memSize int, sender external.NetworkService, logger external.Logger) internal.TxManager {
+func NewTxManager(interval int, duration time.Duration, multi int, author uint64, commandSize int, memSize int, sender external.NetworkService, logger external.Logger) internal.TxManager {
 	proposers := make(map[uint64]*proposerImpl)
 
 	txC := make(chan *protos.Transaction)
 
 	base := int(author-1)*multi
 
+	fronts := newInnerFronts()
+
 	for i:=base; i<base+multi; i++ {
 		id := uint64(i+1)
 
-		proposer := newProposer(id, commandSize, memSize, txC, sender, logger)
+		readFront := id-1
+
+		if i == base {
+			readFront = uint64(base+multi+1)
+		}
+
+		proposer := newProposer(id, commandSize, memSize, txC, sender, logger, fronts, interval, readFront, duration)
 
 		proposers[id] = proposer
 	}

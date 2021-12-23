@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/executor/execsimple"
+	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
@@ -35,7 +36,7 @@ type phalanxImpl struct {
 	logger external.Logger
 }
 
-func NewPhalanxProvider(n int, multi int, logCount int, memSize int, author uint64, commandSize int, exec external.ExecutionService, network external.NetworkService, logger external.Logger) *phalanxImpl {
+func NewPhalanxProvider(oLeader uint64, byz bool, duration time.Duration, interval int, cDuration time.Duration, n int, multi int, logCount int, memSize int, author uint64, commandSize int, exec external.ExecutionService, network external.NetworkService, logger external.Logger) *phalanxImpl {
 	// todo read crypto key pairs from config files.
 	// initiate key pairs.
 	_ = crypto.SetKeys()
@@ -48,13 +49,13 @@ func NewPhalanxProvider(n int, multi int, logCount int, memSize int, author uint
 	}
 
 	// initiate tx manager.
-	txMgr := txmanager.NewTxManager(multi, author, commandSize, memSize, network, mLogs.txManagerLog)
+	txMgr := txmanager.NewTxManager(interval, cDuration, multi, author, commandSize, memSize, network, mLogs.txManagerLog)
 
 	// initiate meta pool.
-	mPool := metapool.NewMetaPool(n, multi, logCount, author, network, mLogs.metaPoolLog)
+	mPool := metapool.NewMetaPool(byz, duration, n, multi, logCount, author, network, mLogs.metaPoolLog)
 
 	// initiate executor.
-	executor := execsimple.NewExecutor(author, n, mPool, txMgr, exec, mLogs.executorLog)
+	executor := execsimple.NewExecutor(oLeader, author, n, mPool, txMgr, exec, mLogs.executorLog)
 
 	return &phalanxImpl{
 		author:    author,
@@ -138,11 +139,15 @@ func (phi *phalanxImpl) QueryMetrics() types.MetricsInfo {
 	execMetrics := phi.executor.QueryMetrics()
 	metaMetrics := phi.metaPool.QueryMetrics()
 	return types.MetricsInfo{
-		AvePackOrderLatency:   metaMetrics.AvePackOrderLatency,
-		AveOrderLatency:       metaMetrics.AveOrderLatency,
-		AveLogLatency:         execMetrics.AveLogLatency,
-		AveCommandInfoLatency: execMetrics.AveCommandInfoLatency,
-		SafeCommandCount:      execMetrics.SafeCommandCount,
-		RiskCommandCount:      execMetrics.RiskCommandCount,
+		AvePackOrderLatency:     metaMetrics.AvePackOrderLatency,
+		AveOrderLatency:         metaMetrics.AveOrderLatency,
+		AveLogLatency:           execMetrics.AveLogLatency,
+		AveCommandInfoLatency:   execMetrics.AveCommandInfoLatency,
+		SafeCommandCount:        execMetrics.SafeCommandCount,
+		RiskCommandCount:        execMetrics.RiskCommandCount,
+		FrontAttackFromRisk:     execMetrics.FrontAttackFromRisk,
+		FrontAttackFromSafe:     execMetrics.FrontAttackFromSafe,
+		FrontAttackIntervalRisk: execMetrics.FrontAttackIntervalRisk,
+		FrontAttackIntervalSafe: execMetrics.FrontAttackIntervalSafe,
 	}
 }

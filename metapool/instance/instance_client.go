@@ -1,12 +1,14 @@
 package instance
 
 import (
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
-	"sync"
-	"sync/atomic"
 
 	"github.com/google/btree"
 )
@@ -90,16 +92,6 @@ func (client *clientInstance) Commit(seqNo uint64) int {
 	if client.commands.Len() == 0 {
 		client.hibernate()
 	}
-	//c := client.minCommand()
-	//
-	//if c != nil {
-	//	client.feedBack(c)
-	//	client.activate()
-	//}
-	//
-	//if client.commands.Len() == 0 {
-	//	client.hibernate()
-	//}
 
 	return client.commands.Len()
 }
@@ -120,6 +112,8 @@ func (client *clientInstance) Append(command *protos.Command) int {
 			break
 		}
 
+		// the timestamp for partial ordering.
+		c.OTime = time.Now().UnixNano()
 		client.feedBack(c)
 		client.activate()
 		c = client.minCommand()
@@ -129,11 +123,6 @@ func (client *clientInstance) Append(command *protos.Command) int {
 }
 
 func (client *clientInstance) minCommand() *types.CommandIndex {
-
-	//if client.committedNo < client.proposedNo {
-	//	return nil
-	//}
-
 	item := client.commands.Min()
 	if item == nil {
 		return nil
