@@ -1,0 +1,28 @@
+Ave. round time is 2.587063 ms.
+Ave. Latency is 21.000206 ms.
+Ave. Throughput is 203901.258971 tx/s.
+
+Ave. block size is 1000.
+Ave. payload size is 0.
+Ave. real block is 6.256470264317181.
+Ave. creation time is 0.346703 ms.
+Ave. processing time is 0.7949329906370479 ms.
+Ave. vote time is 4.791024960169942 ms.
+Request rate is 297212.166611 txs/s.
+Ave. round time is 5.268887 ms.
+Ave. Throughput is 1186827.452449 tx/s.
+Ave. Latency is 62.862722 ms.
+Ave. Latency of Phalanx
+     Select Command 12.995982 ms.
+     Generate Order Log 22.971680 ms.
+     Commit Order Log 29.365707 ms.
+     Commit Command Info 17.636598 ms.
+Phalanx Command Rate
+     Total Commands 45447
+     Safe Committed Commands 13512(29.731335%)
+     Risk Committed Commands 31935(70.268665%)
+     Front Attacked Commands 12(0.026404%)
+     Front Attacked From Safe 0(0.000000%)
+     Front Attacked From Risk 12(0.026404%)
+     Front Attacked Given 12(100.000000%)
+     Front Attacked Interval 0(0.000000%)
