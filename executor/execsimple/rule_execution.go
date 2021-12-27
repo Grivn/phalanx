@@ -26,9 +26,12 @@ type executionRule struct {
 
 	// logger is used to print logs.
 	logger external.Logger
+
+	// oligarchy is used to define that current cluster is relying on a certain node.
+	oligarchy uint64
 }
 
-func newExecutionRule(author uint64, n int, recorder internal.CommandRecorder, logger external.Logger) *executionRule {
+func newExecutionRule(oligarchyLeader uint64, author uint64, n int, recorder internal.CommandRecorder, logger external.Logger) *executionRule {
 	logger.Infof("[%d] initiate natural order handler, replica count %d", author, n)
 	return &executionRule{
 		author:     author,
@@ -37,10 +40,21 @@ func newExecutionRule(author uint64, n int, recorder internal.CommandRecorder, l
 		quorum:     types.CalculateQuorum(n),
 		cRecorder:  recorder,
 		logger:     logger,
+		oligarchy:  oligarchyLeader,
 	}
 }
 
 func (er *executionRule) execution() types.FrontStream {
+
+	// oligarchy mode, relying on certain leader ordering.
+	if er.oligarchy != uint64(0) {
+		digest := er.cRecorder.OligarchyLeaderFront(er.oligarchy)
+		commandInfo := er.cRecorder.ReadCommandInfo(digest)
+		if len(commandInfo.Orders) < er.quorum {
+			return types.FrontStream{Safe: true, Stream: nil}
+		}
+		return types.FrontStream{Safe: true, Stream: types.CommandStream{commandInfo}}
+	}
 
 	// read the front set.
 	commands, safe := er.cRecorder.FrontCommands()
@@ -114,7 +128,7 @@ func (er *executionRule) filterStream(unverifiedStream, correctStream, quorumStr
 
 			for id, seq := range pointer {
 				oInfo, ok := correctC.Orders[id]
-				if !ok || oInfo.Sequence < seq {
+				if !ok || oInfo.Sequence > seq {
 					count++
 				}
 				if count == er.oneCorrect {
@@ -137,7 +151,7 @@ func (er *executionRule) filterStream(unverifiedStream, correctStream, quorumStr
 
 			for id, seq := range pointer {
 				oInfo, ok := quorumC.Orders[id]
-				if !ok || oInfo.Sequence < seq {
+				if !ok || oInfo.Sequence > seq {
 					count++
 				}
 				if count == er.oneCorrect {

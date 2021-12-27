@@ -24,6 +24,9 @@ type CommandIndex struct {
 
 	// RTime is the receiving time for current command.
 	RTime int64
+
+	// OTime is the timestamp to order current command.
+	OTime int64
 }
 
 func NewCommandIndex(command *protos.Command) *CommandIndex {
@@ -44,7 +47,15 @@ func (set CommandSet) Len() int { return len(set) }
 func (set CommandSet) Swap(i, j int) { set[i], set[j] = set[j], set[i] }
 func (set CommandSet) Less(i, j int) bool {
 	// sort according to author.
-	return set[i].RTime < set[j].RTime
+	return set[i].OTime < set[j].OTime
+}
+
+type ByzCommandSet []*CommandIndex
+func (set ByzCommandSet) Len() int { return len(set) }
+func (set ByzCommandSet) Swap(i, j int) { set[i], set[j] = set[j], set[i] }
+func (set ByzCommandSet) Less(i, j int) bool {
+	// sort according to author.
+	return set[i].OTime > set[j].OTime
 }
 
 //=============================================== Query Index ==========================================================

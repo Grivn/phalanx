@@ -320,3 +320,30 @@ func (recorder *commandRecorder) frontFilter(fronts []string) []string {
 	recorder.logger.Infof("[%d] filtered front digest %v", recorder.author, filtered)
 	return filtered
 }
+
+// OligarchyLeaderFront returns the oligarchy leader ordering.
+func (recorder *commandRecorder) OligarchyLeaderFront(leader uint64) string {
+	queue := recorder.FIFOQueue[leader]
+
+	for {
+		if queue.Len() == 0 {
+			return ""
+		}
+
+		e := queue.Front()
+
+		orderInfo, ok := e.Value.(types.OrderInfo)
+
+		if !ok {
+			queue.Remove(e)
+			continue
+		}
+
+		if recorder.IsCommitted(orderInfo.Command) {
+			queue.Remove(e)
+			continue
+		}
+
+		return orderInfo.Command
+	}
+}

@@ -1,6 +1,7 @@
 package execsimple
 
 import (
+	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
 )
@@ -35,6 +36,9 @@ type orderRule struct {
 	// reload is used to notify client instance the committed sequence number.
 	reload internal.MetaCommitter
 
+	//
+	txMgr internal.TxManager
+
 	//============================== external interfaces ==========================================
 
 	// exec is used to execute the block.
@@ -48,17 +52,36 @@ type orderRule struct {
 
 	// totalRiskCommit tracks the number of command committed from risk path.
 	totalRiskCommit int
+
+	//======================================== detect attack info =======================================================
+
+	// commandRecorder key proposer id value latest committed seq, in order to detect front attacks.
+	commandRecorder map[uint64]uint64
+
+	// frontAttackFromSafe is used to record the front attacked command request with safe front set.
+	frontAttackFromSafe int
+
+	// frontAttackFromRisk is used to record the front attacked command request with risk front set.
+	frontAttackFromRisk int
+
+	// frontAttackIntervalSafe is used to record the front attacked command request with safe of interval relationship.
+	frontAttackIntervalSafe int
+
+	// frontAttackIntervalRisk is used to record the front attacked command request with risk of interval relationship.
+	frontAttackIntervalRisk int
 }
 
-func newOrderRule(author uint64, n int, cRecorder internal.CommandRecorder, reader internal.MetaReader, committer internal.MetaCommitter, exec external.ExecutionService, logger external.Logger) *orderRule {
+func newOrderRule(oLeader, author uint64, n int, cRecorder internal.CommandRecorder, reader internal.MetaReader, committer internal.MetaCommitter, manager internal.TxManager, exec external.ExecutionService, logger external.Logger) *orderRule {
 	return &orderRule{
 		author:  author,
 		collect: newCollectRule(author, n, cRecorder, logger),
-		execute: newExecutionRule(author, n, cRecorder, logger),
+		execute: newExecutionRule(oLeader, author, n, cRecorder, logger),
 		commit:  newCommitmentRule(author, n, cRecorder, reader, logger),
 		reload:  committer,
 		exec:    exec,
 		logger:  logger,
+		txMgr:   manager,
+		commandRecorder: make(map[uint64]uint64),
 	}
 }
 
@@ -78,14 +101,60 @@ func (rule *orderRule) processPartialOrder() {
 		// commit blocks.
 		rule.logger.Debugf("[%d] commit front group, front-no. %d, safe %v, blocks count %d", rule.author, frontNo, frontStream.Safe, len(blocks))
 		for _, blk := range blocks {
-			if blk.Safe {
-				rule.totalSafeCommit++
-			} else {
-				rule.totalRiskCommit++
-			}
 			rule.seqNo++
 			rule.exec.CommandExecution(blk, rule.seqNo)
 			rule.reload.Committed(blk.Command.Author, blk.Command.Sequence)
+			rule.txMgr.Reply(blk.Command)
+
+			rule.detectFrontSetTypes(!blk.Safe)
+			rule.detectFrontAttackGivenRelationship(!blk.Safe, blk.Command)
+			rule.detectFrontAttackIntervalRelationship(!blk.Safe, blk.Command)
+			rule.updateFrontAttackDetector(blk.Command)
 		}
+	}
+}
+
+func (rule *orderRule) detectFrontSetTypes(risk bool) {
+	if !risk {
+		rule.totalSafeCommit++
+	} else {
+		rule.totalRiskCommit++
+	}
+}
+
+func (rule *orderRule) detectFrontAttackGivenRelationship(risk bool, command *protos.Command) {
+	// detect the front attack towards given relationship.
+	current := rule.commandRecorder[command.Author]
+
+	if command.Sequence != current+1 {
+		if risk {
+			rule.frontAttackFromRisk++
+		} else {
+			rule.frontAttackFromSafe++
+		}
+	}
+}
+
+func (rule *orderRule) detectFrontAttackIntervalRelationship(risk bool, command *protos.Command) {
+	// detect the front attack towards interval relationship.
+	if command.FrontRunner == nil {
+		return
+	}
+
+	if command.FrontRunner.Sequence > rule.commandRecorder[command.FrontRunner.Author] {
+		if risk {
+			rule.frontAttackFromRisk++
+			rule.frontAttackIntervalRisk++
+		} else {
+			rule.frontAttackFromSafe++
+			rule.frontAttackIntervalSafe++
+		}
+	}
+}
+
+func (rule *orderRule) updateFrontAttackDetector(command *protos.Command) {
+	// update the detector for front attacked command requests.
+	if command.Sequence > rule.commandRecorder[command.Author] {
+		rule.commandRecorder[command.Author] = command.Sequence
 	}
 }

@@ -1,0 +1,25 @@
+chain status is: [1] The current view is: 8842, chain growth rate is: 0.9998868778280543, ave block interval is: 3
+Ave. block size is 1000.0061633704049.
+Ave. payload size is 0.
+Ave. real block is 4.1305725277212035.
+Ave. creation time is 0.710291 ms.
+Ave. processing time is 1.4241318570709613 ms.
+Ave. vote time is 6.52814598037528 ms.
+Request rate is 63971.547461 txs/s.
+Ave. round time is 6.465279 ms.
+Ave. Throughput is 638590.262147 tx/s.
+Ave. Latency is 92.374419 ms.
+Ave. Latency of Phalanx
+     Select Command 26.101682 ms.
+     Generate Order Log 54.467556 ms.
+     Commit Order Log 30.523622 ms.
+     Commit Command Info 32.584508 ms.
+Phalanx Command Rate
+     Total Commands 36515
+     Safe Committed Commands 29408(80.536766%)
+     Risk Committed Commands 7107(19.463234%)
+     Front Attacked Commands 0(0.000000%)
+     Front Attacked From Safe 0(0.000000%)
+     Front Attacked From Risk 0(0.000000%)
+     Front Attacked Given 0(NaN%)
+     Front Attacked Interval 0(NaN%)

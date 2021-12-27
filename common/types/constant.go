@@ -6,7 +6,7 @@ import (
 
 const (
 	// DefaultTimeDuration is the default time duration for proposal generation.
-	DefaultTimeDuration = 2 * time.Millisecond
+	DefaultTimeDuration = 50 * time.Millisecond
 
 	// DefaultLogRotation is the default log rotation for proposal generation.
 	DefaultLogRotation int = 10000
@@ -19,4 +19,13 @@ const (
 
 	// DefaultMulti is the default multi proposers for tx manager.
 	DefaultMulti int = 4
+
+	//
+	DefaultLogCount int = 5
+
+	//
+	DefaultMemSize int = 50000
+
+	//
+	DefaultInterval int = 10
 )

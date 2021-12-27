@@ -75,6 +75,9 @@ type QueueManager interface {
 
 	// FrontCommands selects commands which is possible to be committed at first.
 	FrontCommands() ([]string, bool)
+
+	// OligarchyLeaderFront returns the oligarchy leader ordering, test mode.
+	OligarchyLeaderFront(leader uint64) string
 }
 
 //================================== Cyclic Scanner ==============================================

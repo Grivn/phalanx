@@ -30,6 +30,16 @@ message Command {
   repeated string HashList = 5;
   // GTime is the timestamp when command is generated.
   int64 GTime = 6;
+  // FrontRunner is used to detect interval relationship front attack, metrics info.
+  CommandProtoIndex FrontRunner = 7;
+}
+
+// CommandProtoIndex indicates the essential index info for command request.
+message CommandProtoIndex {
+  // Author indicates the generator current command.
+  uint64 Author = 1;
+  // Sequence indicates the sequence number for current command.
+  uint64 Sequence = 2;
 }
 
 //======================================================

@@ -1,0 +1,16 @@
+Ave. Throughput is 553655.987436 tx/s.
+Ave. Latency is 84.454894 ms.
+Ave. Latency of Phalanx
+     Select Command 26.070427 ms.
+     Generate Order Log 52.702317 ms.
+     Commit Order Log 14.204749 ms.
+     Commit Command Info 48.861447 ms.
+Phalanx Command Rate
+     Total Commands 3055
+     Safe Committed Commands 3055(100.000000%)
+     Risk Committed Commands 0(0.000000%)
+     Front Attacked Commands 3057(100.065466%)
+     Front Attacked From Safe 3057(100.065466%)
+     Front Attacked From Risk 0(0.000000%)
+     Front Attacked Given 3055(99.934576%)
+     Front Attacked Interval 2(0.065424%)
