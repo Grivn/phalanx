@@ -34,9 +34,12 @@ type phalanxImpl struct {
 
 	// logger is used to print logs.
 	logger external.Logger
+
+	//
+	logCount int
 }
 
-func NewPhalanxProvider(oLeader uint64, byz bool, duration time.Duration, interval int, cDuration time.Duration, n int, multi int, logCount int, memSize int, author uint64, commandSize int, exec external.ExecutionService, network external.NetworkService, logger external.Logger) *phalanxImpl {
+func NewPhalanxProvider(oLeader uint64, byz bool, duration time.Duration, interval int, cDuration time.Duration, n int, multi int, logCount int, memSize int, author uint64, commandSize int, exec external.ExecutionService, network external.NetworkService, logger external.Logger, selected uint64) *phalanxImpl {
 	// todo read crypto key pairs from config files.
 	// initiate key pairs.
 	_ = crypto.SetKeys()
@@ -49,7 +52,7 @@ func NewPhalanxProvider(oLeader uint64, byz bool, duration time.Duration, interv
 	}
 
 	// initiate tx manager.
-	txMgr := txmanager.NewTxManager(interval, cDuration, multi, author, commandSize, memSize, network, mLogs.txManagerLog)
+	txMgr := txmanager.NewTxManager(interval, cDuration, multi, author, commandSize, memSize, network, mLogs.txManagerLog, selected)
 
 	// initiate meta pool.
 	mPool := metapool.NewMetaPool(byz, duration, n, multi, logCount, author, network, mLogs.metaPoolLog)
@@ -63,12 +66,14 @@ func NewPhalanxProvider(oLeader uint64, byz bool, duration time.Duration, interv
 		metaPool:  mPool,
 		executor:  executor,
 		logger:    logger,
+		logCount:  logCount,
 	}
 }
 
 func (phi *phalanxImpl) Run() {
 	go phi.metaPool.Run()
 	go phi.txManager.Run()
+	go phi.executor.Run()
 }
 
 func (phi *phalanxImpl) Quit() {
@@ -130,8 +135,8 @@ func (phi *phalanxImpl) CommitProposal(pBatch *protos.PartialOrderBatch) error {
 		phi.logger.Errorf("verify error, %s", err)
 		return err
 	}
-
-	return phi.executor.CommitStream(qStream)
+	phi.executor.CommitStream(qStream)
+	return nil
 }
 
 // QueryMetrics returns the metrics info of phalanx.
@@ -139,15 +144,31 @@ func (phi *phalanxImpl) QueryMetrics() types.MetricsInfo {
 	execMetrics := phi.executor.QueryMetrics()
 	metaMetrics := phi.metaPool.QueryMetrics()
 	return types.MetricsInfo{
-		AvePackOrderLatency:     metaMetrics.AvePackOrderLatency,
-		AveOrderLatency:         metaMetrics.AveOrderLatency,
-		AveLogLatency:           execMetrics.AveLogLatency,
-		AveCommandInfoLatency:   execMetrics.AveCommandInfoLatency,
-		SafeCommandCount:        execMetrics.SafeCommandCount,
-		RiskCommandCount:        execMetrics.RiskCommandCount,
-		FrontAttackFromRisk:     execMetrics.FrontAttackFromRisk,
-		FrontAttackFromSafe:     execMetrics.FrontAttackFromSafe,
-		FrontAttackIntervalRisk: execMetrics.FrontAttackIntervalRisk,
-		FrontAttackIntervalSafe: execMetrics.FrontAttackIntervalSafe,
+		AveOrderSize:             metaMetrics.AveOrderSize,
+		AvePackOrderLatency:      metaMetrics.AvePackOrderLatency,
+		CurPackOrderLatency:      metaMetrics.CurPackOrderLatency,
+		AveOrderLatency:          metaMetrics.AveOrderLatency,
+		CurOrderLatency:          metaMetrics.CurOrderLatency,
+		AveLogLatency:            execMetrics.AveLogLatency,
+		CurLogLatency:            execMetrics.CurLogLatency,
+		AveCommandInfoLatency:    execMetrics.AveCommandInfoLatency,
+		CurCommandInfoLatency:    execMetrics.CurCommandInfoLatency,
+		AveCommitStreamLatency:   execMetrics.AveCommitStreamLatency,
+		CurCommitStreamLatency:   execMetrics.CurCommitStreamLatency,
+		SafeCommandCount:         execMetrics.SafeCommandCount,
+		RiskCommandCount:         execMetrics.RiskCommandCount,
+		FrontAttackFromRisk:      execMetrics.FrontAttackFromRisk,
+		FrontAttackFromSafe:      execMetrics.FrontAttackFromSafe,
+		FrontAttackIntervalRisk:  execMetrics.FrontAttackIntervalRisk,
+		FrontAttackIntervalSafe:  execMetrics.FrontAttackIntervalSafe,
+		CommandPS:                metaMetrics.CommandPS,
+		LogPS:                    metaMetrics.LogPS,
+		GenLogPS:                 metaMetrics.GenLogPS,
+		MSafeCommandCount:        execMetrics.MSafeCommandCount,
+		MRiskCommandCount:        execMetrics.MRiskCommandCount,
+		MFrontAttackFromRisk:     execMetrics.MFrontAttackFromRisk,
+		MFrontAttackFromSafe:     execMetrics.MFrontAttackFromSafe,
+		MFrontAttackIntervalRisk: execMetrics.MFrontAttackIntervalRisk,
+		MFrontAttackIntervalSafe: execMetrics.MFrontAttackIntervalSafe,
 	}
 }

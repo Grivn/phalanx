@@ -48,6 +48,10 @@ func (collect *collectionRule) collectPartials(oInfo types.OrderInfo) bool {
 		return false
 	}
 
+	if collect.cRecorder.IsQuorum(commandD) {
+		return false
+	}
+
 	// push back partial order into recorder.queue.
 	if err := collect.cRecorder.PushBack(oInfo); err != nil {
 		collect.logger.Errorf("[%d] push back partial order failed: %s", collect.author, err)

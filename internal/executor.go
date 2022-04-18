@@ -1,12 +1,15 @@
 package internal
 
 import (
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/types"
 )
 
 type Executor interface {
+	api.Runner
+
 	// CommitStream is used to commit the partial order stream.
-	CommitStream(qStream types.QueryStream) error
+	CommitStream(qStream types.QueryStream)
 
 	// QueryMetrics returns metrics info of executor.
 	QueryMetrics() types.MetricsInfo

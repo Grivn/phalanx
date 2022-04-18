@@ -55,6 +55,9 @@ type clientInstance struct {
 	// activeCount indicates the number of active client instance.
 	activeCount *int64
 
+	//
+	timestamp int64
+
 	//============================== external interfaces =======================================
 
 	// logger is used to print logs.
@@ -113,7 +116,15 @@ func (client *clientInstance) Append(command *protos.Command) int {
 		}
 
 		// the timestamp for partial ordering.
-		c.OTime = time.Now().UnixNano()
+		for {
+			current := time.Now().UnixNano()
+			if current > client.timestamp {
+				c.OTime = time.Now().UnixNano()
+				client.timestamp = current
+				break
+			}
+		}
+
 		client.feedBack(c)
 		client.activate()
 		c = client.minCommand()

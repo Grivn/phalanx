@@ -46,6 +46,11 @@ type CommandSet []*CommandIndex
 func (set CommandSet) Len() int { return len(set) }
 func (set CommandSet) Swap(i, j int) { set[i], set[j] = set[j], set[i] }
 func (set CommandSet) Less(i, j int) bool {
+
+	if set[i].Author == set[j].Author {
+		return set[i].SeqNo < set[j].SeqNo
+	}
+
 	// sort according to author.
 	return set[i].OTime < set[j].OTime
 }

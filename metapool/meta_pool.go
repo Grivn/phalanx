@@ -102,14 +102,38 @@ type metaPool struct {
 	// totalCommands is the number of commands selected into partial order.
 	totalCommands int
 
+	//
+	intervalCommands int
+
 	// totalSelectLatency is the total latency of interval since receive command to generate pre-order.
 	totalSelectLatency int64
+
+	//
+	intervalSelectLatency int64
 
 	// totalOrderLogs is the number of order logs.
 	totalOrderLogs int
 
+	//
+	intervalOrderLogs int
+
 	// totalLatency is the total latency of the generation of trusted order logs.
 	totalLatency int64
+
+	//
+	intervalLatency int64
+
+	//
+	orderCount int
+
+	//
+	orderSize int
+
+	//
+	commandCount int
+
+	//
+	startTime int64
 
 	//======================================= external tools ===========================================
 
@@ -121,6 +145,12 @@ type metaPool struct {
 
 	//
 	byz bool
+
+	//
+	genTime time.Time
+
+	//
+	genOrder int
 }
 
 func NewMetaPool(byz bool, duration time.Duration, n, multi int, logCount int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
@@ -138,8 +168,8 @@ func NewMetaPool(byz bool, duration time.Duration, n, multi int, logCount int, a
 
 	// initiate replica instances.
 	subs := make(map[uint64]internal.ReplicaInstance)
-	for i:=0; i<n; i++ {
-		id := uint64(i+1)
+	for i := 0; i < n; i++ {
+		id := uint64(i + 1)
 		subs[id] = instance.NewReplicaInstance(author, id, pTracker, sender, logger)
 		committedTracker[id] = 0
 	}
@@ -150,8 +180,8 @@ func NewMetaPool(byz bool, duration time.Duration, n, multi int, logCount int, a
 
 	// initiate client instances.
 	clients := make(map[uint64]internal.ClientInstance)
-	for i:=0; i<n*multi; i++ {
-		id := uint64(i+1)
+	for i := 0; i < n*multi; i++ {
+		id := uint64(i + 1)
 		client := instance.NewClient(author, id, commandC, active, logger)
 		clients[id] = client
 	}
@@ -215,6 +245,10 @@ func (mp *metaPool) Committed(author uint64, seqNo uint64) {
 //===============================================================
 
 func (mp *metaPool) ProcessCommand(command *protos.Command) {
+	if mp.commandCount == 0 {
+		mp.startTime = time.Now().UnixNano()
+	}
+	mp.commandCount++
 	// record the command with command tracker.
 	mp.cTracker.RecordCommand(command)
 
@@ -234,7 +268,7 @@ func (mp *metaPool) clientInstanceReminder(command *protos.Command) {
 	}
 
 	// append the transaction into this client.
-	go client.Append(command)
+	client.Append(command)
 }
 
 func (mp *metaPool) checkHighOrder() error {
@@ -330,6 +364,9 @@ func (mp *metaPool) generateOrder() error {
 		timestampList[i] = cIndex.OTime
 		mp.totalCommands++
 		mp.totalSelectLatency += nowT - cIndex.RTime
+
+		mp.intervalCommands++
+		mp.intervalSelectLatency += nowT - cIndex.RTime
 	}
 
 	// generate pre order message.
@@ -363,6 +400,7 @@ func (mp *metaPool) generateOrder() error {
 		return fmt.Errorf("generate consensus message error: %s", err)
 	}
 	mp.sender.BroadcastPCM(cm)
+	mp.genOrder++
 	return nil
 }
 
@@ -400,6 +438,9 @@ func (mp *metaPool) ProcessVote(vote *protos.Vote) error {
 		mp.totalOrderLogs++
 		mp.totalLatency += pOrder.OrderedTime - pOrder.TimestampList()[0]
 
+		mp.intervalOrderLogs++
+		mp.intervalLatency += pOrder.OrderedTime - pOrder.TimestampList()[0]
+
 		mp.logger.Debugf("[%d] found quorum votes, generate quorum order %s", mp.author, pOrder.Format())
 		delete(mp.aggMap, vote.Digest)
 
@@ -408,6 +449,9 @@ func (mp *metaPool) ProcessVote(vote *protos.Vote) error {
 			return fmt.Errorf("generate consensus message error: %s", err)
 		}
 		mp.sender.BroadcastPCM(cm)
+
+		mp.orderCount++
+		mp.orderSize += len(pOrder.PreOrder.CommandList)
 		return nil
 	}
 
@@ -480,10 +524,18 @@ func (mp *metaPool) ReadPartials(qStream types.QueryStream) []*protos.PartialOrd
 //=====================================================================
 
 func (mp *metaPool) GenerateProposal() (*protos.PartialOrderBatch, error) {
+	//now := time.Now()
+	//
+	//if now.Sub(mp.genTime).Milliseconds() < 50 {
+	//	return protos.NewPartialOrderBatch(mp.author, mp.n), nil
+	//}
+	//
+	//mp.genTime = now
+
 	batch := protos.NewPartialOrderBatch(mp.author, mp.n)
 
 	for id, replica := range mp.replicas {
-		index := int(id-1)
+		index := int(id - 1)
 
 		// read the highest partial order from replica 'id'.
 		hOrder := replica.GetHighOrder()
@@ -510,7 +562,7 @@ func (mp *metaPool) VerifyProposal(batch *protos.PartialOrderBatch) (types.Query
 	for index, no := range batch.SeqList {
 
 		// calculate the node id.
-		id := uint64(index+1)
+		id := uint64(index + 1)
 
 		if no <= mp.commitNo[id] {
 			// committed previous partial order for node id, including partial number 0.
@@ -542,7 +594,7 @@ func (mp *metaPool) VerifyProposal(batch *protos.PartialOrderBatch) (types.Query
 	var qStream types.QueryStream
 
 	for index, no := range batch.SeqList {
-		id := uint64(index+1)
+		id := uint64(index + 1)
 
 		for {
 			if no <= mp.commitNo[id] {
@@ -566,6 +618,12 @@ func (mp *metaPool) QueryMetrics() types.MetricsInfo {
 	return types.MetricsInfo{
 		AvePackOrderLatency: mp.avePackOrderLatency(),
 		AveOrderLatency:     mp.aveOrderLatency(),
+		CurPackOrderLatency: mp.curPackOrderLatency(),
+		CurOrderLatency:     mp.curOrderLatency(),
+		AveOrderSize:        mp.aveOrderSize(),
+		CommandPS:           mp.commandThroughput(),
+		LogPS:               mp.logThroughput(),
+		GenLogPS:            mp.genLogThroughput(),
 	}
 }
 
@@ -576,9 +634,54 @@ func (mp *metaPool) avePackOrderLatency() float64 {
 	return types.NanoToMillisecond(mp.totalSelectLatency / int64(mp.totalCommands))
 }
 
+func (mp *metaPool) curPackOrderLatency() float64 {
+	if mp.intervalCommands == 0 {
+		return 0
+	}
+	ret := types.NanoToMillisecond(mp.intervalSelectLatency / int64(mp.intervalCommands))
+	mp.intervalCommands = 0
+	mp.intervalSelectLatency = 0
+	return ret
+}
+
 func (mp *metaPool) aveOrderLatency() float64 {
 	if mp.totalOrderLogs == 0 {
 		return 0
 	}
 	return types.NanoToMillisecond(mp.totalLatency / int64(mp.totalOrderLogs))
+}
+
+func (mp *metaPool) curOrderLatency() float64 {
+	if mp.intervalOrderLogs == 0 {
+		return 0
+	}
+	ret := types.NanoToMillisecond(mp.intervalLatency / int64(mp.intervalOrderLogs))
+	mp.intervalOrderLogs = 0
+	mp.intervalLatency = 0
+	return ret
+}
+
+func (mp *metaPool) aveOrderSize() int {
+	if mp.orderCount == 0 {
+		return 0
+	}
+	return mp.orderSize / mp.orderCount
+}
+
+func (mp *metaPool) commandThroughput() float64 {
+	interval := types.NanoToMillisecond(time.Now().UnixNano() - mp.startTime)
+	fInterval := interval / 1000
+	return float64(mp.commandCount) / fInterval
+}
+
+func (mp *metaPool) logThroughput() float64 {
+	interval := types.NanoToMillisecond(time.Now().UnixNano() - mp.startTime)
+	fInterval := interval / 1000
+	return float64(mp.orderCount) / fInterval
+}
+
+func (mp *metaPool) genLogThroughput() float64 {
+	interval := types.NanoToMillisecond(time.Now().UnixNano() - mp.startTime)
+	fInterval := interval / 1000
+	return float64(mp.genOrder) / fInterval
 }

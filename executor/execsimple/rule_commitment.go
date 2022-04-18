@@ -44,8 +44,14 @@ type commitmentRule struct {
 	// totalCommandInfo is the number of committed command info.
 	totalCommandInfo int
 
+	//
+	intervalCommandInfo int
+
 	// totalLatency is the total latency since command info generation to be committed.
 	totalLatency int64
+
+	//
+	intervalLatency int64
 }
 
 func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder, reader internal.MetaReader, logger external.Logger) *commitmentRule {
@@ -81,8 +87,11 @@ func (cr *commitmentRule) freeWill(frontStream types.FrontStream) ([]types.Inner
 	// here, the command-pair with natural order cannot take part in concurrent command set.
 	var sortable types.SortableInnerBlocks
 	for _, frontC := range frontStream.Stream {
+		sub := time.Now().UnixNano() - frontC.GTime
 		cr.totalCommandInfo++
-		cr.totalLatency += time.Now().UnixNano() - frontC.GTime
+		cr.totalLatency += sub
+		cr.intervalCommandInfo++
+		cr.intervalLatency += sub
 
 		// generate block, try to fetch the raw command to fulfill the block.
 		rawCommand := cr.reader.ReadCommand(frontC.CurCmd)
