@@ -18,6 +18,9 @@ type OrderInfo struct {
 
 	// Timestamp indicates the time when current order is generated.
 	Timestamp int64
+
+	//
+	AfterQuorum bool
 }
 
 func NewOrderInfos(seqNo uint64, pOrder *protos.PartialOrder) ([]OrderInfo, uint64) {
@@ -50,7 +53,7 @@ func (info OrderInfo) Less(item btree.Item) bool {
 
 type OrderStream []OrderInfo
 
-func (os OrderStream) Len() int { return len(os) }
+func (os OrderStream) Len() int      { return len(os) }
 func (os OrderStream) Swap(i, j int) { os[i], os[j] = os[j], os[i] }
 func (os OrderStream) Less(i, j int) bool {
 	// query index for the same node, sort according to sequence number.

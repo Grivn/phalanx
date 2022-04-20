@@ -57,7 +57,7 @@ type commitmentRule struct {
 func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder, reader internal.MetaReader, logger external.Logger) *commitmentRule {
 	logger.Infof("[%d] initiate free will committee, replica count %d", author, n)
 	democracy := make(map[uint64]*btree.BTree)
-	for i:=0; i<n; i++ {
+	for i := 0; i < n; i++ {
 		democracy[uint64(i+1)] = btree.New(2)
 	}
 
@@ -95,7 +95,7 @@ func (cr *commitmentRule) freeWill(frontStream types.FrontStream) ([]types.Inner
 
 		// generate block, try to fetch the raw command to fulfill the block.
 		rawCommand := cr.reader.ReadCommand(frontC.CurCmd)
-		block := types.NewInnerBlock(cr.frontNo, frontStream.Safe, rawCommand, frontC.Timestamps[cr.fault])
+		block := types.NewInnerBlock(cr.frontNo, frontStream.Safe, rawCommand, frontC.Timestamps[cr.fault], frontC.MediumTSet[cr.fault])
 		cr.logger.Infof("[%d] generate block %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.

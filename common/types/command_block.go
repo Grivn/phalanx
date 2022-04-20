@@ -6,8 +6,8 @@ import (
 )
 
 // NewInnerBlock generates the phalanx inner block to commit.
-func NewInnerBlock(frontNo uint64, safe bool, command *protos.Command, timestamp int64) InnerBlock {
-	return InnerBlock{FrontNo: frontNo, Safe: safe, Command: command, Timestamp: timestamp}
+func NewInnerBlock(frontNo uint64, safe bool, command *protos.Command, timestamp int64, mediumT int64) InnerBlock {
+	return InnerBlock{FrontNo: frontNo, Safe: safe, Command: command, Timestamp: timestamp, MediumT: mediumT}
 }
 
 // InnerBlock is an executed block for phalanx.
@@ -26,6 +26,9 @@ type InnerBlock struct {
 
 	// Timestamp is the trusted time for current block generation.
 	Timestamp int64
+
+	//
+	MediumT int64
 }
 
 func (block InnerBlock) Format() string {
@@ -43,6 +46,7 @@ type FrontStream struct {
 
 // SortableInnerBlocks is a slice of inner block to sort.
 type SortableInnerBlocks []InnerBlock
+
 func (s SortableInnerBlocks) Len() int {
 	return len(s)
 }

@@ -147,13 +147,16 @@ type metaPool struct {
 	byz bool
 
 	//
+	openLatency int
+
+	//
 	genTime time.Time
 
 	//
 	genOrder int
 }
 
-func NewMetaPool(byz bool, duration time.Duration, n, multi int, logCount int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
+func NewMetaPool(byz bool, openLatency int, duration time.Duration, n, multi int, logCount int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
 	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
 
 	// initiate communication channel.
@@ -182,31 +185,32 @@ func NewMetaPool(byz bool, duration time.Duration, n, multi int, logCount int, a
 	clients := make(map[uint64]internal.ClientInstance)
 	for i := 0; i < n*multi; i++ {
 		id := uint64(i + 1)
-		client := instance.NewClient(author, id, commandC, active, logger)
+		client := instance.NewClient(author, id, commandC, active, logger, byz, openLatency)
 		clients[id] = client
 	}
 
 	return &metaPool{
-		author:   author,
-		n:        n,
-		multi:    multi,
-		logCount: logCount,
-		quorum:   types.CalculateQuorum(n),
-		sequence: uint64(0),
-		aggMap:   make(map[string]*protos.PartialOrder),
-		replicas: subs,
-		pTracker: pTracker,
-		cTracker: tracker.NewCommandTracker(author, logger),
-		clients:  clients,
-		commandC: commandC,
-		timer:    newLocalTimer(author, timeoutC, duration, logger),
-		timeoutC: timeoutC,
-		closeC:   make(chan bool),
-		sender:   sender,
-		logger:   logger,
-		commitNo: committedTracker,
-		active:   active,
-		byz:      byz,
+		author:      author,
+		n:           n,
+		multi:       multi,
+		logCount:    logCount,
+		quorum:      types.CalculateQuorum(n),
+		sequence:    uint64(0),
+		aggMap:      make(map[string]*protos.PartialOrder),
+		replicas:    subs,
+		pTracker:    pTracker,
+		cTracker:    tracker.NewCommandTracker(author, logger),
+		clients:     clients,
+		commandC:    commandC,
+		timer:       newLocalTimer(author, timeoutC, duration, logger),
+		timeoutC:    timeoutC,
+		closeC:      make(chan bool),
+		sender:      sender,
+		logger:      logger,
+		commitNo:    committedTracker,
+		active:      active,
+		byz:         byz,
+		openLatency: openLatency,
 	}
 }
 
@@ -263,7 +267,7 @@ func (mp *metaPool) clientInstanceReminder(command *protos.Command) {
 		// if there is not a client instance, initiate it.
 		// NOTE: concurrency problem.
 		mp.logger.Errorf("[%d] don't have client instance %d, initiate it", mp.author, command.Author)
-		client = instance.NewClient(mp.author, command.Author, mp.commandC, mp.active, mp.logger)
+		client = instance.NewClient(mp.author, command.Author, mp.commandC, mp.active, mp.logger, mp.byz, mp.openLatency)
 		mp.clients[command.Author] = client
 	}
 

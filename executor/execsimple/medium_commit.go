@@ -48,9 +48,10 @@ func newOrderMediumT(logger external.Logger) *orderMediumT {
 }
 
 func (ot *orderMediumT) commitAccordingMediumT(block types.InnerBlock, seqNo uint64) {
+	block.Timestamp = block.MediumT
 	ot.blocks = append(ot.blocks, block)
 
-	if len(ot.blocks) < 2000 {
+	if len(ot.blocks) < 1000 {
 		return
 	}
 	sort.Sort(ot.blocks)

@@ -39,7 +39,7 @@ type phalanxImpl struct {
 	logCount int
 }
 
-func NewPhalanxProvider(oLeader uint64, byz bool, duration time.Duration, interval int, cDuration time.Duration, n int, multi int, logCount int, memSize int, author uint64, commandSize int, exec external.ExecutionService, network external.NetworkService, logger external.Logger, selected uint64) *phalanxImpl {
+func NewPhalanxProvider(oLeader uint64, byz bool, openLatency int, duration time.Duration, interval int, cDuration time.Duration, n int, multi int, logCount int, memSize int, author uint64, commandSize int, exec external.ExecutionService, network external.NetworkService, logger external.Logger, selected uint64) *phalanxImpl {
 	// todo read crypto key pairs from config files.
 	// initiate key pairs.
 	_ = crypto.SetKeys()
@@ -55,7 +55,7 @@ func NewPhalanxProvider(oLeader uint64, byz bool, duration time.Duration, interv
 	txMgr := txmanager.NewTxManager(interval, cDuration, multi, author, commandSize, memSize, network, mLogs.txManagerLog, selected)
 
 	// initiate meta pool.
-	mPool := metapool.NewMetaPool(byz, duration, n, multi, logCount, author, network, mLogs.metaPoolLog)
+	mPool := metapool.NewMetaPool(byz, openLatency, duration, n, multi, logCount, author, network, mLogs.metaPoolLog)
 
 	// initiate executor.
 	executor := execsimple.NewExecutor(oLeader, author, n, mPool, txMgr, exec, mLogs.executorLog)

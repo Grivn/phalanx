@@ -49,7 +49,7 @@ func (collect *collectionRule) collectPartials(oInfo types.OrderInfo) bool {
 	}
 
 	if collect.cRecorder.IsQuorum(commandD) {
-		return false
+		oInfo.AfterQuorum = true
 	}
 
 	// push back partial order into recorder.queue.
@@ -71,6 +71,7 @@ func (collect *collectionRule) collectPartials(oInfo types.OrderInfo) bool {
 	case collect.quorum:
 		// current command has reached quorum sequenced status.
 		sort.Sort(info.Timestamps)
+		sort.Sort(info.MediumTSet)
 		collect.cRecorder.QuorumStatus(commandD)
 		collect.logger.Infof("[%d] found quorum sequenced command %s", collect.author, commandD)
 	}
