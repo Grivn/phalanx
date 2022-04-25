@@ -62,11 +62,14 @@ type proposerImpl struct {
 
 	//
 	timer *localTimer
+
+	//
+	selected uint64
 }
 
 func newProposer(author uint64, commandSize int, memSize int, txC chan *protos.Transaction,
 	sender external.NetworkService, logger external.Logger,
-	front *innerFronts, interval int, readFront uint64, duration time.Duration) *proposerImpl {
+	front *innerFronts, interval int, readFront uint64, duration time.Duration, selected uint64) *proposerImpl {
 	intervalC := make(chan *protos.Command)
 	return &proposerImpl{
 		author:      author,
@@ -82,6 +85,7 @@ func newProposer(author uint64, commandSize int, memSize int, txC chan *protos.T
 		readFront:   readFront,
 		duration:    duration,
 		timer:       newLocalTimer(author, intervalC, duration, logger),
+		selected:    selected,
 	}
 }
 
@@ -113,6 +117,9 @@ func (p *proposerImpl) reply(command *protos.Command) {
 }
 
 func (p *proposerImpl) processTx(tx *protos.Transaction) {
+	if p.selected != uint64(0) && p.author < p.selected {
+		return
+	}
 	if atomic.LoadInt32(&p.txCount) == p.memSize {
 		return
 	}

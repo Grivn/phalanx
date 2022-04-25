@@ -7,6 +7,7 @@ import (
 
 // sortableTimestamps is a sortable slice for free will trusted timestamp generation.
 type sortableTimestamps []int64
+
 func (ts sortableTimestamps) Len() int           { return len(ts) }
 func (ts sortableTimestamps) Less(i, j int) bool { return ts[i] < ts[j] }
 func (ts sortableTimestamps) Swap(i, j int)      { ts[i], ts[j] = ts[j], ts[i] }
@@ -32,6 +33,9 @@ type CommandInfo struct {
 
 	// GTime is the timestamp to generate current command info.
 	GTime int64
+
+	//
+	MediumTSet sortableTimestamps
 }
 
 type CommandStream []*CommandInfo
@@ -56,6 +60,10 @@ func (ci *CommandInfo) Format() string {
 func (ci *CommandInfo) OrderAppend(oInfo OrderInfo) {
 	ci.Orders[oInfo.Author] = oInfo
 	ci.Timestamps = append(ci.Timestamps, oInfo.Timestamp)
+
+	if !oInfo.AfterQuorum {
+		ci.MediumTSet = append(ci.MediumTSet, oInfo.Timestamp)
+	}
 }
 
 func (ci *CommandInfo) OrderCount() int {

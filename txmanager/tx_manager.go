@@ -34,25 +34,25 @@ type txManager struct {
 	logger external.Logger
 }
 
-func NewTxManager(interval int, duration time.Duration, multi int, author uint64, commandSize int, memSize int, sender external.NetworkService, logger external.Logger) internal.TxManager {
+func NewTxManager(interval int, duration time.Duration, multi int, author uint64, commandSize int, memSize int, sender external.NetworkService, logger external.Logger, selected uint64) internal.TxManager {
 	proposers := make(map[uint64]*proposerImpl)
 
 	txC := make(chan *protos.Transaction)
 
-	base := int(author-1)*multi
+	base := int(author-1) * multi
 
 	fronts := newInnerFronts()
 
-	for i:=base; i<base+multi; i++ {
-		id := uint64(i+1)
+	for i := base; i < base+multi; i++ {
+		id := uint64(i + 1)
 
-		readFront := id-1
+		readFront := id - 1
 
 		if i == base {
-			readFront = uint64(base+multi+1)
+			readFront = uint64(base + multi + 1)
 		}
 
-		proposer := newProposer(id, commandSize, memSize, txC, sender, logger, fronts, interval, readFront, duration)
+		proposer := newProposer(id, commandSize, memSize, txC, sender, logger, fronts, interval, readFront, duration, selected)
 
 		proposers[id] = proposer
 	}

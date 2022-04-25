@@ -69,19 +69,23 @@ type orderRule struct {
 
 	// frontAttackIntervalRisk is used to record the front attacked command request with risk of interval relationship.
 	frontAttackIntervalRisk int
+
+	//
+	mediumCommit *orderMediumT
 }
 
 func newOrderRule(oLeader, author uint64, n int, cRecorder internal.CommandRecorder, reader internal.MetaReader, committer internal.MetaCommitter, manager internal.TxManager, exec external.ExecutionService, logger external.Logger) *orderRule {
 	return &orderRule{
-		author:  author,
-		collect: newCollectRule(author, n, cRecorder, logger),
-		execute: newExecutionRule(oLeader, author, n, cRecorder, logger),
-		commit:  newCommitmentRule(author, n, cRecorder, reader, logger),
-		reload:  committer,
-		exec:    exec,
-		logger:  logger,
-		txMgr:   manager,
+		author:          author,
+		collect:         newCollectRule(author, n, cRecorder, logger),
+		execute:         newExecutionRule(oLeader, author, n, cRecorder, logger),
+		commit:          newCommitmentRule(author, n, cRecorder, reader, logger),
+		reload:          committer,
+		exec:            exec,
+		logger:          logger,
+		txMgr:           manager,
 		commandRecorder: make(map[uint64]uint64),
+		mediumCommit:    newOrderMediumT(logger),
 	}
 }
 
@@ -105,6 +109,7 @@ func (rule *orderRule) processPartialOrder() {
 			rule.exec.CommandExecution(blk, rule.seqNo)
 			rule.reload.Committed(blk.Command.Author, blk.Command.Sequence)
 			rule.txMgr.Reply(blk.Command)
+			rule.mediumCommit.commitAccordingMediumT(blk, rule.seqNo)
 
 			rule.detectFrontSetTypes(!blk.Safe)
 			rule.detectFrontAttackGivenRelationship(!blk.Safe, blk.Command)
