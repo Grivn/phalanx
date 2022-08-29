@@ -1,15 +1,16 @@
-package execsimple
+package order
 
 import (
 	"container/list"
-	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/executor/recorder"
-	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/executor/recorder"
+	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 )
 
 type executorImpl struct {

@@ -1,12 +1,12 @@
-package execsimple
+package order
 
 import (
-	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 	"sort"
 	"time"
 
+	"github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 	"github.com/google/btree"
 )
 

@@ -15,15 +15,6 @@ import (
 	"github.com/Grivn/phalanx/metapool/tracker"
 )
 
-// todo pre-trusted order entry
-// while receiving a quorum cert in cross-consensus:
-// 1) qc with lower or equal height: skip
-// 2) qc with higher height: update the trusted number and generate QC cert for it
-//
-// while we receive a pre-order, check if there is already QC for it:
-// 1) there isn't QC cert: normal process
-// 2) there is a QC cert: check the digest between them, if they are not equal, reject.
-
 type metaPool struct {
 	//===================================== basic information =========================================
 
@@ -220,11 +211,9 @@ func (mp *metaPool) Run() {
 		case <-mp.closeC:
 			return
 		case c := <-mp.commandC:
-			if err := mp.tryGeneratePreOrder(c); err != nil {
-				panic(fmt.Sprintf("log manager runtime error: %s", err))
-			}
+			mp.appendCommandIndex(c)
 		case <-mp.timeoutC:
-			if err := mp.tryGeneratePreOrder(nil); err != nil {
+			if err := mp.tryGeneratePreOrder(); err != nil {
 				panic(fmt.Sprintf("log manager runtime error: %s", err))
 			}
 		}
@@ -300,17 +289,10 @@ func (mp *metaPool) updateHighOrder(pre *protos.PreOrder) {
 	mp.highOrder = pre
 }
 
-// tryGeneratePreOrder is used to process the command received from one client instance.
-// We would like to assign the latest seqNo for it and generate a pre-order message.
-func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
+// appendCommandIndex is used to append the received command index into the command set.
+func (mp *metaPool) appendCommandIndex(cIndex *types.CommandIndex) {
 	mp.mutex.Lock()
 	defer mp.mutex.Unlock()
-
-	if cIndex == nil {
-		// timeout event generate order.
-		mp.logger.Debugf("[%d] partial order generation timer expired", mp.author)
-		return mp.generateOrder()
-	}
 
 	if len(mp.commandSet) == 0 {
 		mp.timer.startTimer()
@@ -318,13 +300,16 @@ func (mp *metaPool) tryGeneratePreOrder(cIndex *types.CommandIndex) error {
 
 	// command list with receive-order.
 	mp.commandSet = append(mp.commandSet, cIndex)
+}
 
-	if len(mp.commandSet) < mp.logCount {
-		// skip.
-		return nil
-	}
-	mp.timer.stopTimer()
+// tryGeneratePreOrder is used to process the command received from one client instance.
+// We would like to assign the latest seqNo for it and generate a pre-order message.
+func (mp *metaPool) tryGeneratePreOrder() error {
+	mp.mutex.Lock()
+	defer mp.mutex.Unlock()
 
+	// timeout event generate order.
+	mp.logger.Debugf("[%d] partial order generation timer expired", mp.author)
 	return mp.generateOrder()
 }
 
@@ -528,14 +513,6 @@ func (mp *metaPool) ReadPartials(qStream types.QueryStream) []*protos.PartialOrd
 //=====================================================================
 
 func (mp *metaPool) GenerateProposal() (*protos.PartialOrderBatch, error) {
-	//now := time.Now()
-	//
-	//if now.Sub(mp.genTime).Milliseconds() < 50 {
-	//	return protos.NewPartialOrderBatch(mp.author, mp.n), nil
-	//}
-	//
-	//mp.genTime = now
-
 	batch := protos.NewPartialOrderBatch(mp.author, mp.n)
 
 	for id, replica := range mp.replicas {

@@ -2,17 +2,16 @@ package phalanx
 
 import (
 	"fmt"
-	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/executor/execsimple"
+	"github.com/Grivn/phalanx/executor/order"
 	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
+	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/metapool"
-	"github.com/Grivn/phalanx/txmanager"
-
+	"github.com/Grivn/phalanx/receiver"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -52,13 +51,13 @@ func NewPhalanxProvider(oLeader uint64, byz bool, openLatency int, duration time
 	}
 
 	// initiate tx manager.
-	txMgr := txmanager.NewTxManager(interval, cDuration, multi, author, commandSize, memSize, network, mLogs.txManagerLog, selected)
+	txMgr := receiver.NewTxManager(multi, author, commandSize, memSize, network, mLogs.txManagerLog, selected)
 
 	// initiate meta pool.
 	mPool := metapool.NewMetaPool(byz, openLatency, duration, n, multi, logCount, author, network, mLogs.metaPoolLog)
 
 	// initiate executor.
-	executor := execsimple.NewExecutor(oLeader, author, n, mPool, txMgr, exec, mLogs.executorLog)
+	executor := order.NewExecutor(oLeader, author, n, mPool, txMgr, exec, mLogs.executorLog)
 
 	return &phalanxImpl{
 		author:    author,

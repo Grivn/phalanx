@@ -1,11 +1,11 @@
-package execsimple
+package order
 
 import (
-	"github.com/Grivn/phalanx/internal"
 	"sort"
 
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/internal"
 )
 
 type collectionRule struct {

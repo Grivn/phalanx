@@ -37,12 +37,13 @@ type commandRecorder struct {
 	// we could skip to scan the cyclic dependency for command info which is not a leaf node.
 	leaves map[string]bool
 
-	// FIFOQueue is used to record partial orders from each node.
-	FIFOQueue map[uint64]*list.List
+	// fifoQueue is used to record partial orders from each node.
+	fifoQueue map[uint64]*list.List
 
-	//
+	// oneCorrect is used to define the count of numbers which means there is at least one correct node.
 	oneCorrect int
 
+	// quorum is used to define the number of nodes we need to create legal cert.
 	quorum int
 
 	// logger is used to print logs.
@@ -51,8 +52,8 @@ type commandRecorder struct {
 
 func NewCommandRecorder(author uint64, n int, logger external.Logger) internal.CommandRecorder {
 	set := make(map[uint64]*list.List)
-	for i:=0; i<n; i++ {
-		id := uint64(i+1)
+	for i := 0; i < n; i++ {
+		id := uint64(i + 1)
 		set[id] = list.New()
 	}
 	return &commandRecorder{
@@ -64,10 +65,11 @@ func NewCommandRecorder(author uint64, n int, logger external.Logger) internal.C
 		mapWat: make(map[string]bool),
 		mapPri: make(map[string][]*types.CommandInfo),
 		leaves: make(map[string]bool),
+
 		oneCorrect: types.CalculateOneCorrect(n),
-		quorum: types.CalculateQuorum(n),
-		FIFOQueue: set,
-		logger: logger,
+		quorum:     types.CalculateQuorum(n),
+		fifoQueue:  set,
+		logger:     logger,
 	}
 }
 
@@ -215,7 +217,7 @@ func (recorder *commandRecorder) PushBack(oInfo types.OrderInfo) error {
 		return nil
 	}
 
-	queue, ok := recorder.FIFOQueue[oInfo.Author]
+	queue, ok := recorder.fifoQueue[oInfo.Author]
 
 	if !ok {
 		return fmt.Errorf("cannot find order queue of node %d", oInfo.Author)
@@ -231,7 +233,7 @@ func (recorder *commandRecorder) FrontCommands() ([]string, bool) {
 
 	counts := make(map[string]int)
 
-	for _, queue := range recorder.FIFOQueue {
+	for _, queue := range recorder.fifoQueue {
 
 		for {
 			if queue.Len() == 0 {
@@ -323,7 +325,7 @@ func (recorder *commandRecorder) frontFilter(fronts []string) []string {
 
 // OligarchyLeaderFront returns the oligarchy leader ordering.
 func (recorder *commandRecorder) OligarchyLeaderFront(leader uint64) string {
-	queue := recorder.FIFOQueue[leader]
+	queue := recorder.fifoQueue[leader]
 
 	for {
 		if queue.Len() == 0 {

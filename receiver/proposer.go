@@ -1,11 +1,10 @@
-package txmanager
+package receiver
 
 import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"sync/atomic"
-	"time"
 )
 
 type proposerImpl struct {
@@ -32,15 +31,6 @@ type proposerImpl struct {
 	closeC chan bool
 
 	//
-	intervalC <-chan *protos.Command
-
-	//
-	interval int
-
-	//
-	duration time.Duration
-
-	//
 	txCount int32
 
 	//
@@ -55,36 +45,19 @@ type proposerImpl struct {
 	logger external.Logger
 
 	//
-	front *innerFronts
-
-	//
-	readFront uint64
-
-	//
-	timer *localTimer
-
-	//
 	selected uint64
 }
 
 func newProposer(author uint64, commandSize int, memSize int, txC chan *protos.Transaction,
-	sender external.NetworkService, logger external.Logger,
-	front *innerFronts, interval int, readFront uint64, duration time.Duration, selected uint64) *proposerImpl {
-	intervalC := make(chan *protos.Command)
+	sender external.NetworkService, logger external.Logger, selected uint64) *proposerImpl {
 	return &proposerImpl{
 		author:      author,
 		commandSize: commandSize,
 		txC:         txC,
 		closeC:      make(chan bool),
-		intervalC:   intervalC,
 		sender:      sender,
 		logger:      logger,
 		memSize:     int32(memSize),
-		front:       front,
-		interval:    interval,
-		readFront:   readFront,
-		duration:    duration,
-		timer:       newLocalTimer(author, intervalC, duration, logger),
 		selected:    selected,
 	}
 }
@@ -96,14 +69,11 @@ func (p *proposerImpl) run() {
 			return
 		case tx := <-p.txC:
 			p.processTx(tx)
-		case command := <-p.intervalC:
-			p.front.update(command)
 		}
 	}
 }
 
 func (p *proposerImpl) quit() {
-	p.timer.stopTimer()
 	select {
 	case <-p.closeC:
 	default:
@@ -129,19 +99,8 @@ func (p *proposerImpl) processTx(tx *protos.Transaction) {
 	if len(p.txSet) == p.commandSize {
 		p.seqNo++
 		command := types.GenerateCommand(p.author, p.seqNo, p.txSet)
-
-		if command.Sequence%uint64(p.interval) == 0 {
-			p.timer.startTimerOnlyOne(command)
-			command = p.frontInfo(command)
-		}
-
 		p.sender.BroadcastCommand(command)
 		p.logger.Infof("[%d] generate command %s", p.author, command.Format())
 		p.txSet = nil
 	}
-}
-
-func (p *proposerImpl) frontInfo(command *protos.Command) *protos.Command {
-	command.FrontRunner = p.front.read(p.readFront)
-	return command
 }

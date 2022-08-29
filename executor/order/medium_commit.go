@@ -1,10 +1,11 @@
-package execsimple
+package order
 
 import (
+	"sort"
+
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"sort"
 )
 
 type orderMediumT struct {
