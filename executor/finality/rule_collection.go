@@ -1,4 +1,4 @@
-package order
+package finality
 
 import (
 	"sort"
