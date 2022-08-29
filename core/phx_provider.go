@@ -9,7 +9,7 @@ import (
 // Provider is the phalanx service provider for all kinds of consensus algorithm, such as PBFT or HS.
 type Provider interface {
 	api.Runner
-	Proposer
+	Receiver
 	Communicator
 	Generator
 	Executor
@@ -18,8 +18,8 @@ type Provider interface {
 	QueryMetrics() types.MetricsInfo
 }
 
-// Proposer is used to generate phalanx commands by the transactions received.
-type Proposer interface {
+// Receiver is used to receive transactions and push them into phalanx memory pool.
+type Receiver interface {
 	// ReceiveTransaction is used to process transaction we have received.
 	ReceiveTransaction(tx *protos.Transaction)
 }
