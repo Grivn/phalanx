@@ -32,12 +32,6 @@ type clientInstance struct {
 	// id indicates the identifier for client.
 	id uint64
 
-	//
-	openLatency int
-
-	//
-	isByz bool
-
 	//=========================== command stream management ==================================
 
 	// proposedNo indicates the proposed seqNo for current client.
@@ -70,7 +64,7 @@ type clientInstance struct {
 	logger external.Logger
 }
 
-func NewClient(author, id uint64, commandC chan<- *types.CommandIndex, activeCount *int64, logger external.Logger, isByz bool, openLatency int) internal.ClientInstance {
+func NewClient(author, id uint64, commandC chan<- *types.CommandIndex, activeCount *int64, logger external.Logger) internal.ClientInstance {
 	logger.Infof("[%d] initiate manager for client %d", author, id)
 	committedNo := make(map[uint64]bool)
 	committedNo[uint64(0)] = true
@@ -84,8 +78,6 @@ func NewClient(author, id uint64, commandC chan<- *types.CommandIndex, activeCou
 		isActive:    false,
 		activeCount: activeCount,
 		logger:      logger,
-		isByz:       isByz,
-		openLatency: openLatency,
 	}
 }
 
@@ -125,9 +117,6 @@ func (client *clientInstance) Append(command *protos.Command) int {
 
 		// the timestamp for partial ordering.
 		for {
-			if client.isByz != true && client.openLatency > 0 && client.id != client.author {
-				time.Sleep(time.Duration(client.openLatency) * time.Microsecond)
-			}
 			current := time.Now().UnixNano()
 			if current > client.timestamp {
 				c.OTime = time.Now().UnixNano()

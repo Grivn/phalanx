@@ -1,12 +1,12 @@
-package order
+package finality
 
 import (
 	"sort"
-	"time"
 
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
+	"github.com/Grivn/phalanx/metrics"
 	"github.com/google/btree"
 )
 
@@ -41,20 +41,12 @@ type commitmentRule struct {
 	// logger is used to print logs.
 	logger external.Logger
 
-	// totalCommandInfo is the number of committed command info.
-	totalCommandInfo int
-
-	//
-	intervalCommandInfo int
-
-	// totalLatency is the total latency since command info generation to be committed.
-	totalLatency int64
-
-	//
-	intervalLatency int64
+	// metrics is used to record the info.
+	metrics *metrics.RuleCommitmentMetrics
 }
 
-func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder, reader internal.MetaReader, logger external.Logger) *commitmentRule {
+func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder,
+	reader internal.MetaReader, logger external.Logger, metrics *metrics.Metrics) *commitmentRule {
 	logger.Infof("[%d] initiate free will committee, replica count %d", author, n)
 	democracy := make(map[uint64]*btree.BTree)
 	for i := 0; i < n; i++ {
@@ -72,6 +64,7 @@ func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder, 
 		democracy:  democracy,
 		reader:     reader,
 		logger:     logger,
+		metrics:    metrics.RuleCommitmentMetrics,
 	}
 }
 
@@ -87,11 +80,8 @@ func (cr *commitmentRule) freeWill(frontStream types.FrontStream) ([]types.Inner
 	// here, the command-pair with natural order cannot take part in concurrent command set.
 	var sortable types.SortableInnerBlocks
 	for _, frontC := range frontStream.Stream {
-		sub := time.Now().UnixNano() - frontC.GTime
-		cr.totalCommandInfo++
-		cr.totalLatency += sub
-		cr.intervalCommandInfo++
-		cr.intervalLatency += sub
+		// record metrics.
+		cr.metrics.CommitFrontCommandInfo(frontC)
 
 		// generate block, try to fetch the raw command to fulfill the block.
 		rawCommand := cr.reader.ReadCommand(frontC.CurCmd)

@@ -10,9 +10,6 @@ type Executor interface {
 
 	// CommitStream is used to commit the partial order stream.
 	CommitStream(qStream types.QueryStream)
-
-	// QueryMetrics returns metrics info of executor.
-	QueryMetrics() types.MetricsInfo
 }
 
 //=============================================== Command Reader for Executor =====================================================

@@ -2,7 +2,8 @@ package phalanx
 
 import (
 	"fmt"
-	"github.com/Grivn/phalanx/executor/order"
+	"github.com/Grivn/phalanx/executor/finality"
+	"github.com/Grivn/phalanx/metrics"
 	"time"
 
 	"github.com/Grivn/phalanx/common/crypto"
@@ -31,6 +32,9 @@ type phalanxImpl struct {
 	// executor is used to generate the final ordered blocks.
 	executor internal.Executor
 
+	//
+	metrics *metrics.Metrics
+
 	// logger is used to print logs.
 	logger external.Logger
 
@@ -50,14 +54,17 @@ func NewPhalanxProvider(oLeader uint64, byz bool, openLatency int, duration time
 		return nil
 	}
 
+	// create metrics.
+	pMetrics := metrics.NewMetrics()
+
 	// initiate tx manager.
 	txMgr := receiver.NewTxManager(multi, author, commandSize, memSize, network, mLogs.txManagerLog, selected)
 
 	// initiate meta pool.
-	mPool := metapool.NewMetaPool(byz, openLatency, duration, n, multi, logCount, author, network, mLogs.metaPoolLog)
+	mPool := metapool.NewMetaPool(byz, duration, n, multi, logCount, author, network, mLogs.metaPoolLog, pMetrics.MetaPoolMetrics)
 
 	// initiate executor.
-	executor := order.NewExecutor(oLeader, author, n, mPool, txMgr, exec, mLogs.executorLog)
+	executor := finality.NewExecutor(oLeader, author, n, mPool, txMgr, exec, mLogs.executorLog, pMetrics)
 
 	return &phalanxImpl{
 		author:    author,
@@ -140,34 +147,5 @@ func (phi *phalanxImpl) CommitProposal(pBatch *protos.PartialOrderBatch) error {
 
 // QueryMetrics returns the metrics info of phalanx.
 func (phi *phalanxImpl) QueryMetrics() types.MetricsInfo {
-	execMetrics := phi.executor.QueryMetrics()
-	metaMetrics := phi.metaPool.QueryMetrics()
-	return types.MetricsInfo{
-		AveOrderSize:             metaMetrics.AveOrderSize,
-		AvePackOrderLatency:      metaMetrics.AvePackOrderLatency,
-		CurPackOrderLatency:      metaMetrics.CurPackOrderLatency,
-		AveOrderLatency:          metaMetrics.AveOrderLatency,
-		CurOrderLatency:          metaMetrics.CurOrderLatency,
-		AveLogLatency:            execMetrics.AveLogLatency,
-		CurLogLatency:            execMetrics.CurLogLatency,
-		AveCommandInfoLatency:    execMetrics.AveCommandInfoLatency,
-		CurCommandInfoLatency:    execMetrics.CurCommandInfoLatency,
-		AveCommitStreamLatency:   execMetrics.AveCommitStreamLatency,
-		CurCommitStreamLatency:   execMetrics.CurCommitStreamLatency,
-		SafeCommandCount:         execMetrics.SafeCommandCount,
-		RiskCommandCount:         execMetrics.RiskCommandCount,
-		FrontAttackFromRisk:      execMetrics.FrontAttackFromRisk,
-		FrontAttackFromSafe:      execMetrics.FrontAttackFromSafe,
-		FrontAttackIntervalRisk:  execMetrics.FrontAttackIntervalRisk,
-		FrontAttackIntervalSafe:  execMetrics.FrontAttackIntervalSafe,
-		CommandPS:                metaMetrics.CommandPS,
-		LogPS:                    metaMetrics.LogPS,
-		GenLogPS:                 metaMetrics.GenLogPS,
-		MSafeCommandCount:        execMetrics.MSafeCommandCount,
-		MRiskCommandCount:        execMetrics.MRiskCommandCount,
-		MFrontAttackFromRisk:     execMetrics.MFrontAttackFromRisk,
-		MFrontAttackFromSafe:     execMetrics.MFrontAttackFromSafe,
-		MFrontAttackIntervalRisk: execMetrics.MFrontAttackIntervalRisk,
-		MFrontAttackIntervalSafe: execMetrics.MFrontAttackIntervalSafe,
-	}
+	return phi.metrics.QueryMetrics()
 }

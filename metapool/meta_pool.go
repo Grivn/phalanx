@@ -13,6 +13,7 @@ import (
 	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/metapool/instance"
 	"github.com/Grivn/phalanx/metapool/tracker"
+	"github.com/Grivn/phalanx/metrics"
 )
 
 type metaPool struct {
@@ -88,44 +89,6 @@ type metaPool struct {
 	// commitNo indicates the maximum committed number for each participant's partial order.
 	commitNo map[uint64]uint64
 
-	//======================================= metrics tools ===========================================
-
-	// totalCommands is the number of commands selected into partial order.
-	totalCommands int
-
-	//
-	intervalCommands int
-
-	// totalSelectLatency is the total latency of interval since receive command to generate pre-order.
-	totalSelectLatency int64
-
-	//
-	intervalSelectLatency int64
-
-	// totalOrderLogs is the number of order logs.
-	totalOrderLogs int
-
-	//
-	intervalOrderLogs int
-
-	// totalLatency is the total latency of the generation of trusted order logs.
-	totalLatency int64
-
-	//
-	intervalLatency int64
-
-	//
-	orderCount int
-
-	//
-	orderSize int
-
-	//
-	commandCount int
-
-	//
-	startTime int64
-
 	//======================================= external tools ===========================================
 
 	// sender is used to send consensus message into network.
@@ -135,19 +98,19 @@ type metaPool struct {
 	logger external.Logger
 
 	//
+	metrics *metrics.MetaPoolMetrics
+
+	//
 	byz bool
 
 	//
 	openLatency int
-
-	//
-	genTime time.Time
-
-	//
-	genOrder int
 }
 
-func NewMetaPool(byz bool, openLatency int, duration time.Duration, n, multi int, logCount int, author uint64, sender external.NetworkService, logger external.Logger) internal.MetaPool {
+func NewMetaPool(byz bool, duration time.Duration, n, multi int, logCount int, author uint64,
+	sender external.NetworkService,
+	logger external.Logger,
+	metrics *metrics.MetaPoolMetrics) internal.MetaPool {
 	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
 
 	// initiate communication channel.
@@ -176,32 +139,32 @@ func NewMetaPool(byz bool, openLatency int, duration time.Duration, n, multi int
 	clients := make(map[uint64]internal.ClientInstance)
 	for i := 0; i < n*multi; i++ {
 		id := uint64(i + 1)
-		client := instance.NewClient(author, id, commandC, active, logger, byz, openLatency)
+		client := instance.NewClient(author, id, commandC, active, logger)
 		clients[id] = client
 	}
 
 	return &metaPool{
-		author:      author,
-		n:           n,
-		multi:       multi,
-		logCount:    logCount,
-		quorum:      types.CalculateQuorum(n),
-		sequence:    uint64(0),
-		aggMap:      make(map[string]*protos.PartialOrder),
-		replicas:    subs,
-		pTracker:    pTracker,
-		cTracker:    tracker.NewCommandTracker(author, logger),
-		clients:     clients,
-		commandC:    commandC,
-		timer:       newLocalTimer(author, timeoutC, duration, logger),
-		timeoutC:    timeoutC,
-		closeC:      make(chan bool),
-		sender:      sender,
-		logger:      logger,
-		commitNo:    committedTracker,
-		active:      active,
-		byz:         byz,
-		openLatency: openLatency,
+		author:   author,
+		n:        n,
+		multi:    multi,
+		logCount: logCount,
+		quorum:   types.CalculateQuorum(n),
+		sequence: uint64(0),
+		aggMap:   make(map[string]*protos.PartialOrder),
+		replicas: subs,
+		pTracker: pTracker,
+		cTracker: tracker.NewCommandTracker(author, logger),
+		clients:  clients,
+		commandC: commandC,
+		timer:    newLocalTimer(author, timeoutC, duration, logger),
+		timeoutC: timeoutC,
+		closeC:   make(chan bool),
+		sender:   sender,
+		logger:   logger,
+		metrics:  metrics,
+		commitNo: committedTracker,
+		active:   active,
+		byz:      byz,
 	}
 }
 
@@ -238,10 +201,9 @@ func (mp *metaPool) Committed(author uint64, seqNo uint64) {
 //===============================================================
 
 func (mp *metaPool) ProcessCommand(command *protos.Command) {
-	if mp.commandCount == 0 {
-		mp.startTime = time.Now().UnixNano()
-	}
-	mp.commandCount++
+	// record metrics.
+	mp.metrics.ProcessCommand()
+
 	// record the command with command tracker.
 	mp.cTracker.RecordCommand(command)
 
@@ -256,7 +218,7 @@ func (mp *metaPool) clientInstanceReminder(command *protos.Command) {
 		// if there is not a client instance, initiate it.
 		// NOTE: concurrency problem.
 		mp.logger.Errorf("[%d] don't have client instance %d, initiate it", mp.author, command.Author)
-		client = instance.NewClient(mp.author, command.Author, mp.commandC, mp.active, mp.logger, mp.byz, mp.openLatency)
+		client = instance.NewClient(mp.author, command.Author, mp.commandC, mp.active, mp.logger)
 		mp.clients[command.Author] = client
 	}
 
@@ -327,7 +289,6 @@ func (mp *metaPool) generateOrder() error {
 	// advance the sequence number.
 	mp.sequence++
 
-	nowT := time.Now().UnixNano()
 	digestList := make([]string, len(mp.commandSet))
 	timestampList := make([]int64, len(mp.commandSet))
 
@@ -351,11 +312,9 @@ func (mp *metaPool) generateOrder() error {
 	for i, cIndex := range mp.commandSet {
 		digestList[i] = cIndex.Digest
 		timestampList[i] = cIndex.OTime
-		mp.totalCommands++
-		mp.totalSelectLatency += nowT - cIndex.RTime
 
-		mp.intervalCommands++
-		mp.intervalSelectLatency += nowT - cIndex.RTime
+		// record metrics.
+		mp.metrics.SelectCommand(cIndex)
 	}
 
 	// generate pre order message.
@@ -389,7 +348,9 @@ func (mp *metaPool) generateOrder() error {
 		return fmt.Errorf("generate consensus message error: %s", err)
 	}
 	mp.sender.BroadcastPCM(cm)
-	mp.genOrder++
+
+	// record metrics.
+	mp.metrics.GenerateOrder()
 	return nil
 }
 
@@ -423,13 +384,6 @@ func (mp *metaPool) ProcessVote(vote *protos.Vote) error {
 	if len(pOrder.QC.Certs) == mp.quorum {
 		pOrder.SetOrderedTime()
 
-		// collect metrics.
-		mp.totalOrderLogs++
-		mp.totalLatency += pOrder.OrderedTime - pOrder.TimestampList()[0]
-
-		mp.intervalOrderLogs++
-		mp.intervalLatency += pOrder.OrderedTime - pOrder.TimestampList()[0]
-
 		mp.logger.Debugf("[%d] found quorum votes, generate quorum order %s", mp.author, pOrder.Format())
 		delete(mp.aggMap, vote.Digest)
 
@@ -439,8 +393,8 @@ func (mp *metaPool) ProcessVote(vote *protos.Vote) error {
 		}
 		mp.sender.BroadcastPCM(cm)
 
-		mp.orderCount++
-		mp.orderSize += len(pOrder.PreOrder.CommandList)
+		// record metrics.
+		mp.metrics.PartialOrderQuorum(pOrder)
 		return nil
 	}
 
@@ -590,79 +544,4 @@ func (mp *metaPool) VerifyProposal(batch *protos.PartialOrderBatch) (types.Query
 	}
 
 	return qStream, nil
-}
-
-// QueryMetrics returns the metrics info of meta pool.
-func (mp *metaPool) QueryMetrics() types.MetricsInfo {
-	mp.mutex.RLock()
-	defer mp.mutex.RUnlock()
-	return types.MetricsInfo{
-		AvePackOrderLatency: mp.avePackOrderLatency(),
-		AveOrderLatency:     mp.aveOrderLatency(),
-		CurPackOrderLatency: mp.curPackOrderLatency(),
-		CurOrderLatency:     mp.curOrderLatency(),
-		AveOrderSize:        mp.aveOrderSize(),
-		CommandPS:           mp.commandThroughput(),
-		LogPS:               mp.logThroughput(),
-		GenLogPS:            mp.genLogThroughput(),
-	}
-}
-
-func (mp *metaPool) avePackOrderLatency() float64 {
-	if mp.totalCommands == 0 {
-		return 0
-	}
-	return types.NanoToMillisecond(mp.totalSelectLatency / int64(mp.totalCommands))
-}
-
-func (mp *metaPool) curPackOrderLatency() float64 {
-	if mp.intervalCommands == 0 {
-		return 0
-	}
-	ret := types.NanoToMillisecond(mp.intervalSelectLatency / int64(mp.intervalCommands))
-	mp.intervalCommands = 0
-	mp.intervalSelectLatency = 0
-	return ret
-}
-
-func (mp *metaPool) aveOrderLatency() float64 {
-	if mp.totalOrderLogs == 0 {
-		return 0
-	}
-	return types.NanoToMillisecond(mp.totalLatency / int64(mp.totalOrderLogs))
-}
-
-func (mp *metaPool) curOrderLatency() float64 {
-	if mp.intervalOrderLogs == 0 {
-		return 0
-	}
-	ret := types.NanoToMillisecond(mp.intervalLatency / int64(mp.intervalOrderLogs))
-	mp.intervalOrderLogs = 0
-	mp.intervalLatency = 0
-	return ret
-}
-
-func (mp *metaPool) aveOrderSize() int {
-	if mp.orderCount == 0 {
-		return 0
-	}
-	return mp.orderSize / mp.orderCount
-}
-
-func (mp *metaPool) commandThroughput() float64 {
-	interval := types.NanoToMillisecond(time.Now().UnixNano() - mp.startTime)
-	fInterval := interval / 1000
-	return float64(mp.commandCount) / fInterval
-}
-
-func (mp *metaPool) logThroughput() float64 {
-	interval := types.NanoToMillisecond(time.Now().UnixNano() - mp.startTime)
-	fInterval := interval / 1000
-	return float64(mp.orderCount) / fInterval
-}
-
-func (mp *metaPool) genLogThroughput() float64 {
-	interval := types.NanoToMillisecond(time.Now().UnixNano() - mp.startTime)
-	fInterval := interval / 1000
-	return float64(mp.genOrder) / fInterval
 }
