@@ -25,14 +25,14 @@ type collectionRule struct {
 	logger external.Logger
 }
 
-func newCollectRule(author uint64, n int, recorder internal.CommandRecorder, logger external.Logger) *collectionRule {
-	logger.Infof("[%d] initiate partial order collector, replica count %d", author, n)
+func newCollectRule(conf Config, recorder internal.CommandRecorder) *collectionRule {
+	conf.Logger.Infof("[%d] initiate partial order collector, replica count %d", conf.Author, conf.N)
 	return &collectionRule{
-		author:     author,
-		oneCorrect: types.CalculateOneCorrect(n),
-		quorum:     types.CalculateQuorum(n),
+		author:     conf.Author,
+		oneCorrect: types.CalculateOneCorrect(conf.N),
+		quorum:     types.CalculateQuorum(conf.N),
 		cRecorder:  recorder,
-		logger:     logger,
+		logger:     conf.Logger,
 	}
 }
 

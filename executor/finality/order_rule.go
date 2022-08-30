@@ -54,20 +54,18 @@ type orderRule struct {
 	mediumCommit *orderMediumT
 }
 
-func newOrderRule(oLeader, author uint64, n int, cRecorder internal.CommandRecorder,
-	reader internal.MetaReader, committer internal.MetaCommitter, manager internal.TxManager,
-	exec external.ExecutionService, logger external.Logger, metrics *metrics.Metrics) *orderRule {
+func newOrderRule(conf Config, cRecorder internal.CommandRecorder) *orderRule {
 	return &orderRule{
-		author:       author,
-		collect:      newCollectRule(author, n, cRecorder, logger),
-		execute:      newExecutionRule(oLeader, author, n, cRecorder, logger),
-		commit:       newCommitmentRule(author, n, cRecorder, reader, logger, metrics),
-		reload:       committer,
-		exec:         exec,
-		logger:       logger,
-		txMgr:        manager,
-		mediumCommit: newOrderMediumT(logger, metrics),
-		metrics:      metrics.OrderRuleMetrics,
+		author:       conf.Author,
+		collect:      newCollectRule(conf, cRecorder),
+		execute:      newExecutionRule(conf, cRecorder),
+		commit:       newCommitmentRule(conf, cRecorder),
+		reload:       conf.Mgr,
+		exec:         conf.Exec,
+		logger:       conf.Logger,
+		txMgr:        conf.Manager,
+		mediumCommit: newOrderMediumT(conf),
+		metrics:      conf.Metrics.OrderRuleMetrics,
 	}
 }
 

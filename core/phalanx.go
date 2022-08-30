@@ -2,16 +2,14 @@ package phalanx
 
 import (
 	"fmt"
-	"github.com/Grivn/phalanx/executor/finality"
-	"github.com/Grivn/phalanx/metrics"
-	"time"
-
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/executor/finality"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/metapool"
+	"github.com/Grivn/phalanx/metrics"
 	"github.com/Grivn/phalanx/receiver"
 	"github.com/gogo/protobuf/proto"
 )
@@ -42,15 +40,15 @@ type phalanxImpl struct {
 	logCount int
 }
 
-func NewPhalanxProvider(oLeader uint64, byz bool, openLatency int, duration time.Duration, interval int, cDuration time.Duration, n int, multi int, logCount int, memSize int, author uint64, commandSize int, exec external.ExecutionService, network external.NetworkService, logger external.Logger, selected uint64) *phalanxImpl {
+func NewPhalanxProvider(conf Config) *phalanxImpl {
 	// todo read crypto key pairs from config files.
 	// initiate key pairs.
 	_ = crypto.SetKeys()
 
 	// initiate phalanx logger.
-	mLogs, err := newPLogger(logger, true, author)
+	mLogs, err := newPLogger(conf.Logger, true, conf.Author)
 	if err != nil {
-		logger.Errorf("Generate Phalanx Logger Failed: %s", err)
+		conf.Logger.Errorf("Generate Phalanx Logger Failed: %s", err)
 		return nil
 	}
 
@@ -58,21 +56,50 @@ func NewPhalanxProvider(oLeader uint64, byz bool, openLatency int, duration time
 	pMetrics := metrics.NewMetrics()
 
 	// initiate tx manager.
-	txMgr := receiver.NewTxManager(multi, author, commandSize, memSize, network, mLogs.txManagerLog, selected)
+	txConf := receiver.Config{
+		Author:      conf.Author,
+		Multi:       conf.Multi,
+		CommandSize: conf.CommandSize,
+		MemSize:     conf.MemSize,
+		Selected:    conf.Selected,
+		Sender:      conf.Network,
+		Logger:      mLogs.txManagerLog,
+	}
+	txMgr := receiver.NewTxManager(txConf)
 
 	// initiate meta pool.
-	mPool := metapool.NewMetaPool(byz, duration, n, multi, logCount, author, network, mLogs.metaPoolLog, pMetrics.MetaPoolMetrics)
+	mpConf := metapool.Config{
+		Author:   conf.Author,
+		Byz:      conf.Byz,
+		N:        conf.N,
+		Multi:    conf.Multi,
+		LogCount: conf.LogCount,
+		Sender:   conf.Network,
+		Logger:   mLogs.metaPoolLog,
+		Metrics:  pMetrics.MetaPoolMetrics,
+	}
+	mPool := metapool.NewMetaPool(mpConf)
 
 	// initiate executor.
-	executor := finality.NewExecutor(oLeader, author, n, mPool, txMgr, exec, mLogs.executorLog, pMetrics)
+	exeConf := finality.Config{
+		Author:  conf.Author,
+		OLeader: conf.OLeader,
+		N:       conf.N,
+		Mgr:     mPool,
+		Manager: txMgr,
+		Exec:    conf.Exec,
+		Logger:  mLogs.executorLog,
+		Metrics: pMetrics,
+	}
+	executor := finality.NewExecutor(exeConf)
 
 	return &phalanxImpl{
-		author:    author,
+		author:    conf.Author,
 		txManager: txMgr,
 		metaPool:  mPool,
 		executor:  executor,
-		logger:    logger,
-		logCount:  logCount,
+		logger:    conf.Logger,
+		logCount:  conf.LogCount,
 	}
 }
 

@@ -42,7 +42,25 @@ func phalanxRunner() {
 		if id <= uint64(byzRange) {
 			byz = true
 		}
-		phx[id] = phalanx.NewPhalanxProvider(oLeader, byz, 0, types.DefaultTimeDuration, types.DefaultInterval, types.DefaultTimeDuration, n, types.DefaultMulti, types.DefaultLogCount, types.DefaultMemSize, id, types.SingleCommandSize, exec, net, types.NewRawLoggerFile(logDir+"/bft-node-"+strconv.Itoa(i+1)+".log"), 0)
+		conf := phalanx.Config{
+			Author:      id,
+			OLeader:     oLeader,
+			Byz:         byz,
+			OpenLatency: 0,
+			Duration:    types.DefaultTimeDuration,
+			Interval:    types.DefaultInterval,
+			CDuration:   types.DefaultTimeDuration,
+			N:           n,
+			Multi:       types.DefaultMulti,
+			LogCount:    types.DefaultLogCount,
+			MemSize:     types.DefaultMemSize,
+			CommandSize: types.SingleCommandSize,
+			Selected:    0,
+			Exec:        exec,
+			Network:     net,
+			Logger:      types.NewRawLoggerFile(logDir + "/bft-node-" + strconv.Itoa(i+1) + ".log"),
+		}
+		phx[id] = phalanx.NewPhalanxProvider(conf)
 		phx[id].Run()
 	}
 

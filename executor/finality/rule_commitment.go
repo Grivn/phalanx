@@ -45,26 +45,25 @@ type commitmentRule struct {
 	metrics *metrics.RuleCommitmentMetrics
 }
 
-func newCommitmentRule(author uint64, n int, recorder internal.CommandRecorder,
-	reader internal.MetaReader, logger external.Logger, metrics *metrics.Metrics) *commitmentRule {
-	logger.Infof("[%d] initiate free will committee, replica count %d", author, n)
+func newCommitmentRule(conf Config, recorder internal.CommandRecorder) *commitmentRule {
+	conf.Logger.Infof("[%d] initiate free will committee, replica count %d", conf.Author, conf.N)
 	democracy := make(map[uint64]*btree.BTree)
-	for i := 0; i < n; i++ {
+	for i := 0; i < conf.N; i++ {
 		democracy[uint64(i+1)] = btree.New(2)
 	}
 
 	return &commitmentRule{
-		author:     author,
-		n:          n,
-		fault:      types.CalculateFault(n),
-		oneCorrect: types.CalculateOneCorrect(n),
-		quorum:     types.CalculateQuorum(n),
+		author:     conf.Author,
+		n:          conf.N,
+		fault:      types.CalculateFault(conf.N),
+		oneCorrect: types.CalculateOneCorrect(conf.N),
+		quorum:     types.CalculateQuorum(conf.N),
 		frontNo:    uint64(0),
 		cRecorder:  recorder,
 		democracy:  democracy,
-		reader:     reader,
-		logger:     logger,
-		metrics:    metrics.RuleCommitmentMetrics,
+		reader:     conf.Mgr,
+		logger:     conf.Logger,
+		metrics:    conf.Metrics.RuleCommitmentMetrics,
 	}
 }
 

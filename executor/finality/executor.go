@@ -62,26 +62,26 @@ type executorImpl struct {
 	logger external.Logger
 }
 
-func NewExecutor(oLeader, author uint64, n int, mgr internal.MetaPool, manager internal.TxManager,
-	exec external.ExecutionService, logger external.Logger, metrics *metrics.Metrics) *executorImpl {
+func NewExecutor(conf Config) *executorImpl {
+	author := conf.Author
 	orderSeq := make(map[uint64]uint64)
 
-	for i := 0; i < n; i++ {
+	for i := 0; i < conf.N; i++ {
 		id := uint64(i + 1)
 		orderSeq[id] = uint64(0)
 	}
 
-	cRecorder := recorder.NewCommandRecorder(author, n, logger)
+	cRecorder := recorder.NewCommandRecorder(author, conf.N, conf.Logger)
 	return &executorImpl{
 		author:    author,
-		rules:     newOrderRule(oLeader, author, n, cRecorder, mgr, mgr, manager, exec, logger, metrics),
+		rules:     newOrderRule(conf, cRecorder),
 		cRecorder: cRecorder,
-		reader:    mgr,
-		logger:    logger,
+		reader:    conf.Mgr,
+		logger:    conf.Logger,
 		orderSeq:  orderSeq,
 		streams:   list.New(),
 		closeC:    make(chan bool),
-		metrics:   metrics.ExecutorMetrics,
+		metrics:   conf.Metrics.ExecutorMetrics,
 	}
 }
 

@@ -31,16 +31,16 @@ type executionRule struct {
 	oligarchy uint64
 }
 
-func newExecutionRule(oligarchyLeader uint64, author uint64, n int, recorder internal.CommandRecorder, logger external.Logger) *executionRule {
-	logger.Infof("[%d] initiate natural order handler, replica count %d", author, n)
+func newExecutionRule(conf Config, recorder internal.CommandRecorder) *executionRule {
+	conf.Logger.Infof("[%d] initiate natural order handler, replica count %d", conf.Author, conf.N)
 	return &executionRule{
-		author:     author,
-		n:          n,
-		oneCorrect: types.CalculateOneCorrect(n),
-		quorum:     types.CalculateQuorum(n),
+		author:     conf.Author,
+		n:          conf.N,
+		oneCorrect: types.CalculateOneCorrect(conf.N),
+		quorum:     types.CalculateQuorum(conf.N),
 		cRecorder:  recorder,
-		logger:     logger,
-		oligarchy:  oligarchyLeader,
+		logger:     conf.Logger,
+		oligarchy:  conf.OLeader,
 	}
 }
 
