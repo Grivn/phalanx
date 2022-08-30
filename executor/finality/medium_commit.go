@@ -20,11 +20,11 @@ type orderMediumT struct {
 	blocks types.SortableInnerBlocks
 }
 
-func newOrderMediumT(logger external.Logger, metrics *metrics.Metrics) *orderMediumT {
+func newOrderMediumT(conf Config) *orderMediumT {
 	return &orderMediumT{
 		blocks:  nil,
-		logger:  logger,
-		metrics: metrics.MediumTimeMetrics,
+		logger:  conf.Logger,
+		metrics: conf.Metrics.MediumTimeMetrics,
 	}
 }
 

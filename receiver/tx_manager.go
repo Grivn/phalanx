@@ -27,20 +27,20 @@ type txManager struct {
 	logger external.Logger
 }
 
-func NewTxManager(multi int, author uint64, commandSize int, memSize int, sender external.NetworkService, logger external.Logger, selected uint64) internal.TxManager {
+func NewTxManager(conf Config) internal.TxManager {
 	proposers := make(map[uint64]*proposerImpl)
 
 	txC := make(chan *protos.Transaction)
 
-	base := int(author-1) * multi
+	base := int(conf.Author-1) * conf.Multi
 
-	for i := base; i < base+multi; i++ {
+	for i := base; i < base+conf.Multi; i++ {
 		id := uint64(i + 1)
-		proposer := newProposer(id, commandSize, memSize, txC, sender, logger, selected)
+		proposer := newProposer(id, conf.CommandSize, conf.MemSize, txC, conf.Sender, conf.Logger, conf.Selected)
 		proposers[id] = proposer
 	}
 
-	return &txManager{author: author, proposers: proposers, txC: txC, logger: logger}
+	return &txManager{author: conf.Author, proposers: proposers, txC: txC, logger: conf.Logger}
 }
 
 func (txMgr *txManager) Run() {

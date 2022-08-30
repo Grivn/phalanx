@@ -2,10 +2,6 @@ package metapool
 
 import (
 	"fmt"
-	"sort"
-	"sync"
-	"time"
-
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
@@ -14,6 +10,8 @@ import (
 	"github.com/Grivn/phalanx/metapool/instance"
 	"github.com/Grivn/phalanx/metapool/tracker"
 	"github.com/Grivn/phalanx/metrics"
+	"sort"
+	"sync"
 )
 
 type metaPool struct {
@@ -107,11 +105,8 @@ type metaPool struct {
 	openLatency int
 }
 
-func NewMetaPool(byz bool, duration time.Duration, n, multi int, logCount int, author uint64,
-	sender external.NetworkService,
-	logger external.Logger,
-	metrics *metrics.MetaPoolMetrics) internal.MetaPool {
-	logger.Infof("[%d] initiate log manager, replica count %d", author, n)
+func NewMetaPool(conf Config) internal.MetaPool {
+	conf.Logger.Infof("[%d] initiate log manager, replica count %d", conf.Author, conf.N)
 
 	// initiate communication channel.
 	commandC := make(chan *types.CommandIndex, 100)
@@ -121,13 +116,13 @@ func NewMetaPool(byz bool, duration time.Duration, n, multi int, logCount int, a
 	committedTracker := make(map[uint64]uint64)
 
 	// initiate a partial tracker for current node.
-	pTracker := tracker.NewPartialTracker(author, logger)
+	pTracker := tracker.NewPartialTracker(conf.Author, conf.Logger)
 
 	// initiate replica instances.
 	subs := make(map[uint64]internal.ReplicaInstance)
-	for i := 0; i < n; i++ {
+	for i := 0; i < conf.N; i++ {
 		id := uint64(i + 1)
-		subs[id] = instance.NewReplicaInstance(author, id, pTracker, sender, logger)
+		subs[id] = instance.NewReplicaInstance(conf.Author, id, pTracker, conf.Sender, conf.Logger)
 		committedTracker[id] = 0
 	}
 
@@ -137,34 +132,34 @@ func NewMetaPool(byz bool, duration time.Duration, n, multi int, logCount int, a
 
 	// initiate client instances.
 	clients := make(map[uint64]internal.ClientInstance)
-	for i := 0; i < n*multi; i++ {
+	for i := 0; i < conf.N*conf.Multi; i++ {
 		id := uint64(i + 1)
-		client := instance.NewClient(author, id, commandC, active, logger)
+		client := instance.NewClient(conf.Author, id, commandC, active, conf.Logger)
 		clients[id] = client
 	}
 
 	return &metaPool{
-		author:   author,
-		n:        n,
-		multi:    multi,
-		logCount: logCount,
-		quorum:   types.CalculateQuorum(n),
+		author:   conf.Author,
+		n:        conf.N,
+		multi:    conf.Multi,
+		logCount: conf.LogCount,
+		quorum:   types.CalculateQuorum(conf.N),
 		sequence: uint64(0),
 		aggMap:   make(map[string]*protos.PartialOrder),
 		replicas: subs,
 		pTracker: pTracker,
-		cTracker: tracker.NewCommandTracker(author, logger),
+		cTracker: tracker.NewCommandTracker(conf.Author, conf.Logger),
 		clients:  clients,
 		commandC: commandC,
-		timer:    newLocalTimer(author, timeoutC, duration, logger),
+		timer:    newLocalTimer(conf.Author, timeoutC, conf.Duration, conf.Logger),
 		timeoutC: timeoutC,
 		closeC:   make(chan bool),
-		sender:   sender,
-		logger:   logger,
-		metrics:  metrics,
+		sender:   conf.Sender,
+		logger:   conf.Logger,
+		metrics:  conf.Metrics,
 		commitNo: committedTracker,
 		active:   active,
-		byz:      byz,
+		byz:      conf.Byz,
 	}
 }
 
