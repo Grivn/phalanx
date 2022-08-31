@@ -1,4 +1,4 @@
-# Phalanx: A Byzantine Fault Tolerant Memory Pool with fair Ordering
+# Phalanx: A Byzantine Fault Tolerant Memory Pool with Fair Ordering
 
 Need update.
 
@@ -47,79 +47,3 @@ We find that *Phalanx* has a more stable throughput if the cluster changes leade
 [4] Kelkar M, Zhang F, Goldfeder S, et al. Order-fairness for byzantine consensus[C]//Annual International Cryptology Conference. Springer, Cham, 2020: 451-480.
 <div id="refer-anchor-5"></div>
 [5] Zhang Y, Setty S, Chen Q, et al. Byzantine Ordered Consensus without Byzantine Oligarchy[C]//14th {USENIX} Symposium on Operating Systems Design and Implementation ({OSDI} 20). 2020: 633-649.
-
-## Background
-The development of BFT protocols, the importance for order-fairness property, and some research on it.
-
-## Phalanx Phase
-### Overview
-
-### Roles
-#### Proposer
-The proposer would like to generate *command* with the transactions it has received.
-
-#### Replica
-Each replica in phalanx cluster has a *private-order* for the commands.
-The private-order could be different from each other.
-
-### Private-Order Protocol
-We can regard it as a fixed-leader BFT cluster in which we use a byzantine quorum system here to detect *fork-attack*.
-
-#### Pre-Order
-While receiving a command from clients, the replica will assign a specific sequence number for it 
-and generate pre-order to notify other participants.
-- <PRE-ORDER i, n, d, command-d, pre-d, t>
-
-#### Vote
-While receiving a pre-order from other replica, verify it according to sequence number.
-We should make sure that the sequence number is increasing one by one, and then, send a signed vote back if the pre-order is valid.
-- <VOTE i, d, sig>
-
-#### Order
-The node waiting for quorum votes about its pre-order. If the votes has reached quorum size, aggregate them and generate
-a quorum-cert (QC) for pre-order, and broadcast order message. The node received order message would store it by order.
-- <ORDER i, n, d, command-d, t, QC>
-
-### Consensus
-Interfaces for phalanx protocol that we could use them to make a traditional synchronous BFT protocol achieve *order-fairness* property.
-
-#### Generator
-It is used to generate a phalanx-proposal. The proposal here has a determined size.
-
-#### Verifier
-It could be used to verify the validation of each proposal, including the aggregated signature and the sequential order
-the global consensus has found.
-
-### Executor
-It is used to execute the phalanx-proposal after the BFT consensus. 
-We should find the query stream at first which indicates the partial orders we should commit.
-When we execute phalanx proposals, we would generate a fairness order for the commands.
-
-#### Status
-
-##### correct sequenced command (CSC)
-
-##### quorum sequenced command (QSC)
-
-##### waiting command
-
-##### leaf command
-
-##### committed command
-
-### Proof
-Proof for properties, safety, liveness and order-fairness.
-#### Safety
-##### safety of private-order
-
-##### safety of consensus
-
-#### Liveness
-##### liveness of private-order
-##### liveness of consensus
-
-#### Order-Fairness
-##### order fairness
-##### limited order correctness
-
-### Involution
