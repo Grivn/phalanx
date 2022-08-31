@@ -83,12 +83,12 @@ func (cr *commitmentRule) freeWill(frontStream types.FrontStream) ([]types.Inner
 		cr.metrics.CommitFrontCommandInfo(frontC)
 
 		// generate block, try to fetch the raw command to fulfill the block.
-		rawCommand := cr.reader.ReadCommand(frontC.CurCmd)
-		block := types.NewInnerBlock(cr.frontNo, frontStream.Safe, rawCommand, frontC.Timestamps[cr.fault], frontC.MediumTSet[cr.fault])
+		rawCommand := cr.reader.ReadCommand(frontC.Digest)
+		block := types.NewInnerBlock(cr.frontNo, frontStream.Safe, rawCommand, frontC.TrustedTS)
 		cr.logger.Infof("[%d] generate block %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.
-		cr.cRecorder.CommittedStatus(frontC.CurCmd)
+		cr.cRecorder.CommittedStatus(frontC.Digest)
 
 		// append the current block into sortable slice, waiting for order-determination.
 		sortable = append(sortable, block)

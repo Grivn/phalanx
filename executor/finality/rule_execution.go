@@ -48,12 +48,7 @@ func (er *executionRule) execution() types.FrontStream {
 
 	// oligarchy mode, relying on certain leader ordering.
 	if er.oligarchy != uint64(0) {
-		digest := er.cRecorder.OligarchyLeaderFront(er.oligarchy)
-		commandInfo := er.cRecorder.ReadCommandInfo(digest)
-		if len(commandInfo.Orders) < er.quorum {
-			return types.FrontStream{Safe: true, Stream: nil}
-		}
-		return types.FrontStream{Safe: true, Stream: types.CommandStream{commandInfo}}
+		return er.oligarchyExecution()
 	}
 
 	// read the front set.
@@ -87,7 +82,7 @@ func (er *executionRule) selection(unverifiedStream types.CommandStream) types.C
 	valid := true
 
 	for _, unverifiedC := range unverifiedStream {
-		er.selected[unverifiedC.CurCmd] = true
+		er.selected[unverifiedC.Digest] = true
 	}
 
 	returnStream = append(returnStream, unverifiedStream...)
@@ -116,7 +111,7 @@ func (er *executionRule) filterStream(unverifiedStream, correctStream, quorumStr
 	var additionalStream types.CommandStream
 
 	for _, unverifiedC := range unverifiedStream {
-		er.selected[unverifiedC.CurCmd] = true
+		er.selected[unverifiedC.Digest] = true
 		pointer := make(map[uint64]uint64)
 
 		for _, order := range unverifiedC.Orders {
@@ -143,7 +138,7 @@ func (er *executionRule) filterStream(unverifiedStream, correctStream, quorumStr
 		}
 
 		for _, quorumC := range quorumStream {
-			if er.selected[quorumC.CurCmd] {
+			if er.selected[quorumC.Digest] {
 				continue
 			}
 
@@ -162,9 +157,18 @@ func (er *executionRule) filterStream(unverifiedStream, correctStream, quorumStr
 			if count < er.oneCorrect {
 				er.logger.Debugf("[%d] potential natural order (quorum): %s <- %s", er.author, quorumC.Format(), unverifiedC.Format())
 				additionalStream = append(additionalStream, quorumC)
-				er.selected[quorumC.CurCmd] = true
+				er.selected[quorumC.Digest] = true
 			}
 		}
 	}
 	return additionalStream, true
+}
+
+func (er *executionRule) oligarchyExecution() types.FrontStream {
+	digest := er.cRecorder.OligarchyLeaderFront(er.oligarchy)
+	commandInfo := er.cRecorder.ReadCommandInfo(digest)
+	if len(commandInfo.Orders) < er.quorum {
+		return types.FrontStream{Safe: true, Stream: nil}
+	}
+	return types.FrontStream{Safe: true, Stream: types.CommandStream{commandInfo}}
 }

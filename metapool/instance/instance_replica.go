@@ -45,6 +45,7 @@ type replicaInstance struct {
 	// recorder is used to track the pre-order/order messages.
 	recorder *btree.BTree
 
+	// voted is used to record the latest no. we have verified.
 	voted uint64
 
 	//======================================= internal modules =========================================

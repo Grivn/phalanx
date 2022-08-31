@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -13,8 +14,8 @@ func (ts sortableTimestamps) Less(i, j int) bool { return ts[i] < ts[j] }
 func (ts sortableTimestamps) Swap(i, j int)      { ts[i], ts[j] = ts[j], ts[i] }
 
 type CommandInfo struct {
-	// CurCmd is used to record the digest of current command.
-	CurCmd string
+	// Digest is used to record the digest of current command.
+	Digest string
 
 	// PriCmd is used to track the digests of the command which should be executed before current command.
 	PriCmd map[string]bool
@@ -34,15 +35,20 @@ type CommandInfo struct {
 	// GTime is the timestamp to generate current command info.
 	GTime int64
 
-	//
-	MediumTSet sortableTimestamps
+	// TrustedTS is the timestamp current command came into system.
+	TrustedTS int64
+}
+
+func (ci *CommandInfo) UpdateTrustedTS(oneCorrect int) {
+	sort.Sort(ci.Timestamps)
+	ci.TrustedTS = ci.Timestamps[oneCorrect]
 }
 
 type CommandStream []*CommandInfo
 
 func NewCmdInfo(commandD string) *CommandInfo {
 	return &CommandInfo{
-		CurCmd: commandD,
+		Digest: commandD,
 		PriCmd: make(map[string]bool),
 		LowCmd: make(map[string]*CommandInfo),
 		Orders: make(map[uint64]OrderInfo),
@@ -51,8 +57,17 @@ func NewCmdInfo(commandD string) *CommandInfo {
 	}
 }
 
+func (s CommandStream) Len() int      { return len(s) }
+func (s CommandStream) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s CommandStream) Less(i, j int) bool {
+	if s[i].TrustedTS == s[j].TrustedTS {
+		return s[i].Digest < s[j].Digest
+	}
+	return s[i].TrustedTS < s[j].TrustedTS
+}
+
 func (ci *CommandInfo) Format() string {
-	return fmt.Sprintf("[CommandInfo: command %s, order-count %d]", ci.CurCmd, len(ci.Orders))
+	return fmt.Sprintf("[CommandInfo: command %s, order-count %d, trusted-ts %d]", ci.Digest, len(ci.Orders), ci.TrustedTS)
 }
 
 //========================== Partial Order Manager ====================================
@@ -60,10 +75,6 @@ func (ci *CommandInfo) Format() string {
 func (ci *CommandInfo) OrderAppend(oInfo OrderInfo) {
 	ci.Orders[oInfo.Author] = oInfo
 	ci.Timestamps = append(ci.Timestamps, oInfo.Timestamp)
-
-	if !oInfo.AfterQuorum {
-		ci.MediumTSet = append(ci.MediumTSet, oInfo.Timestamp)
-	}
 }
 
 func (ci *CommandInfo) OrderCount() int {
@@ -73,7 +84,7 @@ func (ci *CommandInfo) OrderCount() int {
 //========================== Priority Command ====================================
 
 func (ci *CommandInfo) PrioriRecord(priInfo *CommandInfo) {
-	ci.PriCmd[priInfo.CurCmd] = true
+	ci.PriCmd[priInfo.Digest] = true
 }
 
 func (ci *CommandInfo) PrioriCommit(commandD string) {
@@ -90,7 +101,7 @@ func (ci *CommandInfo) PrioriFinished() bool {
 // <x,y> && <y,z> -> <x,z>
 func (ci *CommandInfo) TransitiveLow(parentInfo *CommandInfo) {
 	// remove the parent partial order from lowest map.
-	delete(ci.LowCmd, parentInfo.CurCmd)
+	delete(ci.LowCmd, parentInfo.Digest)
 
 	// append parent's lowest into ourselves.
 	for _, info := range parentInfo.LowCmd {
@@ -100,5 +111,5 @@ func (ci *CommandInfo) TransitiveLow(parentInfo *CommandInfo) {
 
 func (ci *CommandInfo) AppendLow(info *CommandInfo) {
 	// append partial order into our lowest list.
-	ci.LowCmd[info.CurCmd] = info
+	ci.LowCmd[info.Digest] = info
 }

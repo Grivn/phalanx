@@ -36,7 +36,7 @@ func NewTxManager(conf Config) internal.TxManager {
 
 	for i := base; i < base+conf.Multi; i++ {
 		id := uint64(i + 1)
-		proposer := newProposer(id, conf.CommandSize, conf.MemSize, txC, conf.Sender, conf.Logger, conf.Selected)
+		proposer := newProposer(id, txC, conf)
 		proposers[id] = proposer
 	}
 

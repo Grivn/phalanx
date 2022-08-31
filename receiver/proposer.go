@@ -48,17 +48,16 @@ type proposerImpl struct {
 	selected uint64
 }
 
-func newProposer(author uint64, commandSize int, memSize int, txC chan *protos.Transaction,
-	sender external.NetworkService, logger external.Logger, selected uint64) *proposerImpl {
+func newProposer(author uint64, txC chan *protos.Transaction, conf Config) *proposerImpl {
 	return &proposerImpl{
 		author:      author,
-		commandSize: commandSize,
+		commandSize: conf.CommandSize,
 		txC:         txC,
 		closeC:      make(chan bool),
-		sender:      sender,
-		logger:      logger,
-		memSize:     int32(memSize),
-		selected:    selected,
+		sender:      conf.Sender,
+		logger:      conf.Logger,
+		memSize:     int32(conf.MemSize),
+		selected:    conf.Selected,
 	}
 }
 

@@ -6,17 +6,19 @@ import (
 )
 
 type executor struct {
-	author uint64
-	hash   string
-	count  int
-	logger external.Logger
+	author     uint64
+	hash       string
+	count      int
+	logger     external.Logger
+	fileLogger external.Logger
 }
 
-func NewSimpleExecutor(author uint64, logger external.Logger) external.ExecutionService {
+func NewSimpleExecutor(author uint64, logger external.Logger, fl external.Logger) external.ExecutionService {
 	return &executor{
-		author: author,
-		hash:   "initial",
-		logger: logger,
+		author:     author,
+		hash:       "initial",
+		logger:     logger,
+		fileLogger: fl,
 	}
 }
 
@@ -30,6 +32,10 @@ func (exe *executor) CommandExecution(block types.InnerBlock, seqNo uint64) {
 
 	exe.count += len(command.Content)
 	exe.hash = types.CalculateListHash(list, 0)
+
+	exe.fileLogger.Infof("Author %d, FrontNo %d, Safe %v, Block Number %d, total len %d, Hash: %s, from Command %s",
+		exe.author, block.FrontNo, block.Safe, seqNo, exe.count, exe.hash, command.Format())
+
 	if exe.author == uint64(1) {
 		exe.logger.Infof("Author %d, FrontNo %d, Safe %v, Block Number %d, total len %d, Hash: %s, from Command %s",
 			exe.author, block.FrontNo, block.Safe, seqNo, exe.count, exe.hash, command.Format())
