@@ -1,8 +1,6 @@
 package finality
 
 import (
-	"sort"
-
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
@@ -48,10 +46,6 @@ func (collect *collectionRule) collectPartials(oInfo types.OrderInfo) bool {
 		return false
 	}
 
-	if collect.cRecorder.IsQuorum(commandD) {
-		oInfo.AfterQuorum = true
-	}
-
 	// push back partial order into recorder.queue.
 	if err := collect.cRecorder.PushBack(oInfo); err != nil {
 		collect.logger.Errorf("[%d] push back partial order failed: %s", collect.author, err)
@@ -62,6 +56,11 @@ func (collect *collectionRule) collectPartials(oInfo types.OrderInfo) bool {
 	info := collect.cRecorder.ReadCommandInfo(commandD)
 	info.OrderAppend(oInfo)
 
+	// already committed by quorum replicas, then update the timestamp list.
+	if collect.cRecorder.IsQuorum(commandD) {
+		info.UpdateTrustedTS(collect.oneCorrect)
+	}
+
 	// check the command status.
 	switch info.OrderCount() {
 	case collect.oneCorrect:
@@ -70,10 +69,9 @@ func (collect *collectionRule) collectPartials(oInfo types.OrderInfo) bool {
 		collect.logger.Infof("[%d] found correct sequenced command %s", collect.author, commandD)
 	case collect.quorum:
 		// current command has reached quorum sequenced status.
-		sort.Sort(info.Timestamps)
-		sort.Sort(info.MediumTSet)
 		collect.cRecorder.QuorumStatus(commandD)
 		collect.logger.Infof("[%d] found quorum sequenced command %s", collect.author, commandD)
+		info.UpdateTrustedTS(collect.oneCorrect)
 	}
 	return true
 }

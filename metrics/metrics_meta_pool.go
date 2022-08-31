@@ -52,6 +52,9 @@ func NewMetaPoolMetrics() *MetaPoolMetrics {
 }
 
 func (m *MetaPoolMetrics) ProcessCommand() {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	if m.CommandCount == 0 {
 		m.StartTime = time.Now().UnixNano()
 	}
@@ -59,6 +62,9 @@ func (m *MetaPoolMetrics) ProcessCommand() {
 }
 
 func (m *MetaPoolMetrics) SelectCommand(cIndex *types.CommandIndex) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	nowT := time.Now().UnixNano()
 	m.TotalCommands++
 	m.TotalSelectLatency += nowT - cIndex.RTime
@@ -68,10 +74,16 @@ func (m *MetaPoolMetrics) SelectCommand(cIndex *types.CommandIndex) {
 }
 
 func (m *MetaPoolMetrics) GenerateOrder() {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	m.GenOrder++
 }
 
 func (m *MetaPoolMetrics) PartialOrderQuorum(pOrder *protos.PartialOrder) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	// collect metrics.
 	m.TotalOrderLogs++
 	m.TotalLatency += pOrder.OrderedTime - pOrder.TimestampList()[0]

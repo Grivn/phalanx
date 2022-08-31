@@ -6,6 +6,7 @@ import (
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
+	"sort"
 )
 
 type commandRecorder struct {
@@ -153,8 +154,8 @@ func (recorder *commandRecorder) prioriCommit(commandD string) {
 
 		if waitingInfo.PrioriFinished() {
 			recorder.logger.Debugf("[%d] %s finished potential priori", recorder.author, waitingInfo.Format())
-			recorder.mapQSC[waitingInfo.CurCmd] = true
-			delete(recorder.mapWat, waitingInfo.CurCmd)
+			recorder.mapQSC[waitingInfo.Digest] = true
+			delete(recorder.mapWat, waitingInfo.Digest)
 		}
 	}
 	delete(recorder.mapPri, commandD)
@@ -181,7 +182,7 @@ func (recorder *commandRecorder) AddLeaf(digest string) {
 }
 
 func (recorder *commandRecorder) CutLeaf(info *types.CommandInfo) {
-	delete(recorder.leaves, info.CurCmd)
+	delete(recorder.leaves, info.Digest)
 }
 
 func (recorder *commandRecorder) IsLeaf(digest string) bool {
@@ -193,8 +194,8 @@ func (recorder *commandRecorder) IsLeaf(digest string) bool {
 func (recorder *commandRecorder) PotentialByz(info *types.CommandInfo, newPriorities []string) {
 	// remove the potential commands with potential byzantine order from QSC map.
 	// put it into waiting map.
-	delete(recorder.mapQSC, info.CurCmd)
-	recorder.mapWat[info.CurCmd] = true
+	delete(recorder.mapQSC, info.Digest)
+	recorder.mapWat[info.Digest] = true
 
 	// update the priority map for current QSC.
 	for _, priori := range newPriorities {
@@ -279,17 +280,30 @@ func (recorder *commandRecorder) FrontCommands() ([]string, bool) {
 	}
 
 	if len(correct) == 0 {
-		// we cannot find any command in correct status, just return all the front command digests.
-		var unverified []string
-		for digest := range counts {
-			unverified = append(unverified, digest)
+		// we cannot find any command in correct status, just pick-up one command info in QSC status.
+		qInfo := recorder.pickupQuorumInfos()
+		if qInfo == nil {
+			return nil, true
 		}
-		recorder.logger.Debugf("[%d] unverified front digest %v", recorder.author, unverified)
-		return recorder.frontFilter(unverified), false
+		recorder.logger.Debugf("[%d] pick-up quorum info %s", recorder.author, qInfo.Format())
+		return []string{qInfo.Digest}, false
 	}
 
 	recorder.logger.Debugf("[%d] correct front digest %v", recorder.author, correct)
 	return recorder.frontFilter(correct), true
+}
+
+func (recorder *commandRecorder) pickupQuorumInfos() *types.CommandInfo {
+	if len(recorder.mapQSC) < 100 {
+		return nil
+	}
+
+	var stream types.CommandStream
+	for digest := range recorder.mapQSC {
+		stream = append(stream, recorder.mapCmd[digest])
+	}
+	sort.Sort(stream)
+	return stream[0]
 }
 
 func (recorder *commandRecorder) frontFilter(fronts []string) []string {

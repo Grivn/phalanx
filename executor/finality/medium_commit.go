@@ -29,7 +29,6 @@ func newOrderMediumT(conf Config) *orderMediumT {
 }
 
 func (ot *orderMediumT) commitAccordingMediumT(block types.InnerBlock) {
-	block.Timestamp = block.MediumT
 	ot.blocks = append(ot.blocks, block)
 
 	if len(ot.blocks) < 1000 {

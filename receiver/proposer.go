@@ -4,7 +4,6 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"sync/atomic"
 )
 
 type proposerImpl struct {
@@ -31,9 +30,6 @@ type proposerImpl struct {
 	closeC chan bool
 
 	//
-	txCount int32
-
-	//
 	memSize int32
 
 	//======================================= external interfaces ==================================================
@@ -48,17 +44,16 @@ type proposerImpl struct {
 	selected uint64
 }
 
-func newProposer(author uint64, commandSize int, memSize int, txC chan *protos.Transaction,
-	sender external.NetworkService, logger external.Logger, selected uint64) *proposerImpl {
+func newProposer(author uint64, txC chan *protos.Transaction, conf Config) *proposerImpl {
 	return &proposerImpl{
 		author:      author,
-		commandSize: commandSize,
+		commandSize: conf.CommandSize,
 		txC:         txC,
 		closeC:      make(chan bool),
-		sender:      sender,
-		logger:      logger,
-		memSize:     int32(memSize),
-		selected:    selected,
+		sender:      conf.Sender,
+		logger:      conf.Logger,
+		memSize:     int32(conf.MemSize),
+		selected:    conf.Selected,
 	}
 }
 
@@ -81,21 +76,12 @@ func (p *proposerImpl) quit() {
 	}
 }
 
-func (p *proposerImpl) reply(command *protos.Command) {
-	count := len(command.Content)
-	atomic.AddInt32(&p.txCount, 0-int32(count))
-}
-
 func (p *proposerImpl) processTx(tx *protos.Transaction) {
 	if p.selected != uint64(0) && p.author < p.selected {
 		return
 	}
-	if atomic.LoadInt32(&p.txCount) == p.memSize {
-		return
-	}
 
 	p.txSet = append(p.txSet, tx)
-	atomic.AddInt32(&p.txCount, 1)
 	if len(p.txSet) == p.commandSize {
 		p.seqNo++
 		command := types.GenerateCommand(p.author, p.seqNo, p.txSet)

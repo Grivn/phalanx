@@ -28,7 +28,7 @@ type phalanxImpl struct {
 	metaPool internal.MetaPool
 
 	// executor is used to generate the final ordered blocks.
-	executor internal.Executor
+	executor internal.Finality
 
 	//
 	metrics *metrics.Metrics
@@ -91,7 +91,7 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 		Logger:  mLogs.executorLog,
 		Metrics: pMetrics,
 	}
-	executor := finality.NewExecutor(exeConf)
+	executor := finality.NewFinality(exeConf)
 
 	return &phalanxImpl{
 		author:    conf.Author,
@@ -100,6 +100,7 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 		executor:  executor,
 		logger:    conf.Logger,
 		logCount:  conf.LogCount,
+		metrics:   pMetrics,
 	}
 }
 

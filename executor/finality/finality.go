@@ -14,7 +14,7 @@ import (
 	"github.com/Grivn/phalanx/metrics"
 )
 
-type executorImpl struct {
+type finalityImpl struct {
 	// mutex is used to deal with the concurrent problems of executor.
 	mutex sync.RWMutex
 
@@ -22,6 +22,8 @@ type executorImpl struct {
 
 	// author indicates the identifier of current node.
 	author uint64
+
+	//============================ executor service processor =============================================
 
 	//============================ executor service processor =============================================
 
@@ -62,7 +64,7 @@ type executorImpl struct {
 	logger external.Logger
 }
 
-func NewExecutor(conf Config) *executorImpl {
+func NewFinality(conf Config) *finalityImpl {
 	author := conf.Author
 	orderSeq := make(map[uint64]uint64)
 
@@ -72,7 +74,7 @@ func NewExecutor(conf Config) *executorImpl {
 	}
 
 	cRecorder := recorder.NewCommandRecorder(author, conf.N, conf.Logger)
-	return &executorImpl{
+	return &finalityImpl{
 		author:    author,
 		rules:     newOrderRule(conf, cRecorder),
 		cRecorder: cRecorder,
@@ -86,14 +88,14 @@ func NewExecutor(conf Config) *executorImpl {
 }
 
 // CommitStream is used to commit the partial order stream.
-func (ei *executorImpl) CommitStream(qStream types.QueryStream) {
+func (ei *finalityImpl) CommitStream(qStream types.QueryStream) {
 	ei.streamMutex.Lock()
 	ei.streams.PushBack(qStream)
 	ei.streamMutex.Unlock()
 	atomic.AddInt64(&ei.count, 1)
 }
 
-func (ei *executorImpl) Run() {
+func (ei *finalityImpl) Run() {
 	for {
 		select {
 		case <-ei.closeC:
@@ -104,7 +106,7 @@ func (ei *executorImpl) Run() {
 	}
 }
 
-func (ei *executorImpl) Quit() {
+func (ei *finalityImpl) Quit() {
 	select {
 	case <-ei.closeC:
 	default:
@@ -112,7 +114,7 @@ func (ei *executorImpl) Quit() {
 	}
 }
 
-func (ei *executorImpl) processStreamList() {
+func (ei *finalityImpl) processStreamList() {
 	if atomic.LoadInt64(&ei.count) == 0 {
 		return
 	}
@@ -127,7 +129,7 @@ func (ei *executorImpl) processStreamList() {
 	ei.commitStream(qStream)
 }
 
-func (ei *executorImpl) commitStream(qStream types.QueryStream) {
+func (ei *finalityImpl) commitStream(qStream types.QueryStream) {
 	if len(qStream) == 0 {
 		// nil partial order batch means we should skip the current commitment attempt.
 		return

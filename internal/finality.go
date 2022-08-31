@@ -5,14 +5,14 @@ import (
 	"github.com/Grivn/phalanx/common/types"
 )
 
-type Executor interface {
+type Finality interface {
 	api.Runner
 
 	// CommitStream is used to commit the partial order stream.
 	CommitStream(qStream types.QueryStream)
 }
 
-//=============================================== Command Reader for Executor =====================================================
+//=============================================== Command Reader for Finality =====================================================
 
 type CommandRecorder interface {
 	InfoReader

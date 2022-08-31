@@ -25,6 +25,9 @@ func NewRuleCommitmentMetrics() *RuleCommitmentMetrics {
 }
 
 func (m *RuleCommitmentMetrics) CommitFrontCommandInfo(frontC *types.CommandInfo) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	sub := time.Now().UnixNano() - frontC.GTime
 	m.TotalCommandInfo++
 	m.TotalLatency += sub

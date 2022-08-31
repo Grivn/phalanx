@@ -88,7 +88,6 @@ func (rule *orderRule) processPartialOrder() {
 			rule.seqNo++
 			rule.exec.CommandExecution(blk, rule.seqNo)
 			rule.reload.Committed(blk.Command.Author, blk.Command.Sequence)
-			rule.txMgr.Reply(blk.Command)
 
 			// commit blocks with medium timestamp.
 			rule.mediumCommit.commitAccordingMediumT(blk)

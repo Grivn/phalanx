@@ -14,7 +14,7 @@ type scanner struct {
 }
 
 func NewScanner(info *types.CommandInfo) internal.CondorcetScanner {
-	return &scanner{target: info.CurCmd, selfInfo: info, found: false}
+	return &scanner{target: info.Digest, selfInfo: info, found: false}
 }
 
 func (s *scanner) HasCyclic() bool {
@@ -34,7 +34,7 @@ func (s *scanner) searchLowest(info *types.CommandInfo) map[string]*types.Comman
 	}
 
 	for _, pInfo := range info.LowCmd {
-		if pInfo.CurCmd == s.target {
+		if pInfo.Digest == s.target {
 			// we have found target node, directly finish.
 			s.found = true
 			break
