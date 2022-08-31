@@ -1,6 +1,11 @@
 package metrics
 
-import "github.com/Grivn/phalanx/common/types"
+import (
+	"github.com/Grivn/phalanx/common/types"
+	"sync"
+)
+
+var mutex sync.Mutex
 
 type Metrics struct {
 	MetaPoolMetrics       *MetaPoolMetrics
@@ -11,13 +16,13 @@ type Metrics struct {
 }
 
 func NewMetrics() *Metrics {
-	return &Metrics{
-		MetaPoolMetrics:       NewMetaPoolMetrics(),
-		ExecutorMetrics:       NewExecutorMetrics(),
-		OrderRuleMetrics:      NewOrderRuleMetrics(),
-		MediumTimeMetrics:     NewOrderRuleMetrics(),
-		RuleCommitmentMetrics: NewRuleCommitmentMetrics(),
-	}
+	m := &Metrics{}
+	m.MetaPoolMetrics = NewMetaPoolMetrics()
+	m.ExecutorMetrics = NewExecutorMetrics()
+	m.OrderRuleMetrics = NewOrderRuleMetrics()
+	m.MediumTimeMetrics = NewOrderRuleMetrics()
+	m.RuleCommitmentMetrics = NewRuleCommitmentMetrics()
+	return m
 }
 
 // QueryMetrics returns metrics info.

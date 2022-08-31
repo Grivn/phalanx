@@ -35,6 +35,9 @@ func NewOrderRuleMetrics() *OrderRuleMetrics {
 }
 
 func (m *OrderRuleMetrics) CommitBlock(blk types.InnerBlock) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	m.DetectFrontSetTypes(!blk.Safe)
 	m.DetectFrontAttackGivenRelationship(!blk.Safe, blk.Command)
 	m.DetectFrontAttackIntervalRelationship(!blk.Safe, blk.Command)

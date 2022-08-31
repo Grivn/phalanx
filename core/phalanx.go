@@ -100,6 +100,7 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 		executor:  executor,
 		logger:    conf.Logger,
 		logCount:  conf.LogCount,
+		metrics:   pMetrics,
 	}
 }
 

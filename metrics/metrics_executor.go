@@ -40,6 +40,9 @@ func NewExecutorMetrics() *ExecutorMetrics {
 }
 
 func (m *ExecutorMetrics) CommitPartialOrder(pOrder *protos.PartialOrder) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	sub := time.Now().UnixNano() - pOrder.OrderedTime
 
 	// collect order log metrics.
@@ -51,6 +54,9 @@ func (m *ExecutorMetrics) CommitPartialOrder(pOrder *protos.PartialOrder) {
 }
 
 func (m *ExecutorMetrics) CommitStream(start time.Time) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	sub := time.Now().Sub(start).Milliseconds()
 	m.TotalCommitStreamLatency += sub
 	m.TotalStreams++
