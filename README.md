@@ -1,5 +1,7 @@
+# Phalanx: A Byzantine Fault Tolerant Memory Pool with fair Ordering
+
 Need update.
-# Phalanx: A High-Performance Order-Fairness Byzantine Consensus Protocol
+
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-orange.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 ## Introduction
 Generally, a BFT (*Byzantine Fault Tolerance*) consensus algorithm concentrates on two properties, *safety* and *liveness*. 
