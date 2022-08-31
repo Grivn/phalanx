@@ -281,20 +281,24 @@ func (recorder *commandRecorder) FrontCommands() ([]string, bool) {
 
 	if len(correct) == 0 {
 		// we cannot find any command in correct status, just pick-up one command info in QSC status.
-		q := recorder.pickupQuorumInfo()
-		if q == nil {
+		infoList := recorder.pickupQuorumInfos()
+		if infoList == nil {
 			return nil, true
 		}
-		recorder.logger.Debugf("[%d] pick-up quorum info %s", recorder.author, q.Format())
-		return []string{q.Digest}, false
+		var qList []string
+		for _, info := range infoList {
+			qList = append(qList, info.Digest)
+		}
+		recorder.logger.Debugf("[%d] pick-up quorum info %v", recorder.author, qList)
+		return qList, false
 	}
 
 	recorder.logger.Debugf("[%d] correct front digest %v", recorder.author, correct)
 	return recorder.frontFilter(correct), true
 }
 
-func (recorder *commandRecorder) pickupQuorumInfo() *types.CommandInfo {
-	if len(recorder.mapQSC) == 0 {
+func (recorder *commandRecorder) pickupQuorumInfos() []*types.CommandInfo {
+	if len(recorder.mapQSC) < 1000 {
 		return nil
 	}
 
@@ -303,7 +307,7 @@ func (recorder *commandRecorder) pickupQuorumInfo() *types.CommandInfo {
 		stream = append(stream, recorder.mapCmd[digest])
 	}
 	sort.Sort(stream)
-	return stream[0]
+	return stream[:1]
 }
 
 func (recorder *commandRecorder) frontFilter(fronts []string) []string {

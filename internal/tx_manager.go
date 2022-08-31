@@ -9,6 +9,4 @@ type TxManager interface {
 	api.Runner
 	// ProcessTransaction is used to process transactions received by current node.
 	ProcessTransaction(tx *protos.Transaction)
-
-	Reply(command *protos.Command)
 }

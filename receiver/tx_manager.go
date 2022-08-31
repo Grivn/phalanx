@@ -55,14 +55,6 @@ func (txMgr *txManager) Quit() {
 	}
 }
 
-func (txMgr *txManager) Reply(command *protos.Command) {
-	proposer, ok := txMgr.proposers[command.Author]
-	if !ok {
-		return
-	}
-	proposer.reply(command)
-}
-
 func (txMgr *txManager) ProcessTransaction(tx *protos.Transaction) {
 	txMgr.txC <- tx
 }

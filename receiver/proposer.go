@@ -4,7 +4,6 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"sync/atomic"
 )
 
 type proposerImpl struct {
@@ -29,9 +28,6 @@ type proposerImpl struct {
 
 	// closeC is used to close proposer listener.
 	closeC chan bool
-
-	//
-	txCount int32
 
 	//
 	memSize int32
@@ -80,21 +76,12 @@ func (p *proposerImpl) quit() {
 	}
 }
 
-func (p *proposerImpl) reply(command *protos.Command) {
-	count := len(command.Content)
-	atomic.AddInt32(&p.txCount, 0-int32(count))
-}
-
 func (p *proposerImpl) processTx(tx *protos.Transaction) {
 	if p.selected != uint64(0) && p.author < p.selected {
 		return
 	}
-	if atomic.LoadInt32(&p.txCount) == p.memSize {
-		return
-	}
 
 	p.txSet = append(p.txSet, tx)
-	atomic.AddInt32(&p.txCount, 1)
 	if len(p.txSet) == p.commandSize {
 		p.seqNo++
 		command := types.GenerateCommand(p.author, p.seqNo, p.txSet)

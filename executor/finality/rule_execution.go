@@ -7,6 +7,9 @@ import (
 )
 
 type executionRule struct {
+	// preTag
+	preTag bool
+
 	// author indicates the identifier of current node.
 	author uint64
 
@@ -34,6 +37,7 @@ type executionRule struct {
 func newExecutionRule(conf Config, recorder internal.CommandRecorder) *executionRule {
 	conf.Logger.Infof("[%d] initiate natural order handler, replica count %d", conf.Author, conf.N)
 	return &executionRule{
+		preTag:     true,
 		author:     conf.Author,
 		n:          conf.N,
 		oneCorrect: types.CalculateOneCorrect(conf.N),

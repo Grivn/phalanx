@@ -37,8 +37,9 @@ func phalanxRunner() {
 	net := mocks.NewSimpleNetwork(nc, cc, types.NewRawLogger(), async)
 	for i := 0; i < n; i++ {
 		logger := types.NewRawLoggerFile(logDir + "/bft-node-" + strconv.Itoa(i+1) + ".log")
+		loggerExec := types.NewRawLoggerFile(logDir + "/bft-node-" + strconv.Itoa(i+1) + ".exec.log")
 		id := uint64(i + 1)
-		exec := mocks.NewSimpleExecutor(id, types.NewRawLogger(), logger)
+		exec := mocks.NewSimpleExecutor(id, types.NewRawLogger(), loggerExec)
 		byz := false
 		if id <= uint64(byzRange) {
 			byz = true
