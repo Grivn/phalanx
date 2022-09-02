@@ -4,4 +4,6 @@
 
 //go:generate mockgen -destination ../common/mocks/mock_logger.go -package mocks -source logger.go
 
+//go:generate mockgen -destination ../common/mocks/mock_crypto.go -package mocks -source crypto.go
+
 package external

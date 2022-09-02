@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/Grivn/phalanx/common/api"
-	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
@@ -88,6 +87,11 @@ type metaPool struct {
 	// commitNo indicates the maximum committed number for each participant's partial order.
 	commitNo map[uint64]uint64
 
+	//==================================== crypto management =============================================
+
+	// crypto is used to generate/verify certificates.
+	crypto api.Crypto
+
 	//======================================= external tools ===========================================
 
 	// sender is used to send consensus message into network.
@@ -117,7 +121,7 @@ func NewMetaPool(conf Config) api.MetaPool {
 	subs := make(map[uint64]api.ReplicaInstance)
 	for i := 0; i < conf.N; i++ {
 		id := uint64(i + 1)
-		subs[id] = instance.NewReplicaInstance(conf.Author, id, pTracker, conf.Sender, conf.Logger)
+		subs[id] = instance.NewReplicaInstance(conf.Author, id, pTracker, conf.Crypto, conf.Sender, conf.Logger)
 		committedTracker[id] = 0
 	}
 
@@ -148,6 +152,7 @@ func NewMetaPool(conf Config) api.MetaPool {
 		timer:    newLocalTimer(conf.Author, timeoutC, conf.Duration, conf.Logger),
 		timeoutC: timeoutC,
 		closeC:   make(chan bool),
+		crypto:   conf.Crypto,
 		sender:   conf.Sender,
 		logger:   conf.Logger,
 		metrics:  conf.Metrics,
@@ -308,7 +313,7 @@ func (mp *metaPool) generateOrder() error {
 
 	// generate pre order message.
 	pre := protos.NewPreOrder(mp.author, mp.sequence, digestList, timestampList, mp.highOrder)
-	digest, err := crypto.CalculateDigest(pre)
+	digest, err := types.CalculateDigest(pre)
 	if err != nil {
 		return fmt.Errorf("pre order marshal error: %s", err)
 	}
@@ -318,7 +323,7 @@ func (mp *metaPool) generateOrder() error {
 	mp.commandSet = nil
 
 	// generate self-signature for current pre-order
-	signature, err := crypto.PrivSign(types.StringToBytes(pre.Digest), int(mp.author))
+	signature, err := mp.crypto.PrivateSign(types.StringToBytes(pre.Digest))
 	if err != nil {
 		return fmt.Errorf("generate signature for pre-order failed: %s", err)
 	}
@@ -362,7 +367,7 @@ func (mp *metaPool) ProcessVote(vote *protos.Vote) error {
 
 	// verify the signature in vote
 	// here, we would like to check if the signature is valid.
-	if err := crypto.PubVerify(vote.Certification, types.StringToBytes(vote.Digest), int(vote.Author)); err != nil {
+	if err := mp.crypto.PublicVerify(vote.Certification, types.StringToBytes(vote.Digest), vote.Author); err != nil {
 		return fmt.Errorf("failed to aggregate: %s", err)
 	}
 
@@ -502,7 +507,7 @@ func (mp *metaPool) VerifyProposal(batch *protos.PartialOrderBatch) (types.Query
 
 		qIndex := types.QueryIndex{Author: pOrder.Author(), SeqNo: pOrder.Sequence()}
 		if !mp.pTracker.IsExist(qIndex) {
-			if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, mp.quorum); err != nil {
+			if err := mp.crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, mp.quorum); err != nil {
 				return nil, fmt.Errorf("invalid high partial order received from %d: %s", batch.Author, err)
 			}
 		}

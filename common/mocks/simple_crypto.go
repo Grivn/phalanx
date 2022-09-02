@@ -1,16 +1,63 @@
-package crypto
+package mocks
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
+	"fmt"
+	"github.com/Grivn/phalanx/external"
 	"math/big"
 
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 )
 
-// ================================= ECDSA ====================================
+const (
+	COUNT = 512
+	// ECDSA_P256 is supported for crypto algorithms
+	ECDSA_P256 = "ECDSA_P256"
+)
+
+//==================================== create naive validator =============================================
+
+type StaticRand struct{ id int }
+
+func (sr *StaticRand) Read(x []byte) (int, error) { return sr.id, nil }
+
+// GenerateKeys is used to init the public/private keys for validator
+func GenerateKeys(author uint64, count int) (external.PrivateKey, map[uint64]external.PublicKey, error) {
+	var privKey external.PrivateKey
+	pubKeys := make(map[uint64]external.PublicKey, count)
+	for i := 0; i < count; i++ {
+		id := uint64(i + 1)
+		pair, err := generateKeyHelper(ECDSA_P256, i+1)
+		if err != nil {
+			return nil, nil, err
+		}
+		pubKeys[id] = pair.PublicKey()
+		if id == author {
+			privKey = pair
+		}
+	}
+	return privKey, pubKeys, nil
+}
+
+func generateKeyHelper(signer string, id int) (external.PrivateKey, error) {
+	if signer == ECDSA_P256 {
+		// generate key pairs with static id
+		pubkeyCurve := elliptic.P256()
+		priv, err := ecdsa.GenerateKey(pubkeyCurve, &StaticRand{id: id})
+		if err != nil {
+			return nil, err
+		}
+		privKey := &ecdsaP256PrivateKey{SignAlg: signer, PrivateKey: priv}
+		return privKey, nil
+	}
+	return nil, fmt.Errorf("invalid signature scheme %s", signer)
+}
+
+// ================================= ecdsa implementation ====================================
 
 type ecdsaSignature struct {
 	r, s *big.Int
@@ -27,8 +74,8 @@ type ecdsaP256PublicKey struct {
 }
 
 // PublicKey returns the public key.
-func (priv *ecdsaP256PrivateKey) PublicKey() PublicKey {
-	pub := &ecdsaP256PublicKey{SignAlg: types.ECDSA_P256, PublicKey: priv.PrivateKey.PublicKey}
+func (priv *ecdsaP256PrivateKey) PublicKey() external.PublicKey {
+	pub := &ecdsaP256PublicKey{SignAlg: ECDSA_P256, PublicKey: priv.PrivateKey.PublicKey}
 	return pub
 }
 

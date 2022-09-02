@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/Grivn/phalanx/common/api"
-	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/event"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
@@ -52,6 +51,11 @@ type replicaInstance struct {
 	// pTracker is used to record the partial orders from current sub instance node.
 	pTracker api.PartialTracker
 
+	//==================================== crypto management =============================================
+
+	// crypto is used to generate/verify certificates.
+	crypto api.Crypto
+
 	//======================================= external tools ===========================================
 
 	// sender is used to send votes to others.
@@ -61,7 +65,8 @@ type replicaInstance struct {
 	logger external.Logger
 }
 
-func NewReplicaInstance(author, id uint64, pTracker api.PartialTracker, sender external.NetworkService, logger external.Logger) api.ReplicaInstance {
+func NewReplicaInstance(author, id uint64, pTracker api.PartialTracker, crypto api.Crypto,
+	sender external.NetworkService, logger external.Logger) api.ReplicaInstance {
 	logger.Infof("[%d] initiate the sub instance of order for replica %d", author, id)
 	return &replicaInstance{
 		author:   author,
@@ -71,6 +76,7 @@ func NewReplicaInstance(author, id uint64, pTracker api.PartialTracker, sender e
 		voted:    uint64(0),
 		recorder: btree.New(2),
 		pTracker: pTracker,
+		crypto:   crypto,
 		sender:   sender,
 		logger:   logger,
 	}
@@ -99,7 +105,7 @@ func (ri *replicaInstance) ReceivePreOrder(pre *protos.PreOrder) error {
 		return ri.processBTree()
 	}
 
-	if err := crypto.CheckDigest(pre); err != nil {
+	if err := types.CheckDigest(pre); err != nil {
 		return fmt.Errorf("invalid digest: %s", err)
 	}
 
@@ -115,7 +121,7 @@ func (ri *replicaInstance) ReceivePartial(pOrder *protos.PartialOrder) error {
 	ri.logger.Infof("[%d] received a partial order %s", ri.author, pOrder.Format())
 
 	// verify the signatures of current received partial order.
-	if err := crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, ri.quorum); err != nil {
+	if err := ri.crypto.VerifyProofCerts(types.StringToBytes(pOrder.PreOrderDigest()), pOrder.QC, ri.quorum); err != nil {
 		return fmt.Errorf("invalid order: %s", err)
 	}
 
@@ -143,7 +149,7 @@ func (ri *replicaInstance) processBTree() error {
 		pre := ev.Event.(*protos.PreOrder)
 
 		// generate the signature for current pre-order
-		sig, err := crypto.PrivSign(types.StringToBytes(pre.Digest), int(ri.author))
+		sig, err := ri.crypto.PrivateSign(types.StringToBytes(pre.Digest))
 		if err != nil {
 			return fmt.Errorf("signer failed: %s", err)
 		}

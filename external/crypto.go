@@ -1,4 +1,4 @@
-package crypto
+package external
 
 import (
 	"github.com/Grivn/phalanx/common/protos"
@@ -24,10 +24,4 @@ type PublicKey interface {
 
 	// Verify verifies a signature of an input message using the provided hasher.
 	Verify(*protos.Certification, types.Hash) error
-}
-
-// Hasher interface
-type Hasher interface {
-	// ComputeHash returns the hash output regardless of the hash state
-	ComputeHash([]byte) types.Hash
 }
