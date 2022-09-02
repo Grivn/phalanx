@@ -1,8 +1,8 @@
 package scanner
 
 import (
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/internal"
 )
 
 type scanner struct {
@@ -13,7 +13,7 @@ type scanner struct {
 	found bool
 }
 
-func NewScanner(info *types.CommandInfo) internal.CondorcetScanner {
+func NewScanner(info *types.CommandInfo) api.CondorcetScanner {
 	return &scanner{target: info.Digest, selfInfo: info, found: false}
 }
 

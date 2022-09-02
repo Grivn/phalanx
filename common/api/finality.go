@@ -1,12 +1,9 @@
-package internal
+package api
 
-import (
-	"github.com/Grivn/phalanx/common/api"
-	"github.com/Grivn/phalanx/common/types"
-)
+import "github.com/Grivn/phalanx/common/types"
 
 type Finality interface {
-	api.Runner
+	Runner
 
 	// CommitStream is used to commit the partial order stream.
 	CommitStream(qStream types.QueryStream)

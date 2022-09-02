@@ -1,14 +1,13 @@
 package phalanx
 
 import (
-	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 )
 
 // Provider is the phalanx service provider for all kinds of consensus algorithm, such as PBFT or HS.
 type Provider interface {
-	api.Runner
+	Runner
 	Receiver
 	Communicator
 	Generator
@@ -16,6 +15,12 @@ type Provider interface {
 
 	// QueryMetrics returns the metrics info of phalanx.
 	QueryMetrics() types.MetricsInfo
+}
+
+// Runner is used to control the modules which provide coroutine service.
+type Runner interface {
+	Run()
+	Quit()
 }
 
 // Receiver is used to receive transactions and push them into phalanx memory pool.

@@ -1,9 +1,9 @@
 package barrier
 
 import (
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 )
 
 type commandStreamBarrierImpl struct {
@@ -14,7 +14,7 @@ type commandStreamBarrierImpl struct {
 	oneCorrect int
 
 	// cRecorder is used to record the command info.
-	cRecorder internal.CommandRecorder
+	cRecorder api.CommandRecorder
 
 	// selected is referred to the commands to be committed.
 	selected map[string]bool
@@ -23,7 +23,7 @@ type commandStreamBarrierImpl struct {
 	logger external.Logger
 }
 
-func NewCommandStreamBarrier(author uint64, cRecorder internal.CommandRecorder, oneCorrect int, logger external.Logger) *commandStreamBarrierImpl {
+func NewCommandStreamBarrier(author uint64, cRecorder api.CommandRecorder, oneCorrect int, logger external.Logger) *commandStreamBarrierImpl {
 	return &commandStreamBarrierImpl{
 		author:     author,
 		oneCorrect: oneCorrect,

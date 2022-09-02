@@ -1,10 +1,10 @@
 package finality
 
 import (
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/executor/barrier"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 )
 
 type executionRule struct {
@@ -24,7 +24,7 @@ type executionRule struct {
 	quorum int
 
 	// cRecorder is used to record the command info.
-	cRecorder internal.CommandRecorder
+	cRecorder api.CommandRecorder
 
 	selected map[string]bool
 
@@ -35,7 +35,7 @@ type executionRule struct {
 	oligarchy uint64
 }
 
-func newExecutionRule(conf Config, recorder internal.CommandRecorder) *executionRule {
+func newExecutionRule(conf Config, recorder api.CommandRecorder) *executionRule {
 	conf.Logger.Infof("[%d] initiate natural order handler, replica count %d", conf.Author, conf.N)
 	return &executionRule{
 		preTag:     true,

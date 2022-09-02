@@ -1,8 +1,8 @@
 package finality
 
 import (
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/metrics"
 )
 
@@ -34,10 +34,10 @@ type orderRule struct {
 	//============================= internal interfaces =========================================
 
 	// reload is used to notify client instance the committed sequence number.
-	reload internal.MetaCommitter
+	reload api.MetaCommitter
 
 	//
-	txMgr internal.TxManager
+	txMgr api.TxManager
 
 	//============================== external interfaces ==========================================
 
@@ -54,7 +54,7 @@ type orderRule struct {
 	mediumCommit *orderMediumT
 }
 
-func newOrderRule(conf Config, cRecorder internal.CommandRecorder) *orderRule {
+func newOrderRule(conf Config, cRecorder api.CommandRecorder) *orderRule {
 	return &orderRule{
 		author:       conf.Author,
 		collect:      newCollectRule(conf, cRecorder),

@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/event"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
-
 	"github.com/google/btree"
 )
 
@@ -51,7 +50,7 @@ type replicaInstance struct {
 	//======================================= internal modules =========================================
 
 	// pTracker is used to record the partial orders from current sub instance node.
-	pTracker internal.PartialTracker
+	pTracker api.PartialTracker
 
 	//======================================= external tools ===========================================
 
@@ -62,7 +61,7 @@ type replicaInstance struct {
 	logger external.Logger
 }
 
-func NewReplicaInstance(author, id uint64, pTracker internal.PartialTracker, sender external.NetworkService, logger external.Logger) internal.ReplicaInstance {
+func NewReplicaInstance(author, id uint64, pTracker api.PartialTracker, sender external.NetworkService, logger external.Logger) api.ReplicaInstance {
 	logger.Infof("[%d] initiate the sub instance of order for replica %d", author, id)
 	return &replicaInstance{
 		author:   author,

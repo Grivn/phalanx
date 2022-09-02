@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/executor/recorder"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/metrics"
 )
 
@@ -42,7 +42,7 @@ type finalityImpl struct {
 	//============================ order rule for block generation ========================================
 
 	// cRecorder is used to record the command info.
-	cRecorder internal.CommandRecorder
+	cRecorder api.CommandRecorder
 
 	// rules is used to generate blocks with phalanx order-rule.
 	rules *orderRule
@@ -53,7 +53,7 @@ type finalityImpl struct {
 	//============================= internal interfaces =========================================
 
 	// reader is used to read partial orders from meta pool tracker.
-	reader internal.MetaReader
+	reader api.MetaReader
 
 	// metrics is used to record the metric of current node's executor.
 	metrics *metrics.ExecutorMetrics

@@ -3,10 +3,11 @@ package recorder
 import (
 	"container/list"
 	"fmt"
+	"sort"
+
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
-	"sort"
 )
 
 type commandRecorder struct {
@@ -51,7 +52,7 @@ type commandRecorder struct {
 	logger external.Logger
 }
 
-func NewCommandRecorder(author uint64, n int, logger external.Logger) internal.CommandRecorder {
+func NewCommandRecorder(author uint64, n int, logger external.Logger) api.CommandRecorder {
 	set := make(map[uint64]*list.List)
 	for i := 0; i < n; i++ {
 		id := uint64(i + 1)
