@@ -36,9 +36,6 @@ type orderRule struct {
 	// reload is used to notify client instance the committed sequence number.
 	reload api.MetaCommitter
 
-	//
-	txMgr api.TxManager
-
 	//============================== external interfaces ==========================================
 
 	// exec is used to execute the block.
@@ -47,7 +44,7 @@ type orderRule struct {
 	// logger is used to print logs.
 	logger external.Logger
 
-	//
+	// metrics is used to record the metric info of current node's order rule module.
 	metrics *metrics.OrderRuleMetrics
 
 	//
@@ -60,10 +57,9 @@ func newOrderRule(conf Config, cRecorder api.CommandRecorder) *orderRule {
 		collect:      newCollectRule(conf, cRecorder),
 		execute:      newExecutionRule(conf, cRecorder),
 		commit:       newCommitmentRule(conf, cRecorder),
-		reload:       conf.Mgr,
+		reload:       conf.Pool,
 		exec:         conf.Exec,
 		logger:       conf.Logger,
-		txMgr:        conf.Manager,
 		mediumCommit: newOrderMediumT(conf),
 		metrics:      conf.Metrics.OrderRuleMetrics,
 	}

@@ -31,14 +31,11 @@ type phalanxImpl struct {
 	// executor is used to generate the final ordered blocks.
 	executor api.Finality
 
-	//
+	// metrics is used to record the metric of current phalanx instance.
 	metrics *metrics.Metrics
 
 	// logger is used to print logs.
 	logger external.Logger
-
-	//
-	logCount int
 }
 
 func NewPhalanxProvider(conf Config) *phalanxImpl {
@@ -70,14 +67,13 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 
 	// initiate meta pool.
 	mpConf := metapool.Config{
-		Author:   conf.Author,
-		Byz:      conf.Byz,
-		N:        conf.N,
-		Multi:    conf.Multi,
-		LogCount: conf.LogCount,
-		Sender:   conf.Network,
-		Logger:   mLogs.metaPoolLog,
-		Metrics:  pMetrics.MetaPoolMetrics,
+		Author:  conf.Author,
+		Byz:     conf.Byz,
+		N:       conf.N,
+		Multi:   conf.Multi,
+		Sender:  conf.Network,
+		Logger:  mLogs.metaPoolLog,
+		Metrics: pMetrics.MetaPoolMetrics,
 	}
 	mPool := metapool.NewMetaPool(mpConf)
 
@@ -86,8 +82,7 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 		Author:  conf.Author,
 		OLeader: conf.OLeader,
 		N:       conf.N,
-		Mgr:     mPool,
-		Manager: txMgr,
+		Pool:    mPool,
 		Exec:    conf.Exec,
 		Logger:  mLogs.executorLog,
 		Metrics: pMetrics,
@@ -100,7 +95,6 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 		metaPool:  mPool,
 		executor:  executor,
 		logger:    conf.Logger,
-		logCount:  conf.LogCount,
 		metrics:   pMetrics,
 	}
 }

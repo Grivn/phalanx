@@ -9,15 +9,10 @@ import (
 )
 
 type orderMediumT struct {
-	seqNo uint64
-
-	// logger is used to print logs.
-	logger external.Logger
-
-	//
+	seqNo   uint64
+	logger  external.Logger
 	metrics *metrics.OrderRuleMetrics
-
-	blocks types.SortableInnerBlocks
+	blocks  types.SortableInnerBlocks
 }
 
 func newOrderMediumT(conf Config) *orderMediumT {

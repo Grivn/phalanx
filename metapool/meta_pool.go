@@ -30,8 +30,8 @@ type metaPool struct {
 	// multi indicates the number of proposers each node maintains.
 	multi int
 
-	//
-	logCount int
+	// byz indicates if current node is the adversary.
+	byz bool
 
 	//==================================== sub-chain management =============================================
 
@@ -96,14 +96,8 @@ type metaPool struct {
 	// logger is used to print logs.
 	logger external.Logger
 
-	//
+	// metrics is used to record the metric info of current node's meta pool.
 	metrics *metrics.MetaPoolMetrics
-
-	//
-	byz bool
-
-	//
-	openLatency int
 }
 
 func NewMetaPool(conf Config) api.MetaPool {
@@ -143,7 +137,6 @@ func NewMetaPool(conf Config) api.MetaPool {
 		author:   conf.Author,
 		n:        conf.N,
 		multi:    conf.Multi,
-		logCount: conf.LogCount,
 		quorum:   types.CalculateQuorum(conf.N),
 		sequence: uint64(0),
 		aggMap:   make(map[string]*protos.PartialOrder),

@@ -3,7 +3,7 @@ package finality
 import (
 	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/executor/barrier"
+	"github.com/Grivn/phalanx/executor/interceptor"
 	"github.com/Grivn/phalanx/external"
 )
 
@@ -66,9 +66,10 @@ func (er *executionRule) execution() types.FrontStream {
 	}
 
 	if !safe {
-		// we cannot make sure the validation of front set.
-		handler := barrier.NewCommandStreamBarrier(er.author, er.cRecorder, er.oneCorrect, er.logger)
-		cStream = handler.BaselineGroup(cStream)
+		if qInfo := er.cRecorder.PickQuorumInfo(); qInfo != nil {
+			// we cannot make sure the validation of front set.
+			cStream = interceptor.NewInterceptor(er.author, er.cRecorder, er.oneCorrect, er.logger).SelectToCommit(types.CommandStream{qInfo})
+		}
 	}
 
 	return types.FrontStream{Safe: safe, Stream: cStream}

@@ -61,7 +61,7 @@ func newCommitmentRule(conf Config, recorder api.CommandRecorder) *commitmentRul
 		frontNo:    uint64(0),
 		cRecorder:  recorder,
 		democracy:  democracy,
-		reader:     conf.Mgr,
+		reader:     conf.Pool,
 		logger:     conf.Logger,
 		metrics:    conf.Metrics.RuleCommitmentMetrics,
 	}

@@ -233,8 +233,8 @@ func (recorder *commandRecorder) PushBack(oInfo types.OrderInfo) error {
 func (recorder *commandRecorder) FrontCommands() ([]string, bool) {
 	var fronts []string
 
+	var correct []string
 	counts := make(map[string]int)
-
 	for _, queue := range recorder.fifoQueue {
 
 		for {
@@ -259,6 +259,9 @@ func (recorder *commandRecorder) FrontCommands() ([]string, bool) {
 			fronts = append(fronts, orderInfo.Command)
 
 			counts[orderInfo.Command]++
+			if counts[orderInfo.Command] == recorder.oneCorrect {
+				correct = append(correct, orderInfo.Command)
+			}
 
 			recorder.logger.Infof("[%d] select front command %s from node %d", recorder.author, orderInfo.Command, orderInfo.Author)
 			break
@@ -271,40 +274,42 @@ func (recorder *commandRecorder) FrontCommands() ([]string, bool) {
 		return nil, true
 	}
 
-	var correct []string
-
-	for digest, count := range counts {
-		if count < recorder.oneCorrect {
-			continue
-		}
-		correct = append(correct, digest)
-	}
-
 	if len(correct) == 0 {
-		// we cannot find any command in correct status, just pick-up one command info in QSC status.
-		qInfo := recorder.pickupQuorumInfos()
-		if qInfo == nil {
-			return nil, true
-		}
-		recorder.logger.Debugf("[%d] pick-up quorum info %s", recorder.author, qInfo.Format())
-		return []string{qInfo.Digest}, false
+		// there are quorum nodes have proposed their preferred command, however
+		// we cannot find any front commands in correct status, so we should return risk flag.
+		return nil, false
 	}
 
 	recorder.logger.Debugf("[%d] correct front digest %v", recorder.author, correct)
 	return recorder.frontFilter(correct), true
 }
 
-func (recorder *commandRecorder) pickupQuorumInfos() *types.CommandInfo {
-	if len(recorder.mapQSC) < 100 {
+func (recorder *commandRecorder) PickQuorumInfo() *types.CommandInfo {
+	// here we pick the quorum info with the earliest medium timestamp.
+	// note: we could pick the quorum info with the other strategies.
+
+	if len(recorder.mapQSC) == 0 {
+		// cannot find any command infos in quorum status, return nil.
 		return nil
 	}
 
+	// sort the command infos in quorum status according to medium timestamp.
 	var stream types.CommandStream
 	for digest := range recorder.mapQSC {
 		stream = append(stream, recorder.mapCmd[digest])
 	}
 	sort.Sort(stream)
-	return stream[0]
+
+	// select the first uncommitted command info in sorted stream.
+	for _, qInfo := range stream {
+		if recorder.IsCommitted(qInfo.Digest) {
+			continue
+		}
+		return qInfo
+	}
+
+	// all the commands are committed.
+	return nil
 }
 
 func (recorder *commandRecorder) frontFilter(fronts []string) []string {

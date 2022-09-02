@@ -75,6 +75,9 @@ type QueueManager interface {
 
 	// OligarchyLeaderFront returns the oligarchy leader ordering, test mode.
 	OligarchyLeaderFront(leader uint64) string
+
+	//
+	PickQuorumInfo() *types.CommandInfo
 }
 
 //================================== Cyclic Scanner ==============================================
@@ -83,6 +86,6 @@ type CondorcetScanner interface {
 	HasCyclic() bool
 }
 
-type CommandStreamBarrier interface {
-	BaselineGroup(baselines types.CommandStream) types.CommandStream
+type Interceptor interface {
+	SelectToCommit(barrier types.CommandStream) types.CommandStream
 }
