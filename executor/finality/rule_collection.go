@@ -1,9 +1,9 @@
 package finality
 
 import (
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 )
 
 type collectionRule struct {
@@ -17,13 +17,13 @@ type collectionRule struct {
 	quorum int
 
 	// cRecorder is used to record the command info.
-	cRecorder internal.CommandRecorder
+	cRecorder api.CommandRecorder
 
 	// logger is used to print logs.
 	logger external.Logger
 }
 
-func newCollectRule(conf Config, recorder internal.CommandRecorder) *collectionRule {
+func newCollectRule(conf Config, recorder api.CommandRecorder) *collectionRule {
 	conf.Logger.Infof("[%d] initiate partial order collector, replica count %d", conf.Author, conf.N)
 	return &collectionRule{
 		author:     conf.Author,

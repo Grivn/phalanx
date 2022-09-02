@@ -1,13 +1,12 @@
-package internal
+package api
 
 import (
-	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 )
 
 type MetaPool interface {
-	api.Runner
+	Runner
 	LogManager
 	MetaReader
 	MetaCommitter

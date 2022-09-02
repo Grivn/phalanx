@@ -12,7 +12,6 @@ type Config struct {
 	Author   uint64
 	N        int
 	Multi    int
-	LogCount int
 	Duration time.Duration
 	Sender   external.NetworkService
 	Logger   external.Logger

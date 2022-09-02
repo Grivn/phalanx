@@ -2,16 +2,17 @@ package metapool
 
 import (
 	"fmt"
+	"sort"
+	"sync"
+
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/metapool/instance"
 	"github.com/Grivn/phalanx/metapool/tracker"
 	"github.com/Grivn/phalanx/metrics"
-	"sort"
-	"sync"
 )
 
 type metaPool struct {
@@ -29,8 +30,8 @@ type metaPool struct {
 	// multi indicates the number of proposers each node maintains.
 	multi int
 
-	//
-	logCount int
+	// byz indicates if current node is the adversary.
+	byz bool
 
 	//==================================== sub-chain management =============================================
 
@@ -49,10 +50,10 @@ type metaPool struct {
 
 	// replicas is the module for us to process consensus messages for participates.
 	// when we try to read the partial order to execute, we should read them from each sub instance.
-	replicas map[uint64]internal.ReplicaInstance
+	replicas map[uint64]api.ReplicaInstance
 
 	// pTracker is used to record the partial orders received by current node.
-	pTracker internal.PartialTracker
+	pTracker api.PartialTracker
 
 	// commandSet is used to record the commands' waiting list according to receive order.
 	commandSet types.CommandSet
@@ -60,10 +61,10 @@ type metaPool struct {
 	//===================================== client commands manager ============================================
 
 	// cTracker is used to record the commands received by current node.
-	cTracker internal.CommandTracker
+	cTracker api.CommandTracker
 
 	// clients are used to track the commands send from them.
-	clients map[uint64]internal.ClientInstance
+	clients map[uint64]api.ClientInstance
 
 	// active indicates the number of active client instance.
 	active *int64
@@ -95,17 +96,11 @@ type metaPool struct {
 	// logger is used to print logs.
 	logger external.Logger
 
-	//
+	// metrics is used to record the metric info of current node's meta pool.
 	metrics *metrics.MetaPoolMetrics
-
-	//
-	byz bool
-
-	//
-	openLatency int
 }
 
-func NewMetaPool(conf Config) internal.MetaPool {
+func NewMetaPool(conf Config) api.MetaPool {
 	conf.Logger.Infof("[%d] initiate log manager, replica count %d", conf.Author, conf.N)
 
 	// initiate communication channel.
@@ -119,7 +114,7 @@ func NewMetaPool(conf Config) internal.MetaPool {
 	pTracker := tracker.NewPartialTracker(conf.Author, conf.Logger)
 
 	// initiate replica instances.
-	subs := make(map[uint64]internal.ReplicaInstance)
+	subs := make(map[uint64]api.ReplicaInstance)
 	for i := 0; i < conf.N; i++ {
 		id := uint64(i + 1)
 		subs[id] = instance.NewReplicaInstance(conf.Author, id, pTracker, conf.Sender, conf.Logger)
@@ -131,7 +126,7 @@ func NewMetaPool(conf Config) internal.MetaPool {
 	*active = int64(0)
 
 	// initiate client instances.
-	clients := make(map[uint64]internal.ClientInstance)
+	clients := make(map[uint64]api.ClientInstance)
 	for i := 0; i < conf.N*conf.Multi; i++ {
 		id := uint64(i + 1)
 		client := instance.NewClient(conf.Author, id, commandC, active, conf.Logger)
@@ -142,7 +137,6 @@ func NewMetaPool(conf Config) internal.MetaPool {
 		author:   conf.Author,
 		n:        conf.N,
 		multi:    conf.Multi,
-		logCount: conf.LogCount,
 		quorum:   types.CalculateQuorum(conf.N),
 		sequence: uint64(0),
 		aggMap:   make(map[string]*protos.PartialOrder),

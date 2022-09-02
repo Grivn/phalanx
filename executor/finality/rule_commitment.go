@@ -3,9 +3,9 @@ package finality
 import (
 	"sort"
 
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/metrics"
 	"github.com/google/btree"
 )
@@ -30,13 +30,13 @@ type commitmentRule struct {
 	frontNo uint64
 
 	// cRecorder is used to record the command info.
-	cRecorder internal.CommandRecorder
+	cRecorder api.CommandRecorder
 
 	// democracy is used to generate block with free will committee.
 	democracy map[uint64]*btree.BTree
 
 	// reader is used to read raw commands from meta pool.
-	reader internal.MetaReader
+	reader api.MetaReader
 
 	// logger is used to print logs.
 	logger external.Logger
@@ -45,7 +45,7 @@ type commitmentRule struct {
 	metrics *metrics.RuleCommitmentMetrics
 }
 
-func newCommitmentRule(conf Config, recorder internal.CommandRecorder) *commitmentRule {
+func newCommitmentRule(conf Config, recorder api.CommandRecorder) *commitmentRule {
 	conf.Logger.Infof("[%d] initiate free will committee, replica count %d", conf.Author, conf.N)
 	democracy := make(map[uint64]*btree.BTree)
 	for i := 0; i < conf.N; i++ {
@@ -61,7 +61,7 @@ func newCommitmentRule(conf Config, recorder internal.CommandRecorder) *commitme
 		frontNo:    uint64(0),
 		cRecorder:  recorder,
 		democracy:  democracy,
-		reader:     conf.Mgr,
+		reader:     conf.Pool,
 		logger:     conf.Logger,
 		metrics:    conf.Metrics.RuleCommitmentMetrics,
 	}

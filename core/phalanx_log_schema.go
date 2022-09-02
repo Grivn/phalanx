@@ -1,15 +1,16 @@
 package phalanx
 
 import (
-	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/external"
 	"os"
 	"strconv"
+	
+	"github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/external"
 )
 
 type moduleLogger struct {
-	metaPoolLog external.Logger
-	executorLog external.Logger
+	metaPoolLog  external.Logger
+	executorLog  external.Logger
 	txManagerLog external.Logger
 }
 
@@ -24,7 +25,7 @@ func newPLogger(logger external.Logger, divided bool, author uint64) (*moduleLog
 	}
 
 	// print phalanx logs in divided files.
-	logDir := "phalanx_node"+strconv.Itoa(int(author))
+	logDir := "phalanx_node" + strconv.Itoa(int(author))
 	err := os.RemoveAll(logDir)
 	if err != nil {
 		logger.Errorf("Mkdir Failed: %s", err)
@@ -37,8 +38,8 @@ func newPLogger(logger external.Logger, divided bool, author uint64) (*moduleLog
 	}
 
 	return &moduleLogger{
-		metaPoolLog:  types.NewRawLoggerFile(logDir+"/log-manager"),
-		executorLog:  types.NewRawLoggerFile(logDir+"/executor"),
-		txManagerLog: types.NewRawLoggerFile(logDir+"/test-client"),
+		metaPoolLog:  types.NewRawLoggerFile(logDir + "/log-manager"),
+		executorLog:  types.NewRawLoggerFile(logDir + "/executor"),
+		txManagerLog: types.NewRawLoggerFile(logDir + "/test-client"),
 	}, nil
 }

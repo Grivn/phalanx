@@ -3,10 +3,10 @@ package tracker
 import (
 	"sync"
 
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 )
 
 // partialTracker is used to record the partial orders current node has received.
@@ -24,7 +24,7 @@ type partialTracker struct {
 	logger external.Logger
 }
 
-func NewPartialTracker(author uint64, logger external.Logger) internal.PartialTracker {
+func NewPartialTracker(author uint64, logger external.Logger) api.PartialTracker {
 	logger.Infof("[%d] initiate partial tracker")
 	return &partialTracker{
 		author: author,

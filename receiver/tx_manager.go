@@ -1,9 +1,9 @@
 package receiver
 
 import (
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 )
 
 // txManager is the implement of phalanx client, which is used receive transactions and generate phalanx commands.
@@ -27,7 +27,7 @@ type txManager struct {
 	logger external.Logger
 }
 
-func NewTxManager(conf Config) internal.TxManager {
+func NewTxManager(conf Config) api.TxManager {
 	proposers := make(map[uint64]*proposerImpl)
 
 	txC := make(chan *protos.Transaction)

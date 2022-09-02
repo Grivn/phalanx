@@ -21,23 +21,28 @@ func newStreamCache() *streamCache {
 }
 
 func (mgr *streamCache) append(qStream types.QueryStream) {
-	//mgr.mutex.Lock()
-	//defer mgr.mutex.Unlock()
-
 	if len(qStream) == 0 {
+		// skip blank query stream.
 		return
 	}
 
 	// append the query stream into stream list.
+	mgr.mutex.Lock()
 	mgr.streamList.PushBack(qStream)
+	mgr.mutex.Unlock()
 }
 
 func (mgr *streamCache) front() types.QueryStream {
-	//mgr.mutex.Lock()
-	//defer mgr.mutex.Unlock()
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
 
 	if mgr.streamList.Len() == 0 {
+		// no values in stream list, return nil.
 		return nil
 	}
-	return mgr.streamList.Front().Value.(types.QueryStream)
+
+	// pop the first value in the stream list.
+	item := mgr.streamList.Front()
+	mgr.streamList.Remove(item)
+	return item.Value.(types.QueryStream)
 }

@@ -1,8 +1,8 @@
 package finality
 
 import (
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/internal"
 	"github.com/Grivn/phalanx/metrics"
 )
 
@@ -34,10 +34,7 @@ type orderRule struct {
 	//============================= internal interfaces =========================================
 
 	// reload is used to notify client instance the committed sequence number.
-	reload internal.MetaCommitter
-
-	//
-	txMgr internal.TxManager
+	reload api.MetaCommitter
 
 	//============================== external interfaces ==========================================
 
@@ -47,23 +44,22 @@ type orderRule struct {
 	// logger is used to print logs.
 	logger external.Logger
 
-	//
+	// metrics is used to record the metric info of current node's order rule module.
 	metrics *metrics.OrderRuleMetrics
 
 	//
 	mediumCommit *orderMediumT
 }
 
-func newOrderRule(conf Config, cRecorder internal.CommandRecorder) *orderRule {
+func newOrderRule(conf Config, cRecorder api.CommandRecorder) *orderRule {
 	return &orderRule{
 		author:       conf.Author,
 		collect:      newCollectRule(conf, cRecorder),
 		execute:      newExecutionRule(conf, cRecorder),
 		commit:       newCommitmentRule(conf, cRecorder),
-		reload:       conf.Mgr,
+		reload:       conf.Pool,
 		exec:         conf.Exec,
 		logger:       conf.Logger,
-		txMgr:        conf.Manager,
 		mediumCommit: newOrderMediumT(conf),
 		metrics:      conf.Metrics.OrderRuleMetrics,
 	}
