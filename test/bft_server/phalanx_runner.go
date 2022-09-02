@@ -12,7 +12,7 @@ import (
 )
 
 func phalanxRunner() {
-	n := 12
+	n := 4
 	byzRange := 0
 	oLeader := uint64(0)
 

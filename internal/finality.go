@@ -85,3 +85,7 @@ type QueueManager interface {
 type CondorcetScanner interface {
 	HasCyclic() bool
 }
+
+type CommandStreamBarrier interface {
+	BaselineGroup(baselines types.CommandStream) types.CommandStream
+}

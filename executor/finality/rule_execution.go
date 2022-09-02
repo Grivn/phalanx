@@ -2,6 +2,7 @@ package finality
 
 import (
 	"github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/executor/barrier"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/internal"
 )
@@ -66,106 +67,11 @@ func (er *executionRule) execution() types.FrontStream {
 
 	if !safe {
 		// we cannot make sure the validation of front set.
-		cStream = er.selection(cStream)
+		handler := barrier.NewCommandStreamBarrier(er.author, er.cRecorder, er.oneCorrect, er.logger)
+		cStream = handler.BaselineGroup(cStream)
 	}
 
 	return types.FrontStream{Safe: safe, Stream: cStream}
-}
-
-func (er *executionRule) selection(unverifiedStream types.CommandStream) types.CommandStream {
-	correctStream := er.cRecorder.ReadCSCInfos()
-
-	quorumStream := er.cRecorder.ReadQSCInfos()
-
-	er.selected = make(map[string]bool)
-
-	var additionalStream types.CommandStream
-
-	var returnStream types.CommandStream
-
-	valid := true
-
-	for _, unverifiedC := range unverifiedStream {
-		er.selected[unverifiedC.Digest] = true
-	}
-
-	returnStream = append(returnStream, unverifiedStream...)
-	additionalStream, valid = er.filterStream(unverifiedStream, correctStream, quorumStream)
-
-	if !valid {
-		return nil
-	}
-
-	for {
-		if len(additionalStream) == 0 {
-			break
-		}
-
-		returnStream = append(returnStream, additionalStream...)
-		additionalStream, valid = er.filterStream(additionalStream, correctStream, quorumStream)
-
-		if !valid {
-			return nil
-		}
-	}
-	return returnStream
-}
-
-func (er *executionRule) filterStream(unverifiedStream, correctStream, quorumStream types.CommandStream) (types.CommandStream, bool) {
-	var additionalStream types.CommandStream
-
-	for _, unverifiedC := range unverifiedStream {
-		er.selected[unverifiedC.Digest] = true
-		pointer := make(map[uint64]uint64)
-
-		for _, order := range unverifiedC.Orders {
-			pointer[order.Author] = order.Sequence
-		}
-
-		for _, correctC := range correctStream {
-			count := 0
-
-			for id, seq := range pointer {
-				oInfo, ok := correctC.Orders[id]
-				if !ok || oInfo.Sequence > seq {
-					count++
-				}
-				if count == er.oneCorrect {
-					break
-				}
-			}
-
-			if count < er.oneCorrect {
-				er.logger.Debugf("[%d] potential natural order (non-quorum): %s <- %s", er.author, correctC.Format(), unverifiedC.Format())
-				return nil, false
-			}
-		}
-
-		for _, quorumC := range quorumStream {
-			if er.selected[quorumC.Digest] {
-				continue
-			}
-
-			count := 0
-
-			for id, seq := range pointer {
-				oInfo, ok := quorumC.Orders[id]
-				if !ok || oInfo.Sequence > seq {
-					count++
-				}
-				if count == er.oneCorrect {
-					break
-				}
-			}
-
-			if count < er.oneCorrect {
-				er.logger.Debugf("[%d] potential natural order (quorum): %s <- %s", er.author, quorumC.Format(), unverifiedC.Format())
-				additionalStream = append(additionalStream, quorumC)
-				er.selected[quorumC.Digest] = true
-			}
-		}
-	}
-	return additionalStream, true
 }
 
 func (er *executionRule) oligarchyExecution() types.FrontStream {
