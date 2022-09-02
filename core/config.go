@@ -20,6 +20,8 @@ type Config struct {
 	MemSize     int
 	CommandSize int
 	Selected    uint64
+	PrivateKey  external.PrivateKey
+	PublicKeys  map[uint64]external.PublicKey
 	Exec        external.ExecutionService
 	Network     external.NetworkService
 	Logger      external.Logger

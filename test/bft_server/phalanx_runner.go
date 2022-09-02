@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -44,6 +45,10 @@ func phalanxRunner() {
 		if id <= uint64(byzRange) {
 			byz = true
 		}
+		privKey, pubKeys, err := mocks.GenerateKeys(id, n)
+		if err != nil {
+			panic(fmt.Sprintf("generate keys error: %s", err))
+		}
 		conf := phalanx.Config{
 			Author:      id,
 			OLeader:     oLeader,
@@ -58,6 +63,8 @@ func phalanxRunner() {
 			MemSize:     types.DefaultMemSize,
 			CommandSize: types.SingleCommandSize,
 			Selected:    1,
+			PrivateKey:  privKey,
+			PublicKeys:  pubKeys,
 			Exec:        exec,
 			Network:     net,
 			Logger:      logger,

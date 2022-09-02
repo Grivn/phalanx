@@ -2,14 +2,13 @@ package phalanx
 
 import (
 	"fmt"
-
 	"github.com/Grivn/phalanx/common/api"
-	"github.com/Grivn/phalanx/common/crypto"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/executor/finality"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/metapool"
+	"github.com/Grivn/phalanx/metapool/crypto"
 	"github.com/Grivn/phalanx/metrics"
 	"github.com/Grivn/phalanx/receiver"
 	"github.com/gogo/protobuf/proto"
@@ -41,7 +40,6 @@ type phalanxImpl struct {
 func NewPhalanxProvider(conf Config) *phalanxImpl {
 	// todo read crypto key pairs from config files.
 	// initiate key pairs.
-	_ = crypto.SetKeys()
 
 	// initiate phalanx logger.
 	mLogs, err := newPLogger(conf.Logger, true, conf.Author)
@@ -71,6 +69,7 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 		Byz:     conf.Byz,
 		N:       conf.N,
 		Multi:   conf.Multi,
+		Crypto:  crypto.NewCrypto(conf.PrivateKey, conf.PublicKeys),
 		Sender:  conf.Network,
 		Logger:  mLogs.metaPoolLog,
 		Metrics: pMetrics.MetaPoolMetrics,
