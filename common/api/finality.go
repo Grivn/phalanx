@@ -76,7 +76,7 @@ type QueueManager interface {
 	// OligarchyLeaderFront returns the oligarchy leader ordering, test mode.
 	OligarchyLeaderFront(leader uint64) string
 
-	//
+	// PickQuorumInfo picks one command info in quorum status according to certain strategy.
 	PickQuorumInfo() *types.CommandInfo
 }
 
