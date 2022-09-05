@@ -48,6 +48,10 @@ func (m *Command) Format() string {
 	return fmt.Sprintf("[Command: client %d, sequence %d, digest %s, front-runner: %v]", m.Author, m.Sequence, m.Digest, m.FrontRunner)
 }
 
+func (m *Command) FormatSnappingUp() string {
+	return fmt.Sprintf("[Command: buyer %d, itemNo %d, digest %s]", m.Author, m.Sequence, m.Digest)
+}
+
 //=============================== Pre-Order ===============================================
 
 func (m *PreOrder) Format() string {

@@ -18,8 +18,8 @@ type phalanxImpl struct {
 	// author indicates the identifier of current node.
 	author uint64
 
-	// txManager is used to process transactions.
-	txManager api.TxManager
+	// proposer is used to process transactions.
+	proposer api.Proposer
 
 	// metaPool is used to process meta consensus data:
 	// 1) partial consensus for order logs.
@@ -61,7 +61,7 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 		Sender:      conf.Network,
 		Logger:      mLogs.txManagerLog,
 	}
-	txMgr := receiver.NewTxManager(txConf)
+	proposer := receiver.NewSnappingUpManager(txConf)
 
 	// initiate meta pool.
 	mpConf := metapool.Config{
@@ -89,18 +89,18 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 	executor := finality.NewFinality(exeConf)
 
 	return &phalanxImpl{
-		author:    conf.Author,
-		txManager: txMgr,
-		metaPool:  mPool,
-		executor:  executor,
-		logger:    conf.Logger,
-		metrics:   pMetrics,
+		author:   conf.Author,
+		proposer: proposer,
+		metaPool: mPool,
+		executor: executor,
+		logger:   conf.Logger,
+		metrics:  pMetrics,
 	}
 }
 
 func (phi *phalanxImpl) Run() {
 	go phi.metaPool.Run()
-	go phi.txManager.Run()
+	go phi.proposer.Run()
 	go phi.executor.Run()
 }
 
@@ -110,7 +110,7 @@ func (phi *phalanxImpl) Quit() {
 
 // ReceiveTransaction is used to process transaction we have received.
 func (phi *phalanxImpl) ReceiveTransaction(tx *protos.Transaction) {
-	phi.txManager.ProcessTransaction(tx)
+	phi.proposer.ProcessTransaction(tx)
 }
 
 // ReceiveCommand is used to process the commands from clients.

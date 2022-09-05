@@ -13,6 +13,7 @@ type Metrics struct {
 	OrderRuleMetrics      *OrderRuleMetrics
 	MediumTimeMetrics     *OrderRuleMetrics
 	RuleCommitmentMetrics *RuleCommitmentMetrics
+	CommitResultMetrics   *CommitResultMetrics
 }
 
 func NewMetrics() *Metrics {
@@ -22,6 +23,7 @@ func NewMetrics() *Metrics {
 	m.OrderRuleMetrics = NewOrderRuleMetrics()
 	m.MediumTimeMetrics = NewOrderRuleMetrics()
 	m.RuleCommitmentMetrics = NewRuleCommitmentMetrics()
+	m.CommitResultMetrics = NewCommitResultMetrics()
 	return m
 }
 
