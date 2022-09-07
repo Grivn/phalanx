@@ -3,9 +3,13 @@ package metrics
 import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
+	"sync"
 )
 
 type OrderRuleMetrics struct {
+	// mutex is used to process concurrency problem for this metrics instance.
+	mutex sync.Mutex
+
 	// TotalSafeCommit tracks the number of command committed from safe path.
 	TotalSafeCommit int
 
@@ -28,6 +32,9 @@ type OrderRuleMetrics struct {
 
 	// FrontAttackIntervalRisk is used to record the front attacked command request with risk of interval relationship.
 	FrontAttackIntervalRisk int
+
+	//
+	SnappingUpMetrics *SnappingUpMetrics
 }
 
 func NewOrderRuleMetrics() *OrderRuleMetrics {
@@ -35,13 +42,29 @@ func NewOrderRuleMetrics() *OrderRuleMetrics {
 }
 
 func (m *OrderRuleMetrics) CommitBlock(blk types.InnerBlock) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	m.DetectFrontSetTypes(!blk.Safe)
 	m.DetectFrontAttackGivenRelationship(!blk.Safe, blk.Command)
 	m.DetectFrontAttackIntervalRelationship(!blk.Safe, blk.Command)
 	m.UpdateFrontAttackDetector(blk.Command)
+	m.SnappingUpMetrics.CommitSnappingUpResult(blk)
+}
+
+func (m *OrderRuleMetrics) QueryMetrics() types.MetricsInfo {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	return types.MetricsInfo{
+		SafeCommandCount:        m.TotalSafeCommit,
+		RiskCommandCount:        m.TotalRiskCommit,
+		FrontAttackFromRisk:     m.FrontAttackFromRisk,
+		FrontAttackFromSafe:     m.FrontAttackFromSafe,
+		FrontAttackIntervalRisk: m.FrontAttackIntervalRisk,
+		FrontAttackIntervalSafe: m.FrontAttackIntervalSafe,
+		SuccessRates:            m.SnappingUpMetrics.SuccessRates(),
+	}
 }
 
 func (m *OrderRuleMetrics) DetectFrontSetTypes(risk bool) {

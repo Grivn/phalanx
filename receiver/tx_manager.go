@@ -58,7 +58,3 @@ func (txMgr *txManager) Quit() {
 func (txMgr *txManager) ProcessTransaction(tx *protos.Transaction) {
 	txMgr.txC <- tx
 }
-
-func (txMgr *txManager) CommitResult(itemNo uint64, buyer uint64) {
-	// no use.
-}

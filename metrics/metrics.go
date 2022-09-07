@@ -2,10 +2,7 @@ package metrics
 
 import (
 	"github.com/Grivn/phalanx/common/types"
-	"sync"
 )
-
-var mutex sync.Mutex
 
 type Metrics struct {
 	MetaPoolMetrics       *MetaPoolMetrics
@@ -13,22 +10,22 @@ type Metrics struct {
 	OrderRuleMetrics      *OrderRuleMetrics
 	MediumTimeMetrics     *OrderRuleMetrics
 	RuleCommitmentMetrics *RuleCommitmentMetrics
-	CommitResultMetrics   *CommitResultMetrics
 }
 
 func NewMetrics() *Metrics {
-	m := &Metrics{}
-	m.MetaPoolMetrics = NewMetaPoolMetrics()
-	m.ExecutorMetrics = NewExecutorMetrics()
-	m.OrderRuleMetrics = NewOrderRuleMetrics()
-	m.MediumTimeMetrics = NewOrderRuleMetrics()
-	m.RuleCommitmentMetrics = NewRuleCommitmentMetrics()
-	m.CommitResultMetrics = NewCommitResultMetrics()
-	return m
+	return &Metrics{
+		MetaPoolMetrics:       NewMetaPoolMetrics(),
+		ExecutorMetrics:       NewExecutorMetrics(),
+		OrderRuleMetrics:      NewOrderRuleMetrics(),
+		MediumTimeMetrics:     NewOrderRuleMetrics(),
+		RuleCommitmentMetrics: NewRuleCommitmentMetrics(),
+	}
 }
 
 // QueryMetrics returns metrics info.
 func (ei *Metrics) QueryMetrics() types.MetricsInfo {
+	phalanxOrder := ei.OrderRuleMetrics.QueryMetrics()
+	mediumTOrder := ei.MediumTimeMetrics.QueryMetrics()
 	return types.MetricsInfo{
 		AvePackOrderLatency:      ei.MetaPoolMetrics.AvePackOrderLatency(),
 		AveOrderLatency:          ei.MetaPoolMetrics.AveOrderLatency(),
@@ -44,17 +41,19 @@ func (ei *Metrics) QueryMetrics() types.MetricsInfo {
 		CurCommitStreamLatency:   ei.ExecutorMetrics.CurCommitStreamLatency(),
 		AveCommandInfoLatency:    ei.RuleCommitmentMetrics.AveCommandInfoLatency(),
 		CurCommandInfoLatency:    ei.RuleCommitmentMetrics.CurCommandInfoLatency(),
-		SafeCommandCount:         ei.OrderRuleMetrics.TotalSafeCommit,
-		RiskCommandCount:         ei.OrderRuleMetrics.TotalRiskCommit,
-		FrontAttackFromRisk:      ei.OrderRuleMetrics.FrontAttackFromRisk,
-		FrontAttackFromSafe:      ei.OrderRuleMetrics.FrontAttackFromSafe,
-		FrontAttackIntervalRisk:  ei.OrderRuleMetrics.FrontAttackIntervalRisk,
-		FrontAttackIntervalSafe:  ei.OrderRuleMetrics.FrontAttackIntervalSafe,
-		MSafeCommandCount:        ei.MediumTimeMetrics.TotalSafeCommit,
-		MRiskCommandCount:        ei.MediumTimeMetrics.TotalRiskCommit,
-		MFrontAttackFromRisk:     ei.MediumTimeMetrics.FrontAttackFromRisk,
-		MFrontAttackFromSafe:     ei.MediumTimeMetrics.FrontAttackFromSafe,
-		MFrontAttackIntervalRisk: ei.MediumTimeMetrics.FrontAttackIntervalRisk,
-		MFrontAttackIntervalSafe: ei.MediumTimeMetrics.FrontAttackIntervalSafe,
+		SafeCommandCount:         phalanxOrder.SafeCommandCount,
+		RiskCommandCount:         phalanxOrder.RiskCommandCount,
+		FrontAttackFromRisk:      phalanxOrder.FrontAttackFromRisk,
+		FrontAttackFromSafe:      phalanxOrder.FrontAttackFromSafe,
+		FrontAttackIntervalRisk:  phalanxOrder.FrontAttackIntervalRisk,
+		FrontAttackIntervalSafe:  phalanxOrder.FrontAttackIntervalSafe,
+		SuccessRates:             phalanxOrder.SuccessRates,
+		MSafeCommandCount:        mediumTOrder.SafeCommandCount,
+		MRiskCommandCount:        mediumTOrder.RiskCommandCount,
+		MFrontAttackFromRisk:     mediumTOrder.FrontAttackFromRisk,
+		MFrontAttackFromSafe:     mediumTOrder.FrontAttackFromSafe,
+		MFrontAttackIntervalRisk: mediumTOrder.FrontAttackIntervalRisk,
+		MFrontAttackIntervalSafe: mediumTOrder.FrontAttackIntervalSafe,
+		MSuccessRates:            mediumTOrder.SuccessRates,
 	}
 }

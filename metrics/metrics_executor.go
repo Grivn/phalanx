@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"sync"
 	"time"
 
 	"github.com/Grivn/phalanx/common/protos"
@@ -8,6 +9,9 @@ import (
 )
 
 type ExecutorMetrics struct {
+	// mutex is used to process concurrency problem for this metrics instance.
+	mutex sync.Mutex
+
 	//============================= metrics =================================
 
 	// TotalLogs tracks the number of committed partial order logs.
@@ -40,8 +44,8 @@ func NewExecutorMetrics() *ExecutorMetrics {
 }
 
 func (m *ExecutorMetrics) CommitPartialOrder(pOrder *protos.PartialOrder) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	sub := time.Now().UnixNano() - pOrder.OrderedTime
 
@@ -54,8 +58,8 @@ func (m *ExecutorMetrics) CommitPartialOrder(pOrder *protos.PartialOrder) {
 }
 
 func (m *ExecutorMetrics) CommitStream(start time.Time) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	sub := time.Now().Sub(start).Milliseconds()
 	m.TotalCommitStreamLatency += sub
@@ -65,6 +69,9 @@ func (m *ExecutorMetrics) CommitStream(start time.Time) {
 }
 
 func (m *ExecutorMetrics) AveLogLatency() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	if m.TotalLogs == 0 {
 		return 0
 	}
@@ -72,6 +79,9 @@ func (m *ExecutorMetrics) AveLogLatency() float64 {
 }
 
 func (m *ExecutorMetrics) CurLogLatency() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	// returns average latency of partial orders to be committed.
 	if m.IntervalLogs == 0 {
 		return 0
@@ -83,6 +93,9 @@ func (m *ExecutorMetrics) CurLogLatency() float64 {
 }
 
 func (m *ExecutorMetrics) AveCommitStreamLatency() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	// AveCommitStreamLatency returns average latency of commitment of query stream.
 	if m.TotalStreams == 0 {
 		return 0
@@ -91,6 +104,9 @@ func (m *ExecutorMetrics) AveCommitStreamLatency() float64 {
 }
 
 func (m *ExecutorMetrics) CurCommitStreamLatency() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	
 	// curCommitStreamLatency returns average latency of commitment of query stream.
 	if m.IntervalStreams == 0 {
 		return 0
