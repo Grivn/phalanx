@@ -67,7 +67,7 @@ func (s CommandStream) Less(i, j int) bool {
 }
 
 func (ci *CommandInfo) Format() string {
-	return fmt.Sprintf("[CommandInfo: command %s, order-count %d, trusted-ts %d]", ci.Digest, len(ci.Orders), ci.TrustedTS)
+	return fmt.Sprintf("[CommandInfo: command %s, order-count %d, trusted-ts %d, tss %v]", ci.Digest, len(ci.Orders), ci.TrustedTS, ci.Timestamps)
 }
 
 //========================== Partial Order Manager ====================================

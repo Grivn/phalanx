@@ -56,7 +56,3 @@ func (su *snappingUpManagerImpl) Quit() {
 func (su *snappingUpManagerImpl) ProcessTransaction(tx *protos.Transaction) {
 	// no use.
 }
-
-func (su *snappingUpManagerImpl) CommitResult(itemNo uint64, buyer uint64) {
-
-}

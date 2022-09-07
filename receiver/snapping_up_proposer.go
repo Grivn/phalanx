@@ -9,6 +9,8 @@ import (
 type buyerImpl struct {
 	id uint64
 
+	selected uint64
+
 	itemNo uint64
 
 	timer *localTimer
@@ -30,6 +32,7 @@ func newBuyer(id uint64, conf Config) *buyerImpl {
 		timer:       newLocalTimer(snappingUpC),
 		snappingUpC: snappingUpC,
 		closeC:      make(chan bool),
+		selected:    conf.Selected,
 		sender:      conf.Sender,
 		logger:      conf.Logger,
 	}
@@ -63,6 +66,9 @@ func (b *buyerImpl) listener() {
 }
 
 func (b *buyerImpl) snappingUp() {
+	if b.selected != uint64(0) && b.id > b.selected {
+		return
+	}
 	b.itemNo++
 	command := types.GenerateCommand(b.id, b.itemNo, nil)
 	b.logger.Infof("[%d] generate command %s", b.id, command.FormatSnappingUp())
@@ -71,7 +77,7 @@ func (b *buyerImpl) snappingUp() {
 
 func (b *buyerImpl) generateDuration() time.Duration {
 	now := time.Now()
-	next := now.Add(time.Second * 2)
+	next := now.Add(time.Second * 5)
 	next = time.Date(next.Year(), next.Month(), next.Day(), next.Hour(), next.Minute(), next.Second(), 0, next.Location())
 	return next.Sub(now)
 }
