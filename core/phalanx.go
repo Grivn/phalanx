@@ -65,14 +65,15 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 
 	// initiate meta pool.
 	mpConf := metapool.Config{
-		Author:  conf.Author,
-		Byz:     conf.Byz,
-		N:       conf.N,
-		Multi:   conf.Multi,
-		Crypto:  crypto.NewCrypto(conf.PrivateKey, conf.PublicKeys),
-		Sender:  conf.Network,
-		Logger:  mLogs.metaPoolLog,
-		Metrics: pMetrics.MetaPoolMetrics,
+		Author:   conf.Author,
+		Byz:      conf.Byz,
+		Snapping: conf.Snapping,
+		N:        conf.N,
+		Multi:    conf.Multi,
+		Crypto:   crypto.NewCrypto(conf.PrivateKey, conf.PublicKeys),
+		Sender:   conf.Network,
+		Logger:   mLogs.metaPoolLog,
+		Metrics:  pMetrics.MetaPoolMetrics,
 	}
 	mPool := metapool.NewMetaPool(mpConf)
 

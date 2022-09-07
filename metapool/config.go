@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	Byz      bool
+	Snapping bool
 	Author   uint64
 	N        int
 	Multi    int

@@ -38,7 +38,7 @@ type OrderRuleMetrics struct {
 }
 
 func NewOrderRuleMetrics() *OrderRuleMetrics {
-	return &OrderRuleMetrics{CommandRecorder: make(map[uint64]uint64)}
+	return &OrderRuleMetrics{CommandRecorder: make(map[uint64]uint64), SnappingUpMetrics: NewSnappingUpMetrics()}
 }
 
 func (m *OrderRuleMetrics) CommitBlock(blk types.InnerBlock) {
