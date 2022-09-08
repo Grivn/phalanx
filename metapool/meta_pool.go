@@ -204,12 +204,12 @@ func (mp *metaPool) Committed(author uint64, seqNo uint64) {
 
 func (mp *metaPool) ProcessCommand(command *protos.Command) {
 	if mp.first {
-		if mp.author <= uint64(types.CalculateFault(mp.n)) {
+		if mp.author == uint64(2) {
 			// do nothing.
 		} else if mp.author <= uint64(types.CalculateFault(mp.n))*2 {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 		} else {
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(2 * time.Second)
 		}
 	}
 	mp.first = false
@@ -220,7 +220,7 @@ func (mp *metaPool) ProcessCommand(command *protos.Command) {
 	// record the command with command tracker.
 	mp.cTracker.RecordCommand(command)
 
-	if mp.byz && mp.snapping {
+	if mp.byz && mp.snapping && command.Author != mp.author {
 		// current node is the arbitrary
 		// it is in snapping up situation.
 		return

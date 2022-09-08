@@ -39,6 +39,9 @@ func newBuyer(id uint64, conf Config) *buyerImpl {
 }
 
 func (b *buyerImpl) run() {
+	if b.id == uint64(2) {
+		time.Sleep(500 * time.Millisecond)
+	}
 	go b.listener()
 	b.timer.updateDuration(b.generateDuration())
 	b.timer.startTimer()
