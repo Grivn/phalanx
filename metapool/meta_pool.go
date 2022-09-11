@@ -165,8 +165,8 @@ func NewMetaPool(conf Config) api.MetaPool {
 		commitNo: committedTracker,
 		active:   active,
 		byz:      conf.Byz,
-		snapping: true,
-		first:    true,
+		//snapping: true,
+		//first:    true,
 	}
 }
 
