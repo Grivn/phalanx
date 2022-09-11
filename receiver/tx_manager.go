@@ -27,7 +27,7 @@ type txManager struct {
 	logger external.Logger
 }
 
-func NewTxManager(conf Config) api.TxManager {
+func NewTxManager(conf Config) api.Proposer {
 	proposers := make(map[uint64]*proposerImpl)
 
 	txC := make(chan *protos.Transaction)

@@ -1,12 +1,16 @@
 package metrics
 
 import (
+	"sync"
 	"time"
 
 	"github.com/Grivn/phalanx/common/types"
 )
 
 type RuleCommitmentMetrics struct {
+	// mutex is used to process concurrency problem for this metrics instance.
+	mutex sync.Mutex
+
 	// TotalCommandInfo is the number of committed command info.
 	TotalCommandInfo int
 
@@ -25,8 +29,8 @@ func NewRuleCommitmentMetrics() *RuleCommitmentMetrics {
 }
 
 func (m *RuleCommitmentMetrics) CommitFrontCommandInfo(frontC *types.CommandInfo) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	sub := time.Now().UnixNano() - frontC.GTime
 	m.TotalCommandInfo++
@@ -36,6 +40,9 @@ func (m *RuleCommitmentMetrics) CommitFrontCommandInfo(frontC *types.CommandInfo
 }
 
 func (m *RuleCommitmentMetrics) AveCommandInfoLatency() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	// aveCommandInfoLatency returns average latency of command info to be committed.
 	if m.TotalCommandInfo == 0 {
 		return 0
@@ -44,6 +51,9 @@ func (m *RuleCommitmentMetrics) AveCommandInfoLatency() float64 {
 }
 
 func (m *RuleCommitmentMetrics) CurCommandInfoLatency() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	// curCommandInfoLatency returns average latency of command info to be committed.
 	if m.IntervalCommandInfo == 0 {
 		return 0

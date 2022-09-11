@@ -10,6 +10,7 @@ type Config struct {
 	Author      uint64
 	OLeader     uint64
 	Byz         bool
+	Snapping    bool
 	OpenLatency int
 	Duration    time.Duration
 	Interval    int

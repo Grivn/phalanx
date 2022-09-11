@@ -3,10 +3,14 @@ package metrics
 import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
+	"sync"
 	"time"
 )
 
 type MetaPoolMetrics struct {
+	// mutex is used to process concurrency problem for this metrics instance.
+	mutex sync.Mutex
+
 	// TotalCommands is the number of commands selected into partial order.
 	TotalCommands int
 
@@ -52,8 +56,8 @@ func NewMetaPoolMetrics() *MetaPoolMetrics {
 }
 
 func (m *MetaPoolMetrics) ProcessCommand() {
-	mutex.Lock()
-	defer mutex.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	if m.CommandCount == 0 {
 		m.StartTime = time.Now().UnixNano()
@@ -62,8 +66,8 @@ func (m *MetaPoolMetrics) ProcessCommand() {
 }
 
 func (m *MetaPoolMetrics) SelectCommand(cIndex *types.CommandIndex) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	nowT := time.Now().UnixNano()
 	m.TotalCommands++
@@ -74,15 +78,15 @@ func (m *MetaPoolMetrics) SelectCommand(cIndex *types.CommandIndex) {
 }
 
 func (m *MetaPoolMetrics) GenerateOrder() {
-	mutex.Lock()
-	defer mutex.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	m.GenOrder++
 }
 
 func (m *MetaPoolMetrics) PartialOrderQuorum(pOrder *protos.PartialOrder) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	// collect metrics.
 	m.TotalOrderLogs++
@@ -96,6 +100,9 @@ func (m *MetaPoolMetrics) PartialOrderQuorum(pOrder *protos.PartialOrder) {
 }
 
 func (m *MetaPoolMetrics) AvePackOrderLatency() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	if m.TotalCommands == 0 {
 		return 0
 	}
@@ -103,6 +110,9 @@ func (m *MetaPoolMetrics) AvePackOrderLatency() float64 {
 }
 
 func (m *MetaPoolMetrics) CurPackOrderLatency() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	if m.IntervalCommands == 0 {
 		return 0
 	}
@@ -113,6 +123,9 @@ func (m *MetaPoolMetrics) CurPackOrderLatency() float64 {
 }
 
 func (m *MetaPoolMetrics) AveOrderLatency() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	if m.TotalOrderLogs == 0 {
 		return 0
 	}
@@ -120,6 +133,9 @@ func (m *MetaPoolMetrics) AveOrderLatency() float64 {
 }
 
 func (m *MetaPoolMetrics) CurOrderLatency() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	if m.IntervalOrderLogs == 0 {
 		return 0
 	}
@@ -130,6 +146,9 @@ func (m *MetaPoolMetrics) CurOrderLatency() float64 {
 }
 
 func (m *MetaPoolMetrics) AveOrderSize() int {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	if m.OrderCount == 0 {
 		return 0
 	}
@@ -137,18 +156,27 @@ func (m *MetaPoolMetrics) AveOrderSize() int {
 }
 
 func (m *MetaPoolMetrics) CommandThroughput() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	interval := types.NanoToMillisecond(time.Now().UnixNano() - m.StartTime)
 	fInterval := interval / 1000
 	return float64(m.CommandCount) / fInterval
 }
 
 func (m *MetaPoolMetrics) LogThroughput() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	interval := types.NanoToMillisecond(time.Now().UnixNano() - m.StartTime)
 	fInterval := interval / 1000
 	return float64(m.OrderCount) / fInterval
 }
 
 func (m *MetaPoolMetrics) GenLogThroughput() float64 {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	interval := types.NanoToMillisecond(time.Now().UnixNano() - m.StartTime)
 	fInterval := interval / 1000
 	return float64(m.GenOrder) / fInterval

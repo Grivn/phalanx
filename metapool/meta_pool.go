@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/protos"
@@ -31,6 +32,11 @@ type metaPool struct {
 
 	// byz indicates if current node is the adversary.
 	byz bool
+
+	// snapping indicates if we have started the situation for snapping up.
+	snapping bool
+
+	first bool
 
 	//==================================== sub-chain management =============================================
 
@@ -159,6 +165,8 @@ func NewMetaPool(conf Config) api.MetaPool {
 		commitNo: committedTracker,
 		active:   active,
 		byz:      conf.Byz,
+		//snapping: true,
+		//first:    true,
 	}
 }
 
@@ -195,11 +203,28 @@ func (mp *metaPool) Committed(author uint64, seqNo uint64) {
 //===============================================================
 
 func (mp *metaPool) ProcessCommand(command *protos.Command) {
+	if mp.first {
+		if mp.author == uint64(2) {
+			// do nothing.
+		} else if mp.author <= uint64(types.CalculateFault(mp.n))*2 {
+			time.Sleep(1 * time.Second)
+		} else {
+			time.Sleep(2 * time.Second)
+		}
+	}
+	mp.first = false
+
 	// record metrics.
 	mp.metrics.ProcessCommand()
 
 	// record the command with command tracker.
 	mp.cTracker.RecordCommand(command)
+
+	if mp.byz && mp.snapping && command.Author != mp.author {
+		// current node is the arbitrary
+		// it is in snapping up situation.
+		return
+	}
 
 	// select the client instance and record the command target.
 	mp.clientInstanceReminder(command)
@@ -287,7 +312,8 @@ func (mp *metaPool) generateOrder() error {
 	timestampList := make([]int64, len(mp.commandSet))
 
 	sort.Sort(mp.commandSet)
-	if mp.byz {
+	if mp.byz && !mp.snapping {
+		// current node is the arbitrary, and it's not snapping up situation.
 		timeSet := make([]int64, len(mp.commandSet))
 		byz := make(types.ByzCommandSet, len(mp.commandSet))
 		for index, command := range mp.commandSet {
