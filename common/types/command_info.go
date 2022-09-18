@@ -38,11 +38,19 @@ type CommandInfo struct {
 
 	// TrustedTS is the timestamp current command came into system.
 	TrustedTS int64
+
+	// MediumTS is the medium timestamp to generate timestamp-based ordering strategy.
+	MediumTS int64
 }
 
 func (ci *CommandInfo) UpdateTrustedTS(oneCorrect int) {
 	sort.Sort(ci.Timestamps)
 	ci.TrustedTS = ci.Timestamps[oneCorrect]
+}
+
+func (ci *CommandInfo) UpdateMediumTS(oneCorrect int) {
+	sort.Sort(ci.Timestamps)
+	ci.MediumTS = ci.Timestamps[oneCorrect]
 }
 
 type CommandStream []*CommandInfo

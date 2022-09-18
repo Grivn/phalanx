@@ -72,6 +72,7 @@ func (collect *collectionRule) collectPartials(oInfo types.OrderInfo) bool {
 		collect.cRecorder.QuorumStatus(commandD)
 		collect.logger.Infof("[%d] found quorum sequenced command %s", collect.author, commandD)
 		info.UpdateTrustedTS(collect.oneCorrect)
+		info.UpdateMediumTS(collect.oneCorrect)
 	}
 	return true
 }
