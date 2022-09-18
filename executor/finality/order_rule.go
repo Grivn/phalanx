@@ -1,7 +1,6 @@
 package finality
 
 import (
-	"fmt"
 	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/metrics"
@@ -71,9 +70,6 @@ func (rule *orderRule) processPartialOrder() {
 	for {
 		// order rule 2: execution rule, select commands to execute with natural order.
 		frontStream := rule.execute.execution()
-		for _, info := range frontStream.Stream {
-			fmt.Printf("front info %s\n", info.Format())
-		}
 
 		// order rule 3: commitment rule, generate ordered blocks with free will.
 		blocks, frontNo := rule.commit.freeWill(frontStream)
@@ -90,7 +86,6 @@ func (rule *orderRule) processPartialOrder() {
 			rule.reload.Committed(blk.Command.Author, blk.Command.Sequence)
 
 			// commit blocks with medium timestamp.
-			fmt.Printf("commit block %s\n", blk.Format())
 			rule.mediumCommit.commitAccordingMediumT(blk)
 
 			// record metrics.

@@ -61,7 +61,7 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 		Sender:      conf.Network,
 		Logger:      mLogs.txManagerLog,
 	}
-	proposer := receiver.NewSnappingUpManager(txConf)
+	proposer := receiver.NewTxManager(txConf)
 
 	// initiate meta pool.
 	mpConf := metapool.Config{

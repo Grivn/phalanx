@@ -84,7 +84,7 @@ func (cr *commitmentRule) freeWill(frontStream types.FrontStream) ([]types.Inner
 
 		// generate block, try to fetch the raw command to fulfill the block.
 		rawCommand := cr.reader.ReadCommand(frontC.Digest)
-		block := types.NewInnerBlock(cr.frontNo, frontStream.Safe, rawCommand, frontC.TrustedTS)
+		block := types.NewInnerBlock(cr.frontNo, frontStream.Safe, rawCommand, frontC.TrustedTS, frontC.MediumTS)
 		cr.logger.Infof("[%d] generate block %s", cr.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.

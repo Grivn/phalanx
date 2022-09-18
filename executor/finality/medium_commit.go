@@ -24,9 +24,10 @@ func newOrderMediumT(conf Config) *orderMediumT {
 }
 
 func (ot *orderMediumT) commitAccordingMediumT(block types.InnerBlock) {
-	ot.blocks = append(ot.blocks, block)
+	mediumTSBlock := types.NewInnerBlock(block.FrontNo, block.Safe, block.Command, block.MediumTS, block.MediumTS)
+	ot.blocks = append(ot.blocks, mediumTSBlock)
 
-	if len(ot.blocks) < 2 {
+	if len(ot.blocks) < 1000 {
 		return
 	}
 	sort.Sort(ot.blocks)

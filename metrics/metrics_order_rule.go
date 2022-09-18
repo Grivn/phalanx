@@ -79,7 +79,7 @@ func (m *OrderRuleMetrics) DetectFrontAttackGivenRelationship(risk bool, command
 	// detect the front attack towards given relationship.
 	current := m.CommandRecorder[command.Author]
 
-	if command.Sequence != current+1 {
+	if command.Sequence <= current {
 		if risk {
 			m.FrontAttackFromRisk++
 		} else {
