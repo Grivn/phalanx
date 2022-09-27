@@ -1,13 +1,13 @@
 package finality
 
 import (
-	"fmt"
 	"github.com/Grivn/phalanx/common/api"
+	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/metrics"
 )
 
-type orderRule struct {
+type phalanxAnchorOrdering struct {
 	//============================== basic info =====================================
 
 	// author indicates the identifier of current node.
@@ -47,54 +47,60 @@ type orderRule struct {
 
 	// metrics is used to record the metric info of current node's order rule module.
 	metrics *metrics.OrderRuleMetrics
-
-	//
-	mediumCommit *orderMediumT
 }
 
-func newOrderRule(conf Config, cRecorder api.CommandRecorder) *orderRule {
-	return &orderRule{
-		author:       conf.Author,
-		collect:      newCollectRule(conf, cRecorder),
-		execute:      newExecutionRule(conf, cRecorder),
-		commit:       newCommitmentRule(conf, cRecorder),
-		reload:       conf.Pool,
-		exec:         conf.Exec,
-		logger:       conf.Logger,
-		mediumCommit: newOrderMediumT(conf),
-		metrics:      conf.Metrics.OrderRuleMetrics,
+func newPhalanxAnchorOrdering(conf Config, cRecorder api.CommandRecorder) *phalanxAnchorOrdering {
+	return &phalanxAnchorOrdering{
+		author:  conf.Author,
+		collect: newCollectRule(conf, cRecorder),
+		execute: newExecutionRule(conf, cRecorder),
+		commit:  newCommitmentRule(conf, cRecorder),
+		reload:  conf.Pool,
+		exec:    conf.Exec,
+		logger:  conf.Logger,
+		metrics: conf.Metrics.OrderRuleMetrics,
 	}
 }
 
-// processPartialOrder is used to process partial order with order rules.
-func (rule *orderRule) processPartialOrder() {
+func (pao *phalanxAnchorOrdering) commitOrderStream(oStream types.OrderStream) {
+	if len(oStream) == 0 {
+		return
+	}
+
+	updated := false // if we have updated the command collector.
+	for _, oInfo := range oStream {
+		// order rule 1: collection rule, collect the partial order info.
+		updated = pao.collect.collectPartials(oInfo)
+	}
+
+	if updated {
+		// if the collector has been updated, try to process the committed partial orders.
+		pao.processPartialOrder()
+	}
+}
+
+// processPartialOrder is used to process partial order with phalanx anchor-based ordering rules.
+func (pao *phalanxAnchorOrdering) processPartialOrder() {
 	for {
 		// order rule 2: execution rule, select commands to execute with natural order.
-		frontStream := rule.execute.execution()
-		for _, info := range frontStream.Stream {
-			fmt.Printf("front info %s\n", info.Format())
-		}
+		frontStream := pao.execute.execution()
 
 		// order rule 3: commitment rule, generate ordered blocks with free will.
-		blocks, frontNo := rule.commit.freeWill(frontStream)
+		blocks, frontNo := pao.commit.freeWill(frontStream)
 		if len(blocks) == 0 {
 			// there isn't a committed inner block.
 			break
 		}
 
 		// commit blocks.
-		rule.logger.Debugf("[%d] commit front group, front-no. %d, safe %v, blocks count %d", rule.author, frontNo, frontStream.Safe, len(blocks))
+		pao.logger.Debugf("[%d] commit front group, front-no. %d, safe %v, blocks count %d", pao.author, frontNo, frontStream.Safe, len(blocks))
 		for _, blk := range blocks {
-			rule.seqNo++
-			rule.exec.CommandExecution(blk, rule.seqNo)
-			rule.reload.Committed(blk.Command.Author, blk.Command.Sequence)
-
-			// commit blocks with medium timestamp.
-			fmt.Printf("commit block %s\n", blk.Format())
-			rule.mediumCommit.commitAccordingMediumT(blk)
+			pao.seqNo++
+			pao.exec.CommandExecution(blk, pao.seqNo)
+			pao.reload.Committed(blk.Command.Author, blk.Command.Sequence)
 
 			// record metrics.
-			rule.metrics.CommitBlock(blk)
+			pao.metrics.CommitBlock(blk)
 		}
 	}
 }
