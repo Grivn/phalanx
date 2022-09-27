@@ -2,6 +2,8 @@ package types
 
 // MetricsInfo tracks the metrics info of phalanx.
 type MetricsInfo struct {
+	//======================================= Meta-Pool Metrics ====================================================
+
 	// AvePackOrderLatency indicates interval since receive command to generate pre-order.
 	AvePackOrderLatency float64
 
@@ -16,6 +18,17 @@ type MetricsInfo struct {
 
 	//
 	AveOrderSize int
+
+	// CommandPS is used to record the
+	CommandPS float64
+
+	//
+	LogPS float64
+
+	//
+	GenLogPS float64
+
+	//======================================= Executor Metrics ====================================================
 
 	// AveLogLatency indicates interval since generate partial order to commit partial order.
 	AveLogLatency float64
@@ -34,6 +47,8 @@ type MetricsInfo struct {
 
 	//
 	CurCommitStreamLatency float64
+
+	//======================================= Executor Phalanx Anchor-Based ============================================
 
 	// SafeCommandCount indicates the number of command committed from safe path.
 	SafeCommandCount int
@@ -56,7 +71,8 @@ type MetricsInfo struct {
 	//
 	SuccessRates []float64
 
-	//=======
+	//======================================= Executor Timestamp-Based =================================================
+
 	// MSafeCommandCount indicates the number of command committed from safe path.
 	MSafeCommandCount int
 
@@ -77,14 +93,27 @@ type MetricsInfo struct {
 
 	//
 	MSuccessRates []float64
-	//=======
+
+	//======================================= Executor Timestamp Anchor-Based ==========================================
+
+	// TASafeCommandCount indicates the number of command committed from safe path.
+	TASafeCommandCount int
+
+	// TARiskCommandCount indicates the number of command committed from risk path.
+	TARiskCommandCount int
+
+	// TAFrontAttackFromRisk records the front attacked command requests from risk path.
+	TAFrontAttackFromRisk int
+
+	// TAFrontAttackFromSafe records the front attacked command requests from safe path.
+	TAFrontAttackFromSafe int
+
+	// TAFrontAttackIntervalRisk records the front attacked command requests of interval relationship from risk path.
+	TAFrontAttackIntervalRisk int
+
+	// TAFrontAttackIntervalSafe records the front attacked command requests of interval relationship from safe path.
+	TAFrontAttackIntervalSafe int
 
 	//
-	CommandPS float64
-
-	//
-	LogPS float64
-
-	//
-	GenLogPS float64
+	TASuccessRates []float64
 }

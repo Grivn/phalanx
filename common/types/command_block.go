@@ -6,8 +6,8 @@ import (
 )
 
 // NewInnerBlock generates the phalanx inner block to commit.
-func NewInnerBlock(frontNo uint64, safe bool, command *protos.Command, timestamp int64, mediumTS int64) InnerBlock {
-	return InnerBlock{FrontNo: frontNo, Safe: safe, Command: command, Timestamp: timestamp, MediumTS: mediumTS}
+func NewInnerBlock(frontNo uint64, safe bool, command *protos.Command, timestamp int64) InnerBlock {
+	return InnerBlock{FrontNo: frontNo, Safe: safe, Command: command, Timestamp: timestamp}
 }
 
 // InnerBlock is an executed block for phalanx.
@@ -26,9 +26,6 @@ type InnerBlock struct {
 
 	// Timestamp is the trusted time for current block generation.
 	Timestamp int64
-
-	// MediumTS is the medium timestamp to generate timestamp-based ordering strategy.
-	MediumTS int64
 }
 
 func (block InnerBlock) Format() string {

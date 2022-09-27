@@ -7,7 +7,6 @@ import (
 
 	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/executor/recorder"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/metrics"
 )
@@ -31,14 +30,17 @@ type finalityImpl struct {
 
 	//============================ order rule for block generation ========================================
 
-	// cRecorder is used to record the command info.
-	cRecorder api.CommandRecorder
-
-	// rules is used to generate blocks with phalanx order-rule.
-	rules *orderRule
-
 	// orderSeq tracks the real committed partial order sequence number.
 	orderSeq map[uint64]uint64
+
+	// phalanxAnchor is used to generate blocks with phalanx anchor-based ordering rule.
+	phalanxAnchor *phalanxAnchorBasedOrdering
+
+	// timestampAnchor is used to generate blocks with timestamp anchor-based ordering rule.
+	timestampAnchor *timestampAnchorBasedOrdering
+
+	// timestampBased is used to generate blocks with timestamp-based ordering rule.
+	timestampBased *timestampBasedOrdering
 
 	//============================= internal interfaces =========================================
 
@@ -63,17 +65,17 @@ func NewFinality(conf Config) *finalityImpl {
 		orderSeq[id] = uint64(0)
 	}
 
-	cRecorder := recorder.NewCommandRecorder(author, conf.N, conf.Logger)
 	return &finalityImpl{
-		author:    author,
-		orderSeq:  orderSeq,
-		cache:     newStreamCache(),
-		closeC:    make(chan bool),
-		rules:     newOrderRule(conf, cRecorder),
-		cRecorder: cRecorder,
-		reader:    conf.Pool,
-		logger:    conf.Logger,
-		metrics:   conf.Metrics.ExecutorMetrics,
+		author:          author,
+		cache:           newStreamCache(),
+		closeC:          make(chan bool),
+		orderSeq:        orderSeq,
+		phalanxAnchor:   newPhalanxAnchorBasedOrdering(conf),
+		timestampAnchor: newTimestampAnchorBasedOrdering(conf),
+		timestampBased:  newTimestampBasedOrdering(conf),
+		reader:          conf.Pool,
+		metrics:         conf.Metrics.ExecutorMetrics,
+		logger:          conf.Logger,
 	}
 }
 
@@ -132,16 +134,9 @@ func (ei *finalityImpl) commitStream(qStream types.QueryStream) {
 	sort.Sort(oStream) // sort the command infos according to generator id and sequence number.
 	ei.logger.Debugf("[%d] commit order info stream len %d: %v", ei.author, len(oStream), oStream)
 
-	updated := false // if we have updated the command collector.
-	for _, oInfo := range oStream {
-		// order rule 1: collection rule, collect the partial order info.
-		updated = ei.rules.collect.collectPartials(oInfo)
-	}
-
-	if updated {
-		// if the collector has been updated, try to process the committed partial orders.
-		ei.rules.processPartialOrder()
-	}
+	ei.phalanxAnchor.commitOrderStream(oStream)
+	ei.timestampBased.commitOrderStream(oStream)
+	ei.timestampAnchor.commitOrderStream(oStream)
 
 	// record metrics.
 	ei.metrics.CommitStream(start)

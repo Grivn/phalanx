@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-type OrderRuleMetrics struct {
+type ManipulationMetrics struct {
 	// mutex is used to process concurrency problem for this metrics instance.
 	mutex sync.Mutex
 
@@ -37,11 +37,11 @@ type OrderRuleMetrics struct {
 	SnappingUpMetrics *SnappingUpMetrics
 }
 
-func NewOrderRuleMetrics() *OrderRuleMetrics {
-	return &OrderRuleMetrics{CommandRecorder: make(map[uint64]uint64), SnappingUpMetrics: NewSnappingUpMetrics()}
+func NewManipulationMetrics() *ManipulationMetrics {
+	return &ManipulationMetrics{CommandRecorder: make(map[uint64]uint64), SnappingUpMetrics: NewSnappingUpMetrics()}
 }
 
-func (m *OrderRuleMetrics) CommitBlock(blk types.InnerBlock) {
+func (m *ManipulationMetrics) CommitBlock(blk types.InnerBlock) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -52,7 +52,7 @@ func (m *OrderRuleMetrics) CommitBlock(blk types.InnerBlock) {
 	m.SnappingUpMetrics.CommitSnappingUpResult(blk)
 }
 
-func (m *OrderRuleMetrics) QueryMetrics() types.MetricsInfo {
+func (m *ManipulationMetrics) QueryMetrics() types.MetricsInfo {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -67,7 +67,7 @@ func (m *OrderRuleMetrics) QueryMetrics() types.MetricsInfo {
 	}
 }
 
-func (m *OrderRuleMetrics) DetectFrontSetTypes(risk bool) {
+func (m *ManipulationMetrics) DetectFrontSetTypes(risk bool) {
 	if !risk {
 		m.TotalSafeCommit++
 	} else {
@@ -75,7 +75,7 @@ func (m *OrderRuleMetrics) DetectFrontSetTypes(risk bool) {
 	}
 }
 
-func (m *OrderRuleMetrics) DetectFrontAttackGivenRelationship(risk bool, command *protos.Command) {
+func (m *ManipulationMetrics) DetectFrontAttackGivenRelationship(risk bool, command *protos.Command) {
 	// detect the front attack towards given relationship.
 	current := m.CommandRecorder[command.Author]
 
@@ -88,7 +88,7 @@ func (m *OrderRuleMetrics) DetectFrontAttackGivenRelationship(risk bool, command
 	}
 }
 
-func (m *OrderRuleMetrics) DetectFrontAttackIntervalRelationship(risk bool, command *protos.Command) {
+func (m *ManipulationMetrics) DetectFrontAttackIntervalRelationship(risk bool, command *protos.Command) {
 	// detect the front attack towards interval relationship.
 	if command.FrontRunner == nil {
 		return
@@ -105,7 +105,7 @@ func (m *OrderRuleMetrics) DetectFrontAttackIntervalRelationship(risk bool, comm
 	}
 }
 
-func (m *OrderRuleMetrics) UpdateFrontAttackDetector(command *protos.Command) {
+func (m *ManipulationMetrics) UpdateFrontAttackDetector(command *protos.Command) {
 	// update the detector for front attacked command requests.
 	if command.Sequence > m.CommandRecorder[command.Author] {
 		m.CommandRecorder[command.Author] = command.Sequence
