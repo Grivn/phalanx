@@ -7,7 +7,7 @@ import (
 	"github.com/Grivn/phalanx/common/types"
 )
 
-type RuleCommitmentMetrics struct {
+type CommitmentMetrics struct {
 	// mutex is used to process concurrency problem for this metrics instance.
 	mutex sync.Mutex
 
@@ -24,11 +24,11 @@ type RuleCommitmentMetrics struct {
 	IntervalLatency int64
 }
 
-func NewRuleCommitmentMetrics() *RuleCommitmentMetrics {
-	return &RuleCommitmentMetrics{}
+func NewCommitmentMetrics() *CommitmentMetrics {
+	return &CommitmentMetrics{}
 }
 
-func (m *RuleCommitmentMetrics) CommitFrontCommandInfo(frontC *types.CommandInfo) {
+func (m *CommitmentMetrics) CommitFrontCommandInfo(frontC *types.CommandInfo) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -39,7 +39,7 @@ func (m *RuleCommitmentMetrics) CommitFrontCommandInfo(frontC *types.CommandInfo
 	m.IntervalLatency += sub
 }
 
-func (m *RuleCommitmentMetrics) AveCommandInfoLatency() float64 {
+func (m *CommitmentMetrics) AveCommandInfoLatency() float64 {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -50,7 +50,7 @@ func (m *RuleCommitmentMetrics) AveCommandInfoLatency() float64 {
 	return types.NanoToMillisecond(m.TotalLatency / int64(m.TotalCommandInfo))
 }
 
-func (m *RuleCommitmentMetrics) CurCommandInfoLatency() float64 {
+func (m *CommitmentMetrics) CurCommandInfoLatency() float64 {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
