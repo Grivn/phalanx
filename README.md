@@ -1,6 +1,7 @@
 # Phalanx: A Byzantine Fault Tolerant Memory Pool with Fair Ordering
 
-[![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-orange.svg)](https://www.gnu.org/licenses/lgpl-3.0)
+[![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-orange.svg?style=flat-square)](https://www.gnu.org/licenses/lgpl-3.0)
+[![Lines Of Code](https://img.shields.io/tokei/lines/github/Grivn/phalanx?style=flat-square)](https://github.com/Grivn/phalanx)
 
 Here's our [technical report (draft)](https://arxiv.org/abs/2209.08512) for the Phalanx protocol. 
 
