@@ -86,18 +86,3 @@ type ReplicaInstance interface {
 	// ReceivePartial is used to process the partial order message from current replica.
 	ReceivePartial(pOrder *protos.PartialOrder) error
 }
-
-//================================== tracker for meta pool ========================================
-
-// CommandTracker is used to record received commands.
-type CommandTracker interface {
-	RecordCommand(command *protos.Command)
-	ReadCommand(digest string) *protos.Command
-}
-
-// PartialTracker is used to record received partial orders.
-type PartialTracker interface {
-	RecordPartial(pOrder *protos.PartialOrder)
-	ReadPartial(idx types.QueryIndex) *protos.PartialOrder
-	IsExist(idx types.QueryIndex) bool
-}
