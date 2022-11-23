@@ -5,10 +5,11 @@ import (
 	"github.com/Grivn/phalanx/common/types"
 )
 
-type MetaPoolV2 interface {
-	Runner
-	Sequencer
+type MetaPool interface {
 	Communicator
+
+	// ProcessCommand is used to process command it has received.
+	ProcessCommand(command *protos.Command)
 
 	// GenerateProposal generates proposal for consensus engine.
 	// Here, we need to create phalanx proposal with each node highest order-attempt,
@@ -33,12 +34,7 @@ type Communicator interface {
 	ProcessCheckpoint(checkpoint *protos.Checkpoint)
 }
 
-type Sequencer interface {
-	// ProcessCommand is used to receive commands and generate order-attempt with them.
-	ProcessCommand(command *protos.Command)
-}
-
-// Relay is used to relay the commands with pre-defined ordering strategy.
+// Relay (module for experiment) is used to relay the commands from specific client with pre-defined ordering strategy.
 type Relay interface {
 	// Append is used to notify the latest received command from current client.
 	Append(command *protos.Command) int

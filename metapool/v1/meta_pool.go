@@ -1,7 +1,8 @@
-package metapool
+package v1
 
 import (
 	"fmt"
+	"github.com/Grivn/phalanx/lib/timer"
 	"sort"
 	"sync"
 	"time"
@@ -10,8 +11,8 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/metapool/instance"
-	"github.com/Grivn/phalanx/metapool/tracker"
+	"github.com/Grivn/phalanx/lib/instance"
+	"github.com/Grivn/phalanx/lib/tracker"
 	"github.com/Grivn/phalanx/metrics"
 )
 
@@ -83,7 +84,7 @@ type metaPool struct {
 	//=================================== local timer service ========================================
 
 	// timer is used to control the timeout event to generate order with commands in waiting list.
-	timer *localTimer
+	timer api.LocalTimer
 
 	// timeoutC is used to receive timeout event.
 	timeoutC <-chan bool
@@ -110,7 +111,7 @@ type metaPool struct {
 	metrics *metrics.MetaPoolMetrics
 }
 
-func NewMetaPool(conf Config) api.MetaPool {
+func NewMetaPool(conf Config) api.MetaPoolV1 {
 	conf.Logger.Infof("[%d] initiate log manager, replica count %d", conf.Author, conf.N)
 
 	// initiate communication channel.
@@ -155,7 +156,7 @@ func NewMetaPool(conf Config) api.MetaPool {
 		cTracker: tracker.NewCommandTracker(conf.Author, conf.Logger),
 		clients:  clients,
 		commandC: commandC,
-		timer:    newLocalTimer(conf.Author, timeoutC, conf.Duration, conf.Logger),
+		timer:    timer.NewLocalTimer(conf.Author, timeoutC, conf.Duration, conf.Logger),
 		timeoutC: timeoutC,
 		closeC:   make(chan bool),
 		crypto:   conf.Crypto,
@@ -186,7 +187,7 @@ func (mp *metaPool) Run() {
 }
 
 func (mp *metaPool) Quit() {
-	mp.timer.stopTimer()
+	mp.timer.StopTimer()
 	select {
 	case <-mp.closeC:
 	default:
@@ -276,7 +277,7 @@ func (mp *metaPool) appendCommandIndex(cIndex *types.CommandIndex) {
 	defer mp.mutex.Unlock()
 
 	if len(mp.commandSet) == 0 {
-		mp.timer.startTimer()
+		mp.timer.StartTimer()
 	}
 
 	// command list with receive-order.

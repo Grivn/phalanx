@@ -5,7 +5,7 @@ import (
 	"github.com/Grivn/phalanx/common/types"
 )
 
-type MetaPool interface {
+type MetaPoolV1 interface {
 	Runner
 	LogManager
 	MetaReader

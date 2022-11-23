@@ -1,4 +1,4 @@
-package metapool
+package timer
 
 import (
 	"sync/atomic"
@@ -24,7 +24,7 @@ type localTimer struct {
 	logger external.Logger
 }
 
-func newLocalTimer(author uint64, timeoutC chan bool, duration time.Duration, logger external.Logger) *localTimer {
+func NewLocalTimer(author uint64, timeoutC chan bool, duration time.Duration, logger external.Logger) *localTimer {
 	return &localTimer{
 		author:   author,
 		duration: duration,
@@ -33,8 +33,7 @@ func newLocalTimer(author uint64, timeoutC chan bool, duration time.Duration, lo
 	}
 }
 
-// startTimer starts current timer.
-func (timer *localTimer) startTimer() {
+func (timer *localTimer) StartTimer() {
 	timer.logger.Debugf("[%d] start partial order generation timer, duration %v", timer.author, timer.duration)
 	atomic.StoreUint64(&timer.isActive, 1)
 
@@ -46,8 +45,7 @@ func (timer *localTimer) startTimer() {
 	time.AfterFunc(timer.duration, f)
 }
 
-// stopTimer stops current timer.
-func (timer *localTimer) stopTimer() {
+func (timer *localTimer) StopTimer() {
 	timer.logger.Debugf("[%d] stop partial order generation timer", timer.author)
 	atomic.StoreUint64(&timer.isActive, 0)
 }

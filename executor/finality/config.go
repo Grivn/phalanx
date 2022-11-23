@@ -10,7 +10,7 @@ type Config struct {
 	Author  uint64
 	OLeader uint64
 	N       int
-	Pool    api.MetaPool
+	Pool    api.MetaPoolV1
 	Exec    external.ExecutionService
 	Logger  external.Logger
 	Metrics *metrics.Metrics

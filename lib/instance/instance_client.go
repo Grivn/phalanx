@@ -63,6 +63,23 @@ type clientInstance struct {
 	logger external.Logger
 }
 
+func NewRelay(author, id uint64, commandC chan<- *types.CommandIndex, activeCount *int64, logger external.Logger) api.Relay {
+	logger.Infof("[%d] initiate manager for client %d", author, id)
+	committedNo := make(map[uint64]bool)
+	committedNo[uint64(0)] = true
+	return &clientInstance{
+		author:      author,
+		id:          id,
+		proposedNo:  uint64(0),
+		committedNo: uint64(0),
+		commands:    btree.New(2),
+		commandC:    commandC,
+		isActive:    false,
+		activeCount: activeCount,
+		logger:      logger,
+	}
+}
+
 func NewClient(author, id uint64, commandC chan<- *types.CommandIndex, activeCount *int64, logger external.Logger) api.ClientInstance {
 	logger.Infof("[%d] initiate manager for client %d", author, id)
 	committedNo := make(map[uint64]bool)

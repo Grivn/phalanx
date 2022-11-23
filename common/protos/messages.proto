@@ -51,6 +51,10 @@ enum MessageType {
   PRE_ORDER = 0;
   VOTE = 1;
   QUORUM_CERT = 2;
+  ORDER_ATTEMPT = 3;
+  CHECKPOINT_REQUEST = 4;
+  CHECKPOINT_VOTE = 5;
+  CHECKPOINT = 6;
 }
 
 // ConsensusMessage is the raw consensus messages in real network.

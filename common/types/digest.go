@@ -56,6 +56,27 @@ func CalculateDigest(pre *protos.PreOrder) (string, error) {
 	return CalculatePayloadHash(payload, 0), nil
 }
 
+func CalculateContentDigest(content *protos.OrderAttemptContent) (string, error) {
+	payload, err := proto.Marshal(content)
+	if err != nil {
+		return "", err
+	}
+	return CalculatePayloadHash(payload, 0), nil
+}
+
+func CalculateOrderAttemptDigest(attempt *protos.OrderAttempt) (string, error) {
+	payload, err := proto.Marshal(&protos.OrderAttempt{
+		NodeID:        attempt.NodeID,
+		SeqNo:         attempt.SeqNo,
+		ParentDigest:  attempt.ParentDigest,
+		ContentDigest: attempt.ContentDigest,
+	})
+	if err != nil {
+		return "", err
+	}
+	return CalculatePayloadHash(payload, 0), nil
+}
+
 // GetHash returns the TransactionHash
 func GetHash(tx *protos.Transaction) string {
 	if tx.Hash == "" {

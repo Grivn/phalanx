@@ -38,6 +38,14 @@ func PackPartialOrder(qc *PartialOrder) (*ConsensusMessage, error) {
 	return NewConsensusMessage(MessageType_QUORUM_CERT, qc.Author(), 0, payload), nil
 }
 
+func PackOrderAttempt(attempt *OrderAttempt) (*ConsensusMessage, error) {
+	payload, err := proto.Marshal(attempt)
+	if err != nil {
+		return nil, err
+	}
+	return NewConsensusMessage(MessageType_ORDER_ATTEMPT, attempt.NodeID, 0, payload), nil
+}
+
 //=============================== Command ===============================================
 
 func (m *Command) Less(item btree.Item) bool {
@@ -104,6 +112,14 @@ func (m *PartialOrderBatch) Format() string {
 	return fmt.Sprintf("[PartialBatch: author %d, proposed nos %v]", m.Author, m.SeqList)
 }
 
+func (m *OrderAttempt) Format() string {
+	return fmt.Sprintf("[OrderAttempt: nodeID %d, seqNo %d, digest %s, parentDigest %s]", m.NodeID, m.SeqNo, m.Digest, m.ParentDigest)
+}
+
+func (m *OrderAttemptContent) Format() string {
+	return fmt.Sprintf("[OrderAttemptContent: commandList %v, timestampList %v]", m.CommandList, m.TimestampList)
+}
+
 //=================================== Generate Messages ============================================
 
 func NewQuorumCert() *QuorumCert {
@@ -131,4 +147,15 @@ func NewNopPreOrder() *PreOrder {
 
 func NewPartialOrderBatch(author uint64, count int) *PartialOrderBatch {
 	return &PartialOrderBatch{Author: author, HighOrders: make([]*PartialOrder, count), SeqList: make([]uint64, count)}
+}
+
+func NewOrderAttemptContent(commandList []string, timestampList []int64) *OrderAttemptContent {
+	return &OrderAttemptContent{CommandList: commandList, TimestampList: timestampList}
+}
+
+func NewOrderAttempt(nodeID uint64, seqNo uint64, previous *OrderAttempt, contentDigest string, content *OrderAttemptContent) *OrderAttempt {
+	if previous == nil {
+		previous = &OrderAttempt{Digest: "GENESIS PRE ORDER"}
+	}
+	return &OrderAttempt{NodeID: nodeID, SeqNo: seqNo, ParentDigest: previous.Digest, ContentDigest: contentDigest, Content: content}
 }
