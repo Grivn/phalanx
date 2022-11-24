@@ -1,4 +1,4 @@
-package instance
+package metapool
 
 import "github.com/Grivn/phalanx/common/protos"
 

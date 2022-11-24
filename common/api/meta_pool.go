@@ -37,6 +37,14 @@ type CheckpointProcessor interface {
 	ProcessCheckpoint(checkpoint *protos.Checkpoint)
 }
 
+type SequencerInstance interface {
+	// GetHighAttempt gets the latest legal order-attempt received from current sequencer.
+	GetHighAttempt() *protos.OrderAttempt
+
+	// Append is used to notify the latest received order-attempt from current sequencer and try to verify it.
+	Append(attempt *protos.OrderAttempt)
+}
+
 // Relay (module for experiment) is used to relay the commands from specific client with pre-defined ordering strategy.
 type Relay interface {
 	// Append is used to notify the latest received command from current client.

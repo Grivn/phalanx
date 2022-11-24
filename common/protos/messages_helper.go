@@ -140,6 +140,22 @@ func (m *OrderAttemptContent) Format() string {
 	return fmt.Sprintf("[OrderAttemptContent: commandList %v, timestampList %v]", m.CommandList, m.TimestampList)
 }
 
+func (m *Checkpoint) Format() string {
+	return fmt.Sprintf("[Checkpoint: %s]", m.OrderAttempt.Format())
+}
+
+func (m *Checkpoint) SeqNo() uint64 {
+	return m.OrderAttempt.SeqNo
+}
+
+func (m *Checkpoint) Digest() string {
+	return m.OrderAttempt.Digest
+}
+
+func (m *Checkpoint) Certs() map[uint64]*Certification {
+	return m.QC.Certs
+}
+
 //=================================== Generate Messages ============================================
 
 func NewQuorumCert() *QuorumCert {
@@ -190,6 +206,6 @@ func NewCheckpointVote(nodeID uint64, request *CheckpointRequest) *CheckpointVot
 	return &CheckpointVote{Author: nodeID, Digest: request.OrderAttempt.Digest}
 }
 
-func NewCheckpoint(attempt *OrderAttempt, qc *QuorumCert) *Checkpoint {
-	return &Checkpoint{OrderAttempt: attempt, QC: qc}
+func NewCheckpoint(attempt *OrderAttempt) *Checkpoint {
+	return &Checkpoint{OrderAttempt: attempt, QC: NewQuorumCert()}
 }
