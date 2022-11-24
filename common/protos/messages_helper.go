@@ -46,6 +46,22 @@ func PackOrderAttempt(attempt *OrderAttempt) (*ConsensusMessage, error) {
 	return NewConsensusMessage(MessageType_ORDER_ATTEMPT, attempt.NodeID, 0, payload), nil
 }
 
+func PackCheckpointRequest(request *CheckpointRequest) (*ConsensusMessage, error) {
+	payload, err := proto.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	return NewConsensusMessage(MessageType_CHECKPOINT_REQUEST, request.Author, 0, payload), nil
+}
+
+func PackCheckpointVote(vote *CheckpointVote, to uint64) (*ConsensusMessage, error) {
+	payload, err := proto.Marshal(vote)
+	if err != nil {
+		return nil, err
+	}
+	return NewConsensusMessage(MessageType_CHECKPOINT_VOTE, vote.Author, to, payload), nil
+}
+
 //=============================== Command ===============================================
 
 func (m *Command) Less(item btree.Item) bool {
@@ -112,6 +128,10 @@ func (m *PartialOrderBatch) Format() string {
 	return fmt.Sprintf("[PartialBatch: author %d, proposed nos %v]", m.Author, m.SeqList)
 }
 
+func (m *OrderAttempt) Less(item btree.Item) bool {
+	return m.SeqNo < (item.(*OrderAttempt)).SeqNo
+}
+
 func (m *OrderAttempt) Format() string {
 	return fmt.Sprintf("[OrderAttempt: nodeID %d, seqNo %d, digest %s, parentDigest %s]", m.NodeID, m.SeqNo, m.Digest, m.ParentDigest)
 }
@@ -158,4 +178,18 @@ func NewOrderAttempt(nodeID uint64, seqNo uint64, previous *OrderAttempt, conten
 		previous = &OrderAttempt{Digest: "GENESIS PRE ORDER"}
 	}
 	return &OrderAttempt{NodeID: nodeID, SeqNo: seqNo, ParentDigest: previous.Digest, ContentDigest: contentDigest, Content: content}
+}
+
+func NewCheckpointRequest(nodeID uint64, attempt *OrderAttempt) *CheckpointRequest {
+	// remove content.
+	attempt.Content = nil
+	return &CheckpointRequest{Author: nodeID, OrderAttempt: attempt}
+}
+
+func NewCheckpointVote(nodeID uint64, request *CheckpointRequest) *CheckpointVote {
+	return &CheckpointVote{Author: nodeID, Digest: request.OrderAttempt.Digest}
+}
+
+func NewCheckpoint(attempt *OrderAttempt, qc *QuorumCert) *Checkpoint {
+	return &Checkpoint{OrderAttempt: attempt, QC: qc}
 }

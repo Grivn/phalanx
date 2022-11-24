@@ -340,7 +340,7 @@ func (mp *metaPool) generateOrder() error {
 
 	// generate pre order message.
 	pre := protos.NewPreOrder(mp.author, mp.sequence, digestList, timestampList, mp.highOrder)
-	digest, err := types.CalculateDigest(pre)
+	digest, err := types.CalculatePreOrderDigest(pre)
 	if err != nil {
 		return fmt.Errorf("pre order marshal error: %s", err)
 	}

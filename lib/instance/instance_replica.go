@@ -105,7 +105,7 @@ func (ri *replicaInstance) ReceivePreOrder(pre *protos.PreOrder) error {
 		return ri.processBTree()
 	}
 
-	if err := types.CheckDigest(pre); err != nil {
+	if err := types.CheckPreOrderDigest(pre); err != nil {
 		return fmt.Errorf("invalid digest: %s", err)
 	}
 

@@ -19,11 +19,11 @@ type MetaPool interface {
 	// VerifyProposal verifies the proposal submitted from consensus engine,
 	// and generates query stream if essential.
 	VerifyProposal(proposal *protos.Proposal) (types.QueryStream, error)
+
+	CheckpointProcessor
 }
 
-type CheckpointFetcher interface {
-	Runner
-
+type CheckpointProcessor interface {
 	// GetCheckpoint is used to get the target checkpoint.
 	GetCheckpoint(idx types.QueryIndex)
 

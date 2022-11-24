@@ -2,7 +2,7 @@ package types
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/sha256" // There is vulnerable problem for "crypto/md5".
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -35,9 +35,9 @@ func (h Hash) Hex() string {
 
 //================================== Hash Management ===========================================
 
-// CheckDigest is used to check the correctness of digest
-func CheckDigest(pre *protos.PreOrder) error {
-	digest, err := CalculateDigest(pre)
+// CheckPreOrderDigest is used to check the correctness of digest
+func CheckPreOrderDigest(pre *protos.PreOrder) error {
+	digest, err := CalculatePreOrderDigest(pre)
 	if err != nil {
 		return err
 	}
@@ -47,8 +47,19 @@ func CheckDigest(pre *protos.PreOrder) error {
 	return nil
 }
 
-// CalculateDigest is used to calculate the digest
-func CalculateDigest(pre *protos.PreOrder) (string, error) {
+func CheckOrderAttemptDigest(attempt *protos.OrderAttempt) bool {
+	digest, err := CalculateOrderAttemptDigest(attempt)
+	if err != nil {
+		return false
+	}
+	if digest != attempt.Digest {
+		return false
+	}
+	return true
+}
+
+// CalculatePreOrderDigest is used to calculate the digest
+func CalculatePreOrderDigest(pre *protos.PreOrder) (string, error) {
 	payload, err := proto.Marshal(&protos.PreOrder{Author: pre.Author, Sequence: pre.Sequence, CommandList: pre.CommandList, TimestampList: pre.TimestampList, ParentDigest: pre.ParentDigest})
 	if err != nil {
 		return "", err
@@ -86,7 +97,7 @@ func GetHash(tx *protos.Transaction) string {
 }
 
 func CalculateListHash(list []string, timestamp int64) string {
-	h := md5.New()
+	h := sha256.New()
 	for _, hash := range list {
 		_, _ = h.Write([]byte(hash))
 	}
@@ -100,11 +111,11 @@ func CalculateListHash(list []string, timestamp int64) string {
 }
 
 func CalculatePayloadHash(payload []byte, timestamp int64) string {
-	return BytesToString(CalculateMD5Hash(payload, timestamp))
+	return BytesToString(CalculateSHA256Hash(payload, timestamp))
 }
 
-func CalculateMD5Hash(payload []byte, timestamp int64) Hash {
-	h := md5.New()
+func CalculateSHA256Hash(payload []byte, timestamp int64) Hash {
+	h := sha256.New()
 	_, _ = h.Write(payload)
 
 	if timestamp > 0 {
