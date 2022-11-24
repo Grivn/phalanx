@@ -184,12 +184,6 @@ func (mp *metaPoolImpl) VerifyProposal(proposal *protos.Proposal) (types.QuerySt
 	return nil, nil
 }
 
-func (mp *metaPoolImpl) ProcessCheckpointRequest(request *protos.CheckpointRequest) {}
-
-func (mp *metaPoolImpl) ProcessCheckpointVote(vote *protos.CheckpointVote) {}
-
-func (mp *metaPoolImpl) ProcessCheckpoint(checkpoint *protos.Checkpoint) {}
-
 //// ProcessVote is used to process the vote message from others.
 //// It could aggregate a agg-signature for one pre-order and generate an order message for one command.
 //func (mp *metaPoolImpl) ProcessVote(vote *protos.Vote) error {

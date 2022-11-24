@@ -6,8 +6,6 @@ import (
 )
 
 type MetaPool interface {
-	Communicator
-
 	// ProcessCommand is used to process command it has received.
 	ProcessCommand(command *protos.Command)
 
@@ -23,7 +21,12 @@ type MetaPool interface {
 	VerifyProposal(proposal *protos.Proposal) (types.QueryStream, error)
 }
 
-type Communicator interface {
+type CheckpointFetcher interface {
+	Runner
+
+	// GetCheckpoint is used to get the target checkpoint.
+	GetCheckpoint(idx types.QueryIndex)
+
 	// ProcessCheckpointRequest is used to process checkpoint request.
 	ProcessCheckpointRequest(request *protos.CheckpointRequest)
 

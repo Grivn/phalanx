@@ -37,3 +37,9 @@ type AttemptTracker interface {
 	// GarbageCollect collects garbage according to current status.
 	GarbageCollect()
 }
+
+type CheckpointTracker interface {
+	Record(checkpoint *protos.Checkpoint)
+	Get(idx types.QueryIndex) *protos.Checkpoint
+	IsExist(idx types.QueryIndex) bool
+}
