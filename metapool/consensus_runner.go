@@ -6,48 +6,56 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
+	"github.com/gogo/protobuf/proto"
 )
 
 type consensusRunner struct {
+	// nodeID is the identifier of current node.
 	nodeID uint64
 
+	// n is the total number of the participants.
 	n int
 
+	// quorum is the threshold of stable consensus.
 	quorum int
 
-	// aggMap is used to make aggregation quorum certificate for checkpoints.
+	// aggMap is used to create aggregated-QC for checkpoints.
 	aggMap map[string]*protos.Checkpoint
 
-	attemptC chan *protos.OrderAttempt
+	// consensusMessageC is used to relay the consensus message into consensus runner.
+	consensusMessageC chan *protos.ConsensusMessage
 
-	requestC chan *protos.CheckpointRequest
-
-	voteC chan *protos.CheckpointVote
-
-	eventC chan interface{}
-
+	// closeC is used to stop the processor of consensus runner.
 	closeC chan bool
 
+	// aTracker is used to track the information related to order-attempts.
 	aTracker api.AttemptTracker
 
+	// crypto is used to generate/verify signatures.
 	crypto api.Crypto
+
+	// sender is used to send network messages.
 	sender external.NetworkService
+
+	// logger is used to print logs.
 	logger external.Logger
 }
 
+// run is used to start the processor for consensus messages in phalanx.
 func (con *consensusRunner) run() {
 	for {
 		select {
 		case <-con.closeC:
 			return
-		case ev := <-con.eventC:
-			if err := con.dispatchEvents(ev); err != nil {
+		case msg := <-con.consensusMessageC:
+			if err := con.processConsensusMessage(msg); err != nil {
 				con.logger.Errorf("[%s] event error: %s", err)
 			}
 		}
 	}
 }
 
+// quit is used to stop the process.
 func (con *consensusRunner) quit() {
 	select {
 	case <-con.closeC:
@@ -56,20 +64,28 @@ func (con *consensusRunner) quit() {
 	}
 }
 
-func (con *consensusRunner) dispatchEvents(ev interface{}) error {
-	switch event := ev.(type) {
-	case *protos.OrderAttempt:
-		return con.requestCheckpoint(event)
-	case *protos.CheckpointRequest:
-		return con.processCheckpointRequest(event)
-	case *protos.CheckpointVote:
-		return con.processCheckpointVote(event)
+func (con *consensusRunner) processConsensusMessage(message *protos.ConsensusMessage) error {
+	if message == nil {
+		return fmt.Errorf("nil message")
+	}
+	switch message.Type {
+	case protos.MessageType_ORDER_ATTEMPT:
+		return con.processOrderAttempt(message)
+	case protos.MessageType_CHECKPOINT_REQUEST:
+		return con.processCheckpointRequest(message)
+	case protos.MessageType_CHECKPOINT_VOTE:
+		return con.processCheckpointVote(message)
 	default:
 		return nil
 	}
 }
 
-func (con *consensusRunner) requestCheckpoint(attempt *protos.OrderAttempt) error {
+func (con *consensusRunner) processOrderAttempt(message *protos.ConsensusMessage) error {
+	attempt := &protos.OrderAttempt{}
+	if err := proto.Unmarshal(message.Payload, attempt); err != nil {
+		return fmt.Errorf("unmarshal failed: %s", err)
+	}
+
 	if _, ok := con.aggMap[attempt.Digest]; ok {
 		return nil
 	}
@@ -79,7 +95,9 @@ func (con *consensusRunner) requestCheckpoint(attempt *protos.OrderAttempt) erro
 	if err != nil {
 		return fmt.Errorf("generate signature for pre-order failed: %s", err)
 	}
-	checkpoint.Certs()[con.nodeID] = signature
+	if err = checkpoint.CombineQC(con.nodeID, signature); err != nil {
+		return fmt.Errorf("combine QC failed: %s", err)
+	}
 
 	request := protos.NewCheckpointRequest(con.nodeID, attempt)
 	cm, err := protos.PackCheckpointRequest(request)
@@ -92,7 +110,11 @@ func (con *consensusRunner) requestCheckpoint(attempt *protos.OrderAttempt) erro
 	return nil
 }
 
-func (con *consensusRunner) processCheckpointRequest(request *protos.CheckpointRequest) error {
+func (con *consensusRunner) processCheckpointRequest(message *protos.ConsensusMessage) error {
+	request := &protos.CheckpointRequest{}
+	if err := proto.Unmarshal(message.Payload, request); err != nil {
+		return fmt.Errorf("unmarshal failed: %s", err)
+	}
 
 	vote := protos.NewCheckpointVote(con.nodeID, request)
 	signature, err := con.crypto.PrivateSign(types.StringToBytes(request.OrderAttempt.Digest))
@@ -108,7 +130,12 @@ func (con *consensusRunner) processCheckpointRequest(request *protos.CheckpointR
 	return nil
 }
 
-func (con *consensusRunner) processCheckpointVote(vote *protos.CheckpointVote) error {
+func (con *consensusRunner) processCheckpointVote(message *protos.ConsensusMessage) error {
+	vote := &protos.CheckpointVote{}
+	if err := proto.Unmarshal(message.Payload, vote); err != nil {
+		return fmt.Errorf("unmarshal failed: %s", err)
+	}
+
 	checkpoint, ok := con.aggMap[vote.Digest]
 	if !ok {
 		// there are 2 conditions that a pre-order waiting for agg-sig cannot be found: 1) we have never generated such
@@ -123,10 +150,12 @@ func (con *consensusRunner) processCheckpointVote(vote *protos.CheckpointVote) e
 	}
 
 	// record the certification in current vote
-	checkpoint.Certs()[vote.Author] = vote.Cert
+	if err := checkpoint.CombineQC(vote.Author, vote.Cert); err != nil {
+		return fmt.Errorf("combine QC failed: %s", err)
+	}
 
 	// check the quorum size for proof-certs
-	if len(checkpoint.Certs()) == con.quorum {
+	if checkpoint.IsValid(con.quorum) {
 		con.logger.Debugf("[%d] found quorum votes, generate quorum order %s", con.nodeID, checkpoint.Format())
 		delete(con.aggMap, vote.Digest)
 		con.aTracker.Checkpoint(checkpoint)

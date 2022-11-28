@@ -156,6 +156,22 @@ func (m *Checkpoint) Certs() map[uint64]*Certification {
 	return m.QC.Certs
 }
 
+func (m *Checkpoint) CombineQC(nodeID uint64, cert *Certification) error {
+	if m.QC == nil {
+		return fmt.Errorf("nil QC")
+	}
+	m.Certs()[nodeID] = cert
+	return nil
+}
+
+func (m *Checkpoint) IsValid(threshold int) bool {
+	return m.QC.IsQuorum(threshold)
+}
+
+func (m *QuorumCert) IsQuorum(threshold int) bool {
+	return len(m.Certs) >= threshold
+}
+
 //=================================== Generate Messages ============================================
 
 func NewQuorumCert() *QuorumCert {
