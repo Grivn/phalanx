@@ -2,7 +2,7 @@ package v1
 
 import (
 	"fmt"
-	"github.com/Grivn/phalanx/lib/timer"
+	"github.com/Grivn/phalanx/lib/utils"
 	"sort"
 	"sync"
 	"time"
@@ -156,7 +156,7 @@ func NewMetaPool(conf Config) api.MetaPoolV1 {
 		cTracker: tracker.NewCommandTracker(conf.Author, conf.Logger),
 		clients:  clients,
 		commandC: commandC,
-		timer:    timer.NewLocalTimer(conf.Author, timeoutC, conf.Duration, conf.Logger),
+		timer:    utils.NewLocalTimer(conf.Author, timeoutC, conf.Duration, conf.Logger),
 		timeoutC: timeoutC,
 		closeC:   make(chan bool),
 		crypto:   conf.Crypto,
@@ -219,7 +219,7 @@ func (mp *metaPool) ProcessCommand(command *protos.Command) {
 	mp.metrics.ProcessCommand()
 
 	// record the command with command tracker.
-	mp.cTracker.RecordCommand(command)
+	mp.cTracker.Record(command)
 
 	if mp.byz && mp.snapping && command.Author != mp.author {
 		// current node is the arbitrary
@@ -448,7 +448,7 @@ func (mp *metaPool) ProcessPartial(pOrder *protos.PartialOrder) error {
 //===============================================================
 
 func (mp *metaPool) ReadCommand(commandD string) *protos.Command {
-	command := mp.cTracker.ReadCommand(commandD)
+	command := mp.cTracker.Get(commandD)
 
 	for {
 		if command != nil {
@@ -456,7 +456,7 @@ func (mp *metaPool) ReadCommand(commandD string) *protos.Command {
 		}
 
 		// if we could not read the command, just try the next time.
-		command = mp.cTracker.ReadCommand(commandD)
+		command = mp.cTracker.Get(commandD)
 	}
 
 	return command
@@ -466,7 +466,7 @@ func (mp *metaPool) ReadPartials(qStream types.QueryStream) []*protos.PartialOrd
 	var res []*protos.PartialOrder
 
 	for _, qIndex := range qStream {
-		pOrder := mp.pTracker.ReadPartial(qIndex)
+		pOrder := mp.pTracker.Get(qIndex)
 
 		for {
 			if pOrder != nil {
@@ -474,7 +474,7 @@ func (mp *metaPool) ReadPartials(qStream types.QueryStream) []*protos.PartialOrd
 			}
 
 			// if we could not read the partial order, just try the next time.
-			pOrder = mp.pTracker.ReadPartial(qIndex)
+			pOrder = mp.pTracker.Get(qIndex)
 		}
 
 		res = append(res, pOrder)

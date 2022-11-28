@@ -1,8 +1,7 @@
-package experiment
+package sequencer
 
 import (
 	"fmt"
-	"github.com/Grivn/phalanx/lib/timer"
 	"sort"
 	"sync"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/lib/instance"
+	"github.com/Grivn/phalanx/lib/utils"
 	"github.com/Grivn/phalanx/metrics"
 )
 
@@ -49,6 +49,9 @@ type sequencerImpl struct {
 
 	// active indicates the number of active client instance.
 	active *int64
+
+	// transactionC is used to receive transactions.
+	transactionC chan *protos.Transaction
 
 	// commandC is used to receive the valid transaction from one client instance.
 	commandC chan *types.CommandIndex
@@ -108,7 +111,7 @@ func NewSequencer(conf Config) *sequencerImpl {
 		sequence: uint64(0),
 		clients:  clients,
 		commandC: commandC,
-		timer:    timer.NewLocalTimer(conf.Author, timeoutC, conf.Duration, conf.Logger),
+		timer:    utils.NewLocalTimer(conf.Author, timeoutC, conf.Duration, conf.Logger),
 		timeoutC: timeoutC,
 		closeC:   make(chan bool),
 		sender:   conf.Sender,
@@ -144,13 +147,11 @@ func (ser *sequencerImpl) Quit() {
 	}
 }
 
-func (ser *sequencerImpl) Committed(author uint64, seqNo uint64) {
-	ser.clients[author].Commit(seqNo)
+func (ser *sequencerImpl) ReceiveTxs(transaction *protos.Transaction) {
+
 }
 
 func (ser *sequencerImpl) ProcessCommand(command *protos.Command) {
-	// record metrics.
-	ser.metrics.ProcessCommand()
 	if ser.byz && ser.snapping && command.Author != ser.author {
 		// current node is the arbitrary
 		// it is in snapping up situation.

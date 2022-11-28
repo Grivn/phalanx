@@ -32,7 +32,7 @@ func NewPartialTracker(author uint64, logger external.Logger) api.PartialTracker
 	}
 }
 
-func (pt *partialTracker) RecordPartial(pOrder *protos.PartialOrder) {
+func (pt *partialTracker) Record(pOrder *protos.PartialOrder) {
 	qIdx := types.QueryIndex{Author: pOrder.Author(), SeqNo: pOrder.Sequence()}
 
 	if _, ok := pt.partialMap.Load(qIdx); ok {
@@ -43,7 +43,7 @@ func (pt *partialTracker) RecordPartial(pOrder *protos.PartialOrder) {
 	pt.partialMap.Store(qIdx, pOrder)
 }
 
-func (pt *partialTracker) ReadPartial(idx types.QueryIndex) *protos.PartialOrder {
+func (pt *partialTracker) Get(idx types.QueryIndex) *protos.PartialOrder {
 	// here, we are trying to read the partial order according to partial order query index.
 	e, ok := pt.partialMap.Load(idx)
 	if !ok {

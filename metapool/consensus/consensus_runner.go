@@ -1,4 +1,4 @@
-package metapool
+package consensus
 
 import (
 	"fmt"
@@ -28,8 +28,11 @@ type consensusRunner struct {
 	// closeC is used to stop the processor of consensus runner.
 	closeC chan bool
 
-	// aTracker is used to track the information related to order-attempts.
-	aTracker api.AttemptTracker
+	// attemptTracker is used to track the information related to order-attempts.
+	attemptTracker api.AttemptTracker
+
+	// checkpointTracker is used to track the checkpoints for order-attempts.
+	checkpointTracker api.CheckpointTracker
 
 	// crypto is used to generate/verify signatures.
 	crypto api.Crypto
@@ -41,22 +44,22 @@ type consensusRunner struct {
 	logger external.Logger
 }
 
-// run is used to start the processor for consensus messages in phalanx.
-func (con *consensusRunner) run() {
+// Run is used to start the processor for consensus messages in phalanx.
+func (con *consensusRunner) Run() {
 	for {
 		select {
 		case <-con.closeC:
 			return
 		case msg := <-con.consensusMessageC:
-			if err := con.processConsensusMessage(msg); err != nil {
+			if err := con.dispatchConsensusMessage(msg); err != nil {
 				con.logger.Errorf("[%s] event error: %s", err)
 			}
 		}
 	}
 }
 
-// quit is used to stop the process.
-func (con *consensusRunner) quit() {
+// Quit is used to stop the process.
+func (con *consensusRunner) Quit() {
 	select {
 	case <-con.closeC:
 	default:
@@ -64,7 +67,12 @@ func (con *consensusRunner) quit() {
 	}
 }
 
-func (con *consensusRunner) processConsensusMessage(message *protos.ConsensusMessage) error {
+// ProcessConsensusMessage is used to process consensus messages.
+func (con *consensusRunner) ProcessConsensusMessage(message *protos.ConsensusMessage) {
+	con.consensusMessageC <- message
+}
+
+func (con *consensusRunner) dispatchConsensusMessage(message *protos.ConsensusMessage) error {
 	if message == nil {
 		return fmt.Errorf("nil message")
 	}
@@ -158,7 +166,7 @@ func (con *consensusRunner) processCheckpointVote(message *protos.ConsensusMessa
 	if checkpoint.IsValid(con.quorum) {
 		con.logger.Debugf("[%d] found quorum votes, generate quorum order %s", con.nodeID, checkpoint.Format())
 		delete(con.aggMap, vote.Digest)
-		con.aTracker.Checkpoint(checkpoint)
+		con.checkpointTracker.Record(checkpoint)
 	}
 	return nil
 }

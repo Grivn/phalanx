@@ -178,7 +178,7 @@ func (ri *replicaInstance) processBTree() error {
 		}
 
 		// record partial order with partial tracker.
-		ri.pTracker.RecordPartial(pOrder)
+		ri.pTracker.Record(pOrder)
 
 		// update the highest partial order for current sub instance.
 		ri.updateHighestOrder(pOrder)

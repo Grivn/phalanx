@@ -47,7 +47,7 @@ func NewCommandTracker(author uint64, logger external.Logger) api.CommandTracker
 	}
 }
 
-func (ct *commandTracker) RecordCommand(command *protos.Command) {
+func (ct *commandTracker) Record(command *protos.Command) {
 	ct.mutex.Lock()
 	defer ct.mutex.Unlock()
 
@@ -63,11 +63,10 @@ func (ct *commandTracker) RecordCommand(command *protos.Command) {
 		return
 	}
 
-	//ct.logger.Debugf("[%d] received command %s", ct.author, command.Digest)
 	ct.commandMap[command.Digest] = command
 }
 
-func (ct *commandTracker) ReadCommand(digest string) *protos.Command {
+func (ct *commandTracker) Get(digest string) *protos.Command {
 	ct.mutex.RLock()
 	defer ct.mutex.RUnlock()
 

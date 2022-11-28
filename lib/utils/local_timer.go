@@ -1,9 +1,10 @@
-package timer
+package utils
 
 import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/external"
 )
 
@@ -24,7 +25,7 @@ type localTimer struct {
 	logger external.Logger
 }
 
-func NewLocalTimer(author uint64, timeoutC chan bool, duration time.Duration, logger external.Logger) *localTimer {
+func NewLocalTimer(author uint64, timeoutC chan bool, duration time.Duration, logger external.Logger) api.LocalTimer {
 	return &localTimer{
 		author:   author,
 		duration: duration,
