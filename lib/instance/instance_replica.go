@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/Grivn/phalanx/common/api"
-	"github.com/Grivn/phalanx/common/event"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
@@ -99,7 +98,7 @@ func (ri *replicaInstance) ReceivePreOrder(pre *protos.PreOrder) error {
 		return nil
 	}
 
-	ev := &event.OrderEvent{Status: event.OrderStatusPreOrder, Sequence: pre.Sequence, Digest: pre.Digest, Event: pre}
+	ev := &types.OrderEvent{Status: types.OrderStatusPreOrder, Sequence: pre.Sequence, Digest: pre.Digest, Event: pre}
 
 	if ri.recorder.Has(ev) {
 		return ri.processBTree()
@@ -125,7 +124,7 @@ func (ri *replicaInstance) ReceivePartial(pOrder *protos.PartialOrder) error {
 		return fmt.Errorf("invalid order: %s", err)
 	}
 
-	ev := &event.OrderEvent{Status: event.OrderStatusQuorumVerified, Sequence: pOrder.PreOrder.Sequence, Digest: pOrder.PreOrder.Digest, Event: pOrder}
+	ev := &types.OrderEvent{Status: types.OrderStatusQuorumVerified, Sequence: pOrder.PreOrder.Sequence, Digest: pOrder.PreOrder.Digest, Event: pOrder}
 	ri.recorder.ReplaceOrInsert(ev)
 
 	return ri.processBTree()
@@ -136,10 +135,10 @@ func (ri *replicaInstance) processBTree() error {
 	if item == nil {
 		return nil
 	}
-	ev := item.(*event.OrderEvent)
+	ev := item.(*types.OrderEvent)
 
 	switch ev.Status {
-	case event.OrderStatusPreOrder:
+	case types.OrderStatusPreOrder:
 		if ev.Sequence != ri.sequence {
 			ri.logger.Debugf("[%d] sub-instance for node %d needs sequence %d", ri.author, ri.id, ri.sequence)
 			return nil
@@ -166,7 +165,7 @@ func (ri *replicaInstance) processBTree() error {
 		ri.sender.UnicastPCM(cm)
 		return nil
 
-	case event.OrderStatusQuorumVerified:
+	case types.OrderStatusQuorumVerified:
 		ri.logger.Infof("[%d] process partial order event", ri.author)
 
 		pOrder := ev.Event.(*protos.PartialOrder)

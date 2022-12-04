@@ -205,10 +205,11 @@ func NewOrderAttemptContent(commandList []string, timestampList []int64) *OrderA
 	return &OrderAttemptContent{CommandList: commandList, TimestampList: timestampList}
 }
 
-func NewOrderAttempt(nodeID uint64, seqNo uint64, previous *OrderAttempt, contentDigest string, content *OrderAttemptContent) *OrderAttempt {
+func NewOrderAttempt(nodeID uint64, previous *OrderAttempt, contentDigest string, content *OrderAttemptContent) *OrderAttempt {
 	if previous == nil {
 		previous = &OrderAttempt{Digest: "GENESIS PRE ORDER"}
 	}
+	seqNo := previous.SeqNo + 1
 	return &OrderAttempt{NodeID: nodeID, SeqNo: seqNo, ParentDigest: previous.Digest, ContentDigest: contentDigest, Content: content}
 }
 

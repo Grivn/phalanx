@@ -19,8 +19,11 @@ type consensusRunner struct {
 	// quorum is the threshold of stable consensus.
 	quorum int
 
-	// aggMap is used to create aggregated-QC for checkpoints.
-	aggMap map[string]*protos.Checkpoint
+	// aggregateMap is used to create aggregated-QC for checkpoints.
+	aggregateMap map[string]*protos.Checkpoint
+
+	// eventC is used to receive event messages from local modules.
+	eventC chan types.LocalEvent
 
 	// consensusMessageC is used to relay the consensus message into consensus runner.
 	consensusMessageC chan *protos.ConsensusMessage
@@ -50,9 +53,13 @@ func (con *consensusRunner) Run() {
 		select {
 		case <-con.closeC:
 			return
-		case msg := <-con.consensusMessageC:
-			if err := con.dispatchConsensusMessage(msg); err != nil {
-				con.logger.Errorf("[%s] event error: %s", err)
+		case message := <-con.consensusMessageC:
+			if err := con.dispatchConsensusMessage(message); err != nil {
+				con.logger.Errorf("[%d] process consensus message error: %s", con.nodeID, err)
+			}
+		case event := <-con.eventC:
+			if err := con.dispatchLocalEvent(event); err != nil {
+				con.logger.Errorf("[%d] process local event error: %s", con.nodeID, err)
 			}
 		}
 	}
@@ -67,9 +74,12 @@ func (con *consensusRunner) Quit() {
 	}
 }
 
-// ProcessConsensusMessage is used to process consensus messages.
 func (con *consensusRunner) ProcessConsensusMessage(message *protos.ConsensusMessage) {
 	con.consensusMessageC <- message
+}
+
+func (con *consensusRunner) ProcessLocalEvent(event types.LocalEvent) {
+	con.eventC <- event
 }
 
 func (con *consensusRunner) dispatchConsensusMessage(message *protos.ConsensusMessage) error {
@@ -77,24 +87,45 @@ func (con *consensusRunner) dispatchConsensusMessage(message *protos.ConsensusMe
 		return fmt.Errorf("nil message")
 	}
 	switch message.Type {
-	case protos.MessageType_ORDER_ATTEMPT:
-		return con.processOrderAttempt(message)
 	case protos.MessageType_CHECKPOINT_REQUEST:
-		return con.processCheckpointRequest(message)
+		request := &protos.CheckpointRequest{}
+		if err := proto.Unmarshal(message.Payload, request); err != nil {
+			return fmt.Errorf("unmarshal failed: %s", err)
+		}
+		return con.processCheckpointRequest(request)
 	case protos.MessageType_CHECKPOINT_VOTE:
-		return con.processCheckpointVote(message)
+		vote := &protos.CheckpointVote{}
+		if err := proto.Unmarshal(message.Payload, vote); err != nil {
+			return fmt.Errorf("unmarshal failed: %s", err)
+		}
+		return con.processCheckpointVote(vote)
 	default:
 		return nil
 	}
 }
 
-func (con *consensusRunner) processOrderAttempt(message *protos.ConsensusMessage) error {
-	attempt := &protos.OrderAttempt{}
-	if err := proto.Unmarshal(message.Payload, attempt); err != nil {
-		return fmt.Errorf("unmarshal failed: %s", err)
+func (con *consensusRunner) dispatchLocalEvent(event types.LocalEvent) error {
+	switch event.Type {
+	case types.LocalEventOrderAttempt:
+		attempt, ok := event.Event.(*protos.OrderAttempt)
+		if !ok {
+			return fmt.Errorf("parse order attempt failed")
+		}
+		if err := con.processOrderAttempt(attempt); err != nil {
+			return fmt.Errorf("process order-attempt failed: %s", err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("invalid event type %d", event.Type)
+	}
+}
+
+func (con *consensusRunner) processOrderAttempt(attempt *protos.OrderAttempt) error {
+	if attempt == nil {
+		return fmt.Errorf("nil attempt")
 	}
 
-	if _, ok := con.aggMap[attempt.Digest]; ok {
+	if _, ok := con.aggregateMap[attempt.Digest]; ok {
 		return nil
 	}
 
@@ -113,15 +144,14 @@ func (con *consensusRunner) processOrderAttempt(message *protos.ConsensusMessage
 		return fmt.Errorf("generate consensus message error: %s", err)
 	}
 	con.sender.BroadcastPCM(cm)
-	con.aggMap[attempt.Digest] = checkpoint
+	con.aggregateMap[attempt.Digest] = checkpoint
 
 	return nil
 }
 
-func (con *consensusRunner) processCheckpointRequest(message *protos.ConsensusMessage) error {
-	request := &protos.CheckpointRequest{}
-	if err := proto.Unmarshal(message.Payload, request); err != nil {
-		return fmt.Errorf("unmarshal failed: %s", err)
+func (con *consensusRunner) processCheckpointRequest(request *protos.CheckpointRequest) error {
+	if request == nil {
+		return fmt.Errorf("nil request")
 	}
 
 	vote := protos.NewCheckpointVote(con.nodeID, request)
@@ -138,13 +168,12 @@ func (con *consensusRunner) processCheckpointRequest(message *protos.ConsensusMe
 	return nil
 }
 
-func (con *consensusRunner) processCheckpointVote(message *protos.ConsensusMessage) error {
-	vote := &protos.CheckpointVote{}
-	if err := proto.Unmarshal(message.Payload, vote); err != nil {
-		return fmt.Errorf("unmarshal failed: %s", err)
+func (con *consensusRunner) processCheckpointVote(vote *protos.CheckpointVote) error {
+	if vote == nil {
+		return fmt.Errorf("nil vote")
 	}
 
-	checkpoint, ok := con.aggMap[vote.Digest]
+	checkpoint, ok := con.aggregateMap[vote.Digest]
 	if !ok {
 		// there are 2 conditions that a pre-order waiting for agg-sig cannot be found: 1) we have never generated such
 		// a pre-order message, 2) we have already generated an order message for it, which means it has been verified.
@@ -165,7 +194,7 @@ func (con *consensusRunner) processCheckpointVote(message *protos.ConsensusMessa
 	// check the quorum size for proof-certs
 	if checkpoint.IsValid(con.quorum) {
 		con.logger.Debugf("[%d] found quorum votes, generate quorum order %s", con.nodeID, checkpoint.Format())
-		delete(con.aggMap, vote.Digest)
+		delete(con.aggregateMap, vote.Digest)
 		con.checkpointTracker.Record(checkpoint)
 	}
 	return nil

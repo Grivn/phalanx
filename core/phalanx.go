@@ -2,13 +2,14 @@ package phalanx
 
 import (
 	"fmt"
+
 	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/executor/finality"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/lib/crypto"
-	"github.com/Grivn/phalanx/metapool/v1"
+	"github.com/Grivn/phalanx/metapool"
 	"github.com/Grivn/phalanx/metrics"
 	"github.com/Grivn/phalanx/receiver"
 	"github.com/gogo/protobuf/proto"
@@ -25,7 +26,7 @@ type phalanxImpl struct {
 	// 1) partial consensus for order logs.
 	// 2) global consensus for total order.
 	// 3) cache essential data information.
-	metaPool api.MetaPoolV1
+	metaPool api.MetaPool
 
 	// executor is used to generate the final ordered blocks.
 	executor api.Finality
@@ -64,7 +65,7 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 	proposer := receiver.NewTxManager(txConf)
 
 	// initiate meta pool.
-	mpConf := v1.Config{
+	mpConf := metapool.Config{
 		Author:   conf.Author,
 		Byz:      conf.Byz,
 		Snapping: conf.Snapping,
@@ -75,7 +76,7 @@ func NewPhalanxProvider(conf Config) *phalanxImpl {
 		Logger:   mLogs.metaPoolLog,
 		Metrics:  pMetrics.MetaPoolMetrics,
 	}
-	mPool := v1.NewMetaPool(mpConf)
+	mPool := metapool.NewMetaPool(mpConf)
 
 	// initiate executor.
 	exeConf := finality.Config{

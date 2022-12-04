@@ -1,4 +1,4 @@
-package event
+package types
 
 import "github.com/google/btree"
 
