@@ -8,10 +8,7 @@ import (
 	"github.com/Grivn/phalanx/external"
 )
 
-type localTimer struct {
-	// author indicates current node identifier.
-	author uint64
-
+type singleTimer struct {
 	// duration is the timeout interval for current timer.
 	duration time.Duration
 
@@ -25,17 +22,16 @@ type localTimer struct {
 	logger external.Logger
 }
 
-func NewLocalTimer(author uint64, timeoutC chan bool, duration time.Duration, logger external.Logger) api.LocalTimer {
-	return &localTimer{
-		author:   author,
+func NewSingleTimer(timeoutC chan bool, duration time.Duration, logger external.Logger) api.SingleTimer {
+	return &singleTimer{
 		duration: duration,
 		timeoutC: timeoutC,
 		logger:   logger,
 	}
 }
 
-func (timer *localTimer) StartTimer() {
-	timer.logger.Debugf("[%d] start partial order generation timer, duration %v", timer.author, timer.duration)
+func (timer *singleTimer) StartTimer() {
+	timer.logger.Debugf("start timer, duration %v", timer.duration)
 	atomic.StoreUint64(&timer.isActive, 1)
 
 	f := func() {
@@ -46,7 +42,7 @@ func (timer *localTimer) StartTimer() {
 	time.AfterFunc(timer.duration, f)
 }
 
-func (timer *localTimer) StopTimer() {
-	timer.logger.Debugf("[%d] stop partial order generation timer", timer.author)
+func (timer *singleTimer) StopTimer() {
+	timer.logger.Debugf("stop timer")
 	atomic.StoreUint64(&timer.isActive, 0)
 }

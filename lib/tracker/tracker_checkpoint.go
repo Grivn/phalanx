@@ -27,8 +27,28 @@ func NewCheckpointTracker(author uint64, logger external.Logger) api.CheckpointT
 	}
 }
 
-func (ct *checkpointTracker) Record(checkpoint *protos.Checkpoint) {}
+func (ct *checkpointTracker) Record(checkpoint *protos.Checkpoint) {
+	qIdx := types.QueryIndex{Author: checkpoint.NodeID(), SeqNo: checkpoint.SeqNo()}
 
-func (ct *checkpointTracker) Get(idx types.QueryIndex) *protos.Checkpoint { return nil }
+	if _, ok := ct.checkpointMap.Load(qIdx); ok {
+		ct.logger.Debugf("[%d] duplicated checkpoint %s", ct.author, checkpoint.Format())
+		return
+	}
 
-func (ct *checkpointTracker) IsExist(idx types.QueryIndex) bool { return true }
+	ct.checkpointMap.Store(qIdx, checkpoint)
+}
+
+func (ct *checkpointTracker) Get(idx types.QueryIndex) *protos.Checkpoint {
+	e, ok := ct.checkpointMap.Load(idx)
+	if !ok {
+		return nil
+	}
+	checkpoint := e.(*protos.Checkpoint)
+	ct.checkpointMap.Delete(idx)
+	return checkpoint
+}
+
+func (ct *checkpointTracker) IsExist(idx types.QueryIndex) bool {
+	_, ok := ct.checkpointMap.Load(idx)
+	return ok
+}

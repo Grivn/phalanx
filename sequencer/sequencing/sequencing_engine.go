@@ -1,13 +1,13 @@
 package sequencing
 
 import (
+	"github.com/Grivn/phalanx/lib/instance"
 	"sync"
 
 	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/lib/instance"
 )
 
 type sequencingEngine struct {

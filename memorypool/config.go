@@ -1,10 +1,10 @@
 package memorypool
 
 import (
+	"github.com/Grivn/phalanx/external"
 	"time"
 
 	"github.com/Grivn/phalanx/common/api"
-	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/metrics"
 )
 
@@ -16,7 +16,6 @@ type Config struct {
 	Multi    int
 	Duration time.Duration
 	Crypto   api.Crypto
-	Sender   external.NetworkService
 	Logger   external.Logger
 	Metrics  *metrics.MetaPoolMetrics
 }

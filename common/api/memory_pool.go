@@ -6,9 +6,26 @@ import (
 )
 
 type MemoryPool interface {
-	// ProcessLocalEvent is used to process the event received from local bus.
-	ProcessLocalEvent(ev types.LocalEvent)
+	MemoryRelay
+	MemoryProposer
+	MemoryReader
+}
 
+type MemoryRelay interface {
+	ProcessCommand(command *protos.Command)
+	ProcessOrderAttempt(attempt *protos.OrderAttempt)
+	ProcessConsensusMessage(consensusMessage *protos.ConsensusMessage)
+}
+
+type MemoryReader interface {
+	// ReadCommand reads raw command from meta pool.
+	ReadCommand(commandD string) *protos.Command
+
+	// ReadOrderAttempts reads order attempts according to query stream.
+	ReadOrderAttempts(qStream types.QueryStream) []*protos.OrderAttempt
+}
+
+type MemoryProposer interface {
 	// GenerateProposal generates proposal for consensus engine.
 	// Here, we need to create phalanx proposal with each node highest order-attempt,
 	// and make sure every order-attempt has a corresponding checkpoint.
@@ -29,40 +46,4 @@ type ConsensusEngine interface {
 
 	// ProcessLocalEvent is used to process local events.
 	ProcessLocalEvent(event types.LocalEvent)
-}
-
-type SequencerInstance interface {
-	// GetHighAttempt gets the latest legal order-attempt received from current sequencer.
-	GetHighAttempt() *protos.OrderAttempt
-
-	// Append is used to notify the latest received order-attempt from current sequencer and try to verify it.
-	Append(attempt *protos.OrderAttempt)
-}
-
-//================================== tracker for meta pool ========================================
-
-// CommandTracker is used to record received commands.
-type CommandTracker interface {
-	Record(command *protos.Command)
-	Get(digest string) *protos.Command
-}
-
-// PartialTracker is used to record received partial orders.
-type PartialTracker interface {
-	Record(pOrder *protos.PartialOrder)
-	Get(idx types.QueryIndex) *protos.PartialOrder
-	IsExist(idx types.QueryIndex) bool
-}
-
-// AttemptTracker is used to record received order-attempts.
-type AttemptTracker interface {
-	Record(attempt *protos.OrderAttempt)
-	Get(idx types.QueryIndex) *protos.OrderAttempt
-}
-
-// CheckpointTracker is used to record received checkpoint for order-attempts.
-type CheckpointTracker interface {
-	Record(checkpoint *protos.Checkpoint)
-	Get(idx types.QueryIndex) *protos.Checkpoint
-	IsExist(idx types.QueryIndex) bool
 }

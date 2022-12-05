@@ -1,16 +1,19 @@
 package memorypool
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/lib/utils"
+	"github.com/Grivn/phalanx/external"
+	"github.com/Grivn/phalanx/lib/consensus"
+	"github.com/Grivn/phalanx/lib/instance"
 	"github.com/Grivn/phalanx/metrics"
 )
 
-type metaPoolImpl struct {
+type memoryPoolImpl struct {
 	conf Config
 
 	//===================================== basic information =========================================
@@ -37,23 +40,22 @@ type metaPoolImpl struct {
 
 	//===================================== client commands manager ============================================
 
-	// commandC is used to receive the valid transaction from one client instance.
-	commandC chan *types.CommandIndex
-
-	// closeC is used to stop log manager.
-	closeC chan bool
-
 	//=================================== local timer service ========================================
 
 	// timer is used to control the timeout event to generate order with commands in waiting list.
-	timer api.LocalTimer
+	timer api.SingleTimer
 
-	// timeoutC is used to receive timeout event.
-	timeoutC <-chan bool
+	sequencerInstanceMap map[uint64]api.SequencerInstance
+
+	commandTracker api.CommandTracker
+
+	attemptTracker api.AttemptTracker
+
+	checkpointTracker api.CheckpointTracker
 
 	consensusEngine api.ConsensusEngine
 
-	commandTracker api.CommandTracker
+	crypto api.Crypto
 
 	//======================================= consensus manager ============================================
 
@@ -62,70 +64,178 @@ type metaPoolImpl struct {
 
 	// metrics is used to record the metric info of current node's meta pool.
 	metrics *metrics.MetaPoolMetrics
+
+	logger external.Logger
 }
 
-func NewMemoryPool(conf Config) *metaPoolImpl {
+func NewMemoryPool(conf Config) *memoryPoolImpl {
 	conf.Logger.Infof("[%d] initiate log manager, replica count %d", conf.Author, conf.N)
-
-	// initiate communication channel.
-	commandC := make(chan *types.CommandIndex)
-	timeoutC := make(chan bool)
 
 	// initiate committed number tracker.
 	committedTracker := make(map[uint64]uint64)
 
-	return &metaPoolImpl{
-		conf:     conf,
-		author:   conf.Author,
-		n:        conf.N,
-		multi:    conf.Multi,
-		quorum:   types.CalculateQuorum(conf.N),
-		commandC: commandC,
-		timer:    utils.NewLocalTimer(conf.Author, timeoutC, conf.Duration, conf.Logger),
-		timeoutC: timeoutC,
-		closeC:   make(chan bool),
-		metrics:  conf.Metrics,
-		commitNo: committedTracker,
+	return &memoryPoolImpl{
+		conf:                 conf,
+		author:               conf.Author,
+		n:                    conf.N,
+		multi:                conf.Multi,
+		quorum:               types.CalculateQuorum(conf.N),
+		consensusEngine:      consensus.NewConsensusEngine(consensus.Config{}),
+		sequencerInstanceMap: make(map[uint64]api.SequencerInstance),
+		metrics:              conf.Metrics,
+		commitNo:             committedTracker,
 	}
 }
 
-//===============================================================
-//                 Processor for Local Logs
-//===============================================================
-
-func (mp *metaPoolImpl) ProcessLocalEvent(ev types.LocalEvent) {
-	mp.dispatchLocalEvent(ev)
-}
-
-func (mp *metaPoolImpl) GenerateProposal() (*protos.Proposal, error) {
-	return nil, nil
-}
-
-func (mp *metaPoolImpl) VerifyProposal(proposal *protos.Proposal) (types.QueryStream, error) {
-	return nil, nil
-}
-
-func (mp *metaPoolImpl) dispatchLocalEvent(ev types.LocalEvent) {
-	switch ev.Type {
-	case types.LocalEventCommand:
-		command, ok := ev.Event.(*protos.Command)
-		if !ok {
-			return
-		}
-		go mp.processCommand(command)
-	default:
-		return
-	}
-}
-
-func (mp *metaPoolImpl) processCommand(command *protos.Command) {
-	// record metrics.
-	mp.metrics.ProcessCommand()
-
-	// record the command with command tracker.
+func (mp *memoryPoolImpl) ProcessCommand(command *protos.Command) {
 	mp.commandTracker.Record(command)
 }
 
-func (mp *metaPoolImpl) processConsensusMessage(message *protos.ConsensusMessage) {
-	mp.consensusEngine.ProcessConsensusMessage(message)
+func (mp *memoryPoolImpl) ProcessOrderAttempt(attempt *protos.OrderAttempt) {
+	mp.attemptTracker.Record(attempt)
+
+	sequencerInstance, ok := mp.sequencerInstanceMap[attempt.NodeID]
+	if !ok {
+		sequencerInstance = instance.NewSequencerInstance(mp.author, attempt.NodeID, mp.logger)
+
+		mp.mutex.Lock()
+		mp.sequencerInstanceMap[attempt.NodeID] = sequencerInstance
+		mp.mutex.Unlock()
+	}
+	sequencerInstance.Append(attempt)
+}
+
+func (mp *memoryPoolImpl) ProcessConsensusMessage(consensusMessage *protos.ConsensusMessage) {
+	mp.consensusEngine.ProcessConsensusMessage(consensusMessage)
+}
+
+func (mp *memoryPoolImpl) GenerateProposal() (*protos.Proposal, error) {
+	mp.mutex.RLock()
+	defer mp.mutex.RUnlock()
+	proposal := protos.NewProposal(mp.author, mp.n)
+
+	for id, sequencerInstance := range mp.sequencerInstanceMap {
+		index := int(id - 1)
+		hAttempt := sequencerInstance.GetHighestAttempt()
+
+		if hAttempt == nil {
+			// high-order for replica 'id' is nil, record 0 in batch tracker.
+			proposal.HighestCheckpointList[index] = protos.NewNopCheckpoint()
+			proposal.SeqList[index] = 0
+			continue
+		}
+
+		idx := types.QueryIndex{Author: hAttempt.NodeID, SeqNo: hAttempt.SeqNo}
+		if !mp.checkpointTracker.IsExist(idx) {
+			mp.consensusEngine.ProcessLocalEvent(types.LocalEvent{Type: types.LocalEventOrderAttempt, Event: hAttempt})
+		}
+
+		for {
+			checkpoint := mp.checkpointTracker.Get(idx)
+			if checkpoint != nil {
+				// update batch tracker with information of high-order.
+				proposal.HighestCheckpointList[index] = checkpoint
+				proposal.SeqList[index] = checkpoint.SeqNo()
+				break
+			}
+		}
+	}
+
+	mp.logger.Debugf("[%d] generate proposal %s", mp.author, proposal.Format())
+	return proposal, nil
+}
+
+func (mp *memoryPoolImpl) VerifyProposal(proposal *protos.Proposal) (types.QueryStream, error) {
+	updated := false
+
+	for index, no := range proposal.SeqList {
+
+		// calculate the node id.
+		id := uint64(index + 1)
+
+		if no <= mp.commitNo[id] {
+			// committed previous partial order for node id, including partial number 0.
+			mp.logger.Debugf("[%d] haven't updated committed partial order for node %d", mp.author, id)
+			continue
+		}
+
+		checkpoint := proposal.HighestCheckpointList[index]
+
+		if checkpoint.SeqNo() != no {
+			return nil, fmt.Errorf("invalid partial order seqNo, proposedNo %d, partial seqNo %d", no, checkpoint.SeqNo())
+		}
+
+		qIndex := types.QueryIndex{Author: checkpoint.NodeID(), SeqNo: checkpoint.SeqNo()}
+		if !mp.checkpointTracker.IsExist(qIndex) {
+			if err := mp.crypto.VerifyProofCerts(types.StringToBytes(checkpoint.Digest()), checkpoint.QC, mp.quorum); err != nil {
+				return nil, fmt.Errorf("invalid high partial order received from %d: %s", proposal.Author, err)
+			}
+		}
+
+		updated = true
+	}
+
+	if !updated {
+		// haven't updated committed partial order.
+		return nil, nil
+	}
+
+	var qStream types.QueryStream
+
+	for index, no := range proposal.SeqList {
+		id := uint64(index + 1)
+
+		for {
+			if no <= mp.commitNo[id] {
+				break
+			}
+
+			mp.commitNo[id]++
+
+			qIndex := types.NewQueryIndex(id, mp.commitNo[id])
+			qStream = append(qStream, qIndex)
+		}
+	}
+
+	return qStream, nil
+}
+
+//===============================================================
+//                   Read Essential Info
+//===============================================================
+
+func (mp *memoryPoolImpl) ReadCommand(commandD string) *protos.Command {
+	command := mp.commandTracker.Get(commandD)
+
+	for {
+		if command != nil {
+			break
+		}
+
+		// if we could not read the command, just try the next time.
+		command = mp.commandTracker.Get(commandD)
+	}
+
+	return command
+}
+
+func (mp *memoryPoolImpl) ReadOrderAttempts(qStream types.QueryStream) []*protos.OrderAttempt {
+	var res []*protos.OrderAttempt
+
+	for _, qIndex := range qStream {
+		attempt := mp.attemptTracker.Get(qIndex)
+
+		for {
+			if attempt != nil {
+				break
+			}
+
+			// if we could not read the partial order, just try the next time.
+			attempt = mp.attemptTracker.Get(qIndex)
+		}
+
+		res = append(res, attempt)
+	}
+
+	return res
 }

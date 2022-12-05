@@ -9,7 +9,9 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
-type consensusRunner struct {
+var Service api.ConsensusEngine
+
+type consensusEngine struct {
 	// nodeID is the identifier of current node.
 	nodeID uint64
 
@@ -31,9 +33,6 @@ type consensusRunner struct {
 	// closeC is used to stop the processor of consensus runner.
 	closeC chan bool
 
-	// attemptTracker is used to track the information related to order-attempts.
-	attemptTracker api.AttemptTracker
-
 	// checkpointTracker is used to track the checkpoints for order-attempts.
 	checkpointTracker api.CheckpointTracker
 
@@ -47,8 +46,22 @@ type consensusRunner struct {
 	logger external.Logger
 }
 
+func NewConsensusEngine(conf Config) api.ConsensusEngine {
+	return &consensusEngine{
+		nodeID:            conf.NodeID,
+		n:                 conf.N,
+		quorum:            types.CalculateQuorum(conf.N),
+		aggregateMap:      make(map[string]*protos.Checkpoint),
+		eventC:            make(chan types.LocalEvent),
+		consensusMessageC: make(chan *protos.ConsensusMessage),
+		closeC:            make(chan bool),
+		sender:            conf.External,
+		logger:            conf.External,
+	}
+}
+
 // Run is used to start the processor for consensus messages in phalanx.
-func (con *consensusRunner) Run() {
+func (con *consensusEngine) Run() {
 	for {
 		select {
 		case <-con.closeC:
@@ -66,7 +79,7 @@ func (con *consensusRunner) Run() {
 }
 
 // Quit is used to stop the process.
-func (con *consensusRunner) Quit() {
+func (con *consensusEngine) Quit() {
 	select {
 	case <-con.closeC:
 	default:
@@ -74,15 +87,15 @@ func (con *consensusRunner) Quit() {
 	}
 }
 
-func (con *consensusRunner) ProcessConsensusMessage(message *protos.ConsensusMessage) {
+func (con *consensusEngine) ProcessConsensusMessage(message *protos.ConsensusMessage) {
 	con.consensusMessageC <- message
 }
 
-func (con *consensusRunner) ProcessLocalEvent(event types.LocalEvent) {
+func (con *consensusEngine) ProcessLocalEvent(event types.LocalEvent) {
 	con.eventC <- event
 }
 
-func (con *consensusRunner) dispatchConsensusMessage(message *protos.ConsensusMessage) error {
+func (con *consensusEngine) dispatchConsensusMessage(message *protos.ConsensusMessage) error {
 	if message == nil {
 		return fmt.Errorf("nil message")
 	}
@@ -104,7 +117,7 @@ func (con *consensusRunner) dispatchConsensusMessage(message *protos.ConsensusMe
 	}
 }
 
-func (con *consensusRunner) dispatchLocalEvent(event types.LocalEvent) error {
+func (con *consensusEngine) dispatchLocalEvent(event types.LocalEvent) error {
 	switch event.Type {
 	case types.LocalEventOrderAttempt:
 		attempt, ok := event.Event.(*protos.OrderAttempt)
@@ -120,7 +133,7 @@ func (con *consensusRunner) dispatchLocalEvent(event types.LocalEvent) error {
 	}
 }
 
-func (con *consensusRunner) processOrderAttempt(attempt *protos.OrderAttempt) error {
+func (con *consensusEngine) processOrderAttempt(attempt *protos.OrderAttempt) error {
 	if attempt == nil {
 		return fmt.Errorf("nil attempt")
 	}
@@ -149,7 +162,7 @@ func (con *consensusRunner) processOrderAttempt(attempt *protos.OrderAttempt) er
 	return nil
 }
 
-func (con *consensusRunner) processCheckpointRequest(request *protos.CheckpointRequest) error {
+func (con *consensusEngine) processCheckpointRequest(request *protos.CheckpointRequest) error {
 	if request == nil {
 		return fmt.Errorf("nil request")
 	}
@@ -168,7 +181,7 @@ func (con *consensusRunner) processCheckpointRequest(request *protos.CheckpointR
 	return nil
 }
 
-func (con *consensusRunner) processCheckpointVote(vote *protos.CheckpointVote) error {
+func (con *consensusEngine) processCheckpointVote(vote *protos.CheckpointVote) error {
 	if vote == nil {
 		return fmt.Errorf("nil vote")
 	}

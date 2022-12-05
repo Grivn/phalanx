@@ -39,8 +39,8 @@ type sequencerImpl struct {
 
 	//=================================== local timer service ========================================
 
-	// timer is used to control the timeout event to generate order with commands in waiting list.
-	timer api.LocalTimer
+	// singleTimer is used to control the timeout event to generate order with commands in waiting list.
+	singleTimer api.SingleTimer
 
 	// timeoutC is used to receive timeout event.
 	timeoutC <-chan bool
@@ -69,7 +69,7 @@ func NewSequencer(conf Config) *sequencerImpl {
 
 	return &sequencerImpl{
 		sequencerID: conf.Author,
-		timer:       utils.NewLocalTimer(conf.Author, timeoutC, conf.Duration, conf.Logger),
+		singleTimer: utils.NewSingleTimer(timeoutC, conf.Duration, conf.Logger),
 		eventC:      eventC,
 		timeoutC:    timeoutC,
 		closeC:      make(chan bool),
@@ -123,7 +123,7 @@ func (ser *sequencerImpl) processCommand(command *protos.Command) {
 
 func (ser *sequencerImpl) processCommandIndex(cIndex *types.CommandIndex) {
 	if len(ser.commandSet) == 0 {
-		ser.timer.StartTimer()
+		ser.singleTimer.StartTimer()
 	}
 
 	// command list with receive-order.
@@ -131,7 +131,7 @@ func (ser *sequencerImpl) processCommandIndex(cIndex *types.CommandIndex) {
 }
 
 func (ser *sequencerImpl) Quit() {
-	ser.timer.StopTimer()
+	ser.singleTimer.StopTimer()
 	select {
 	case <-ser.closeC:
 	default:

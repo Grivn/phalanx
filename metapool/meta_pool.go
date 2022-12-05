@@ -2,6 +2,8 @@ package metapool
 
 import (
 	"fmt"
+	"github.com/Grivn/phalanx/lib/instance"
+	"github.com/Grivn/phalanx/lib/tracker"
 	"github.com/Grivn/phalanx/lib/utils"
 	"sort"
 	"sync"
@@ -11,8 +13,6 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/lib/instance"
-	"github.com/Grivn/phalanx/lib/tracker"
 	"github.com/Grivn/phalanx/metrics"
 )
 
@@ -84,7 +84,7 @@ type metaPool struct {
 	//=================================== local timer service ========================================
 
 	// timer is used to control the timeout event to generate order with commands in waiting list.
-	timer api.LocalTimer
+	timer api.SingleTimer
 
 	// timeoutC is used to receive timeout event.
 	timeoutC <-chan bool
@@ -156,7 +156,7 @@ func NewMetaPool(conf Config) api.MetaPool {
 		cTracker: tracker.NewCommandTracker(conf.Author, conf.Logger),
 		clients:  clients,
 		commandC: commandC,
-		timer:    utils.NewLocalTimer(conf.Author, timeoutC, conf.Duration, conf.Logger),
+		timer:    utils.NewSingleTimer(timeoutC, conf.Duration, conf.Logger),
 		timeoutC: timeoutC,
 		closeC:   make(chan bool),
 		crypto:   conf.Crypto,

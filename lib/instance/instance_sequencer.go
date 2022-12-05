@@ -13,7 +13,7 @@ import (
 
 type sequencerInstance struct {
 	// mutex is used to resolve concurrency problems.
-	mutex sync.Mutex
+	mutex sync.RWMutex
 
 	//===================================== basic information =========================================
 
@@ -31,38 +31,34 @@ type sequencerInstance struct {
 
 	//==================================== sub-chain management =============================================
 
-	// highAttempt is used to track the latest order-attempt we have received.
-	highAttempt *protos.OrderAttempt
+	// highestAttempt is used to track the latest order-attempt we have received.
+	highestAttempt *protos.OrderAttempt
 
 	//======================================= internal modules =========================================
-
-	// aTracker is the storage for order-attempt.
-	aTracker api.AttemptTracker
 
 	// logger is used to print logs.
 	logger external.Logger
 }
 
-func NewSequencerInstance(author, id uint64, aTracker api.AttemptTracker, logger external.Logger) api.SequencerInstance {
+func NewSequencerInstance(author, id uint64, logger external.Logger) api.SequencerInstance {
 	return &sequencerInstance{
-		author:   author,
-		id:       id,
-		cache:    btree.New(2),
-		aTracker: aTracker,
-		logger:   logger,
+		author: author,
+		id:     id,
+		cache:  btree.New(2),
+		logger: logger,
 	}
 }
 
-func (si *sequencerInstance) GetHighAttempt() *protos.OrderAttempt {
-	si.mutex.Lock()
-	defer si.mutex.Unlock()
+func (si *sequencerInstance) GetHighestAttempt() *protos.OrderAttempt {
+	si.mutex.RLock()
+	defer si.mutex.RUnlock()
 
 	if si.isByzantine {
 		// untrusted node.
 		return nil
 	}
 
-	return si.highAttempt
+	return si.highestAttempt
 }
 
 func (si *sequencerInstance) Append(attempt *protos.OrderAttempt) {
@@ -77,9 +73,8 @@ func (si *sequencerInstance) Append(attempt *protos.OrderAttempt) {
 			break
 		}
 
-		si.highAttempt = min
-		si.aTracker.Record(min)
-		break
+		si.highestAttempt = min
+		min = si.minAttempt()
 	}
 }
 
@@ -107,11 +102,11 @@ func (si *sequencerInstance) minAttempt() *protos.OrderAttempt {
 }
 
 func (si *sequencerInstance) verifySeqNo(attempt *protos.OrderAttempt) bool {
-	return attempt.SeqNo == si.highAttempt.SeqNo+1
+	return attempt.SeqNo == si.highestAttempt.SeqNo+1
 }
 
 func (si *sequencerInstance) verifyDigest(attempt *protos.OrderAttempt) bool {
-	if attempt.ParentDigest != si.highAttempt.Digest {
+	if attempt.ParentDigest != si.highestAttempt.Digest {
 		return false
 	}
 	return types.CheckOrderAttemptDigest(attempt)

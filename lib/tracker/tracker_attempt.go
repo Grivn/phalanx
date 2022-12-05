@@ -27,6 +27,23 @@ func NewAttemptTracker(author uint64, logger external.Logger) api.AttemptTracker
 	}
 }
 
-func (at *attemptTracker) Record(attempt *protos.OrderAttempt) {}
+func (at *attemptTracker) Record(attempt *protos.OrderAttempt) {
+	qIdx := types.QueryIndex{Author: attempt.NodeID, SeqNo: attempt.SeqNo}
 
-func (at *attemptTracker) Get(idx types.QueryIndex) *protos.OrderAttempt { return nil }
+	if _, ok := at.attemptMap.Load(qIdx); ok {
+		at.logger.Debugf("[%d] duplicated checkpoint %s", at.author, attempt.Format())
+		return
+	}
+
+	at.attemptMap.Store(qIdx, attempt)
+}
+
+func (at *attemptTracker) Get(idx types.QueryIndex) *protos.OrderAttempt {
+	e, ok := at.attemptMap.Load(idx)
+	if !ok {
+		return nil
+	}
+	attempt := e.(*protos.OrderAttempt)
+	at.attemptMap.Delete(idx)
+	return attempt
+}

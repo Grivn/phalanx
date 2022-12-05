@@ -144,6 +144,10 @@ func (m *Checkpoint) Format() string {
 	return fmt.Sprintf("[Checkpoint: %s]", m.OrderAttempt.Format())
 }
 
+func (m *Checkpoint) NodeID() uint64 {
+	return m.OrderAttempt.NodeID
+}
+
 func (m *Checkpoint) SeqNo() uint64 {
 	return m.OrderAttempt.SeqNo
 }
@@ -170,6 +174,10 @@ func (m *Checkpoint) IsValid(threshold int) bool {
 
 func (m *QuorumCert) IsQuorum(threshold int) bool {
 	return len(m.Certs) >= threshold
+}
+
+func (m *Proposal) Format() string {
+	return fmt.Sprintf("[Proposal: author %d, proposed nos %v]", m.Author, m.SeqList)
 }
 
 //=================================== Generate Messages ============================================
@@ -213,6 +221,14 @@ func NewOrderAttempt(nodeID uint64, previous *OrderAttempt, contentDigest string
 	return &OrderAttempt{NodeID: nodeID, SeqNo: seqNo, ParentDigest: previous.Digest, ContentDigest: contentDigest, Content: content}
 }
 
+func NewNopOrderAttempt() *OrderAttempt {
+	return &OrderAttempt{Digest: "Nop Order Attempt"}
+}
+
+func NewNopCheckpoint() *Checkpoint {
+	return &Checkpoint{OrderAttempt: NewNopOrderAttempt(), QC: NewQuorumCert()}
+}
+
 func NewCheckpointRequest(nodeID uint64, attempt *OrderAttempt) *CheckpointRequest {
 	// remove content.
 	attempt.Content = nil
@@ -225,4 +241,8 @@ func NewCheckpointVote(nodeID uint64, request *CheckpointRequest) *CheckpointVot
 
 func NewCheckpoint(attempt *OrderAttempt) *Checkpoint {
 	return &Checkpoint{OrderAttempt: attempt, QC: NewQuorumCert()}
+}
+
+func NewProposal(author uint64, count int) *Proposal {
+	return &Proposal{Author: author, HighestCheckpointList: make([]*Checkpoint, count), SeqList: make([]uint64, count)}
 }
