@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/metrics"
 )
 
 type Config struct {
@@ -19,5 +18,4 @@ type Config struct {
 	Duration    time.Duration
 	Sender      external.NetworkService
 	Logger      external.Logger
-	Metrics     *metrics.MetaPoolMetrics
 }

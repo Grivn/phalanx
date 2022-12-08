@@ -1,4 +1,4 @@
-package consensus
+package conengine
 
 import (
 	"github.com/Grivn/phalanx/common/api"

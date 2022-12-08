@@ -8,7 +8,7 @@ import (
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
-	"github.com/Grivn/phalanx/lib/consensus"
+	"github.com/Grivn/phalanx/lib/conengine"
 	"github.com/Grivn/phalanx/lib/instance"
 	"github.com/Grivn/phalanx/metrics"
 )
@@ -80,7 +80,7 @@ func NewMemoryPool(conf Config) *memoryPoolImpl {
 		n:                    conf.N,
 		multi:                conf.Multi,
 		quorum:               types.CalculateQuorum(conf.N),
-		consensusEngine:      consensus.NewConsensusEngine(consensus.Config{}),
+		consensusEngine:      conengine.NewConsensusEngine(conengine.Config{}),
 		sequencerInstanceMap: make(map[uint64]api.SequencerInstance),
 		metrics:              conf.Metrics,
 		commitNo:             committedTracker,

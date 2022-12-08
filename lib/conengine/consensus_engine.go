@@ -1,4 +1,4 @@
-package consensus
+package conengine
 
 import (
 	"fmt"
@@ -8,8 +8,6 @@ import (
 	"github.com/Grivn/phalanx/external"
 	"github.com/gogo/protobuf/proto"
 )
-
-var Service api.ConsensusEngine
 
 type consensusEngine struct {
 	// nodeID is the identifier of current node.

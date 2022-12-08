@@ -1,4 +1,4 @@
-package sequencing
+package seqengine
 
 import (
 	"github.com/Grivn/phalanx/lib/instance"
@@ -36,17 +36,17 @@ func NewSequencingEngine(sequencerID uint64, eventC chan types.LocalEvent, logge
 	}
 }
 
-func (engine *sequencingEngine) Sequencing(command *protos.Command) {
-	engine.mutex.Lock()
-	defer engine.mutex.Unlock()
+func (seq *sequencingEngine) Sequencing(command *protos.Command) {
+	seq.mutex.Lock()
+	defer seq.mutex.Unlock()
 
 	// Select the relay module.
-	module, ok := engine.relays[command.Author]
+	module, ok := seq.relays[command.Author]
 	if !ok {
 		// If there is not a relay instance, initiate it.
-		engine.logger.Errorf("[%d] don't have client instance %d, initiate it", engine.sequencerID, command.Author)
-		module = instance.NewRelay(engine.sequencerID, command.Author, engine.eventC, engine.logger)
-		engine.relays[command.Author] = module
+		seq.logger.Errorf("[%d] don't have client instance %d, initiate it", seq.sequencerID, command.Author)
+		module = instance.NewRelay(seq.sequencerID, command.Author, seq.eventC, seq.logger)
+		seq.relays[command.Author] = module
 	}
 
 	// Append the command into this relay module.

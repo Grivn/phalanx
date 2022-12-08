@@ -2,14 +2,14 @@ package sequencer
 
 import (
 	"fmt"
+	"sort"
+
 	"github.com/Grivn/phalanx/common/api"
 	"github.com/Grivn/phalanx/common/protos"
 	"github.com/Grivn/phalanx/common/types"
 	"github.com/Grivn/phalanx/external"
 	"github.com/Grivn/phalanx/lib/utils"
-	"github.com/Grivn/phalanx/metrics"
-	"github.com/Grivn/phalanx/sequencer/sequencing"
-	"sort"
+	"github.com/Grivn/phalanx/sequencer/seqengine"
 )
 
 type sequencerImpl struct {
@@ -55,9 +55,6 @@ type sequencerImpl struct {
 
 	// logger is used to print logs.
 	logger external.Logger
-
-	// metrics is used to record the metric info of current node's meta pool.
-	metrics *metrics.MetaPoolMetrics
 }
 
 func NewSequencer(conf Config) *sequencerImpl {
@@ -73,10 +70,9 @@ func NewSequencer(conf Config) *sequencerImpl {
 		eventC:      eventC,
 		timeoutC:    timeoutC,
 		closeC:      make(chan bool),
-		engine:      sequencing.NewSequencingEngine(conf.Author, eventC, conf.Logger),
+		engine:      seqengine.NewSequencingEngine(conf.Author, eventC, conf.Logger),
 		sender:      conf.Sender,
 		logger:      conf.Logger,
-		metrics:     conf.Metrics,
 		byz:         conf.Byz,
 	}
 }
