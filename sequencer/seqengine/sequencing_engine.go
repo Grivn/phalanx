@@ -17,8 +17,8 @@ type sequencingEngine struct {
 	// sequencerID is the identifier of current sequencer node.
 	sequencerID uint64
 
-	// eventC is used to feedback the command_index to trigger the generation of order-attempts.
-	eventC chan types.LocalEvent
+	// cIndexC is used to feedback the command_index to trigger the generation of order-attempts.
+	cIndexC chan *types.CommandIndex
 
 	// relays are used to track the commands received.
 	relays map[uint64]api.Relay
@@ -27,10 +27,10 @@ type sequencingEngine struct {
 	logger external.Logger
 }
 
-func NewSequencingEngine(sequencerID uint64, eventC chan types.LocalEvent, logger external.Logger) api.SequencingEngine {
+func NewSequencingEngine(sequencerID uint64, logger external.Logger) api.SequencingEngine {
 	return &sequencingEngine{
 		sequencerID: sequencerID,
-		eventC:      eventC,
+		cIndexC:     make(chan *types.CommandIndex),
 		relays:      make(map[uint64]api.Relay),
 		logger:      logger,
 	}
@@ -41,14 +41,18 @@ func (seq *sequencingEngine) Sequencing(command *protos.Command) {
 	defer seq.mutex.Unlock()
 
 	// Select the relay module.
-	module, ok := seq.relays[command.Author]
+	relay, ok := seq.relays[command.Author]
 	if !ok {
 		// If there is not a relay instance, initiate it.
 		seq.logger.Errorf("[%d] don't have client instance %d, initiate it", seq.sequencerID, command.Author)
-		module = instance.NewRelay(seq.sequencerID, command.Author, seq.eventC, seq.logger)
-		seq.relays[command.Author] = module
+		relay = instance.NewRelay(seq.sequencerID, command.Author, seq.cIndexC, seq.logger)
+		seq.relays[command.Author] = relay
 	}
 
 	// Append the command into this relay module.
-	module.Append(command)
+	relay.Append(command)
+}
+
+func (seq *sequencingEngine) CommandIndexChan() <-chan *types.CommandIndex {
+	return seq.cIndexC
 }

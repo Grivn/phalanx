@@ -16,16 +16,16 @@ type singleTimer struct {
 	isActive uint64
 
 	// timeoutC is used to send timeout event.
-	timeoutC chan<- bool
+	timeoutC chan bool
 
 	// logger is used to print logs.
 	logger external.Logger
 }
 
-func NewSingleTimer(timeoutC chan bool, duration time.Duration, logger external.Logger) api.SingleTimer {
+func NewSingleTimer(duration time.Duration, logger external.Logger) api.SingleTimer {
 	return &singleTimer{
 		duration: duration,
-		timeoutC: timeoutC,
+		timeoutC: make(chan bool),
 		logger:   logger,
 	}
 }
@@ -45,4 +45,8 @@ func (timer *singleTimer) StartTimer() {
 func (timer *singleTimer) StopTimer() {
 	timer.logger.Debugf("stop timer")
 	atomic.StoreUint64(&timer.isActive, 0)
+}
+
+func (timer *singleTimer) TimeoutChan() <-chan bool {
+	return timer.timeoutC
 }

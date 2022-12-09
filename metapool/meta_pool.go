@@ -86,9 +86,6 @@ type metaPool struct {
 	// timer is used to control the timeout event to generate order with commands in waiting list.
 	timer api.SingleTimer
 
-	// timeoutC is used to receive timeout event.
-	timeoutC <-chan bool
-
 	//======================================= consensus manager ============================================
 
 	// commitNo indicates the maximum committed number for each participant's partial order.
@@ -116,7 +113,6 @@ func NewMetaPool(conf Config) api.MetaPool {
 
 	// initiate communication channel.
 	commandC := make(chan *types.CommandIndex, 100)
-	timeoutC := make(chan bool)
 
 	// initiate committed number tracker.
 	committedTracker := make(map[uint64]uint64)
@@ -156,8 +152,7 @@ func NewMetaPool(conf Config) api.MetaPool {
 		cTracker: tracker.NewCommandTracker(conf.Author, conf.Logger),
 		clients:  clients,
 		commandC: commandC,
-		timer:    utils.NewSingleTimer(timeoutC, conf.Duration, conf.Logger),
-		timeoutC: timeoutC,
+		timer:    utils.NewSingleTimer(conf.Duration, conf.Logger),
 		closeC:   make(chan bool),
 		crypto:   conf.Crypto,
 		sender:   conf.Sender,
@@ -178,7 +173,7 @@ func (mp *metaPool) Run() {
 			return
 		case c := <-mp.commandC:
 			mp.appendCommandIndex(c)
-		case <-mp.timeoutC:
+		case <-mp.timer.TimeoutChan():
 			if err := mp.tryGeneratePreOrder(); err != nil {
 				panic(fmt.Sprintf("log manager runtime error: %s", err))
 			}

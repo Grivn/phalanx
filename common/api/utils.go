@@ -12,6 +12,9 @@ type SingleTimer interface {
 
 	// StopTimer stops current timer.
 	StopTimer()
+
+	// TimeoutChan is used to return the timeout signal.
+	TimeoutChan() <-chan bool
 }
 
 type TitledTimerManager interface {
@@ -21,6 +24,9 @@ type TitledTimerManager interface {
 	// StartTimer starts the timer with the given name and default timeout,
 	// then sets the event which will be triggered after this timeout duration.
 	StartTimer(name string, event types.LocalEvent) string
+
+	// EventChan is used to return the timeout events.
+	EventChan() <-chan interface{}
 
 	// StopTimer stops all timers with the same name.
 	StopTimer(name string)

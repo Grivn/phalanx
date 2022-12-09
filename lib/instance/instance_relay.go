@@ -33,8 +33,8 @@ type relayInstance struct {
 
 	//============================ communication channel ========================================
 
-	// eventC is used to propose command towards log-manager.
-	eventC chan<- types.LocalEvent
+	// cIndexC is used to propose command towards log-manager.
+	cIndexC chan<- *types.CommandIndex
 
 	//
 	timestamp int64
@@ -45,7 +45,7 @@ type relayInstance struct {
 	logger external.Logger
 }
 
-func NewRelay(sequencerID, relayID uint64, eventC chan<- types.LocalEvent, logger external.Logger) api.Relay {
+func NewRelay(sequencerID, relayID uint64, cIndexC chan<- *types.CommandIndex, logger external.Logger) api.Relay {
 	logger.Infof("[%d] initiate manager for relay %d", sequencerID, relayID)
 	committedNo := make(map[uint64]bool)
 	committedNo[uint64(0)] = true
@@ -54,7 +54,7 @@ func NewRelay(sequencerID, relayID uint64, eventC chan<- types.LocalEvent, logge
 		relayID:     relayID,
 		proposedNo:  uint64(0),
 		commandTree: btree.New(2),
-		eventC:      eventC,
+		cIndexC:     cIndexC,
 		logger:      logger,
 	}
 }
@@ -112,9 +112,5 @@ func (client *relayInstance) minCommand() *types.CommandIndex {
 }
 
 func (client *relayInstance) feedBack(cIndex *types.CommandIndex) {
-	event := types.LocalEvent{
-		Type:  types.LocalEventCommandIndex,
-		Event: cIndex,
-	}
-	client.eventC <- event
+	client.cIndexC <- cIndex
 }

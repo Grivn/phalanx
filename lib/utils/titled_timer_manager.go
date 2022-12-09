@@ -11,18 +11,17 @@ import (
 
 // titledTimerManager manages common used timers.
 type titledTimerManager struct {
-	tTimers   map[string]*titledTimer
-	eventChan chan<- interface{}
-	logger    external.Logger
+	tTimers map[string]*titledTimer
+	eventC  chan interface{}
+	logger  external.Logger
 }
 
-func NewTitledTimerManager(eventC chan interface{}, logger external.Logger) api.TitledTimerManager {
+func NewTitledTimerManager(logger external.Logger) api.TitledTimerManager {
 	tm := &titledTimerManager{
-		tTimers:   make(map[string]*titledTimer),
-		eventChan: eventC,
-		logger:    logger,
+		tTimers: make(map[string]*titledTimer),
+		eventC:  make(chan interface{}),
+		logger:  logger,
 	}
-
 	return tm
 }
 
@@ -49,11 +48,15 @@ func (ttm *titledTimerManager) StartTimer(name string, event types.LocalEvent) s
 
 	send := func() {
 		if ttm.tTimers[name].has(key) {
-			ttm.eventChan <- event
+			ttm.eventC <- event
 		}
 	}
 	time.AfterFunc(ttm.tTimers[name].timeout, send)
 	return key
+}
+
+func (ttm *titledTimerManager) EventChan() <-chan interface{} {
+	return ttm.eventC
 }
 
 func (ttm *titledTimerManager) StopTimer(name string) {

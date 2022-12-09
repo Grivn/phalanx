@@ -9,12 +9,17 @@ import (
 type Sequencer interface {
 	Runner
 
-	ReceiveLocalEvent(event types.LocalEvent)
+	// Sequencing is used to order the commands with pre-set strategies.
+	Sequencing(command *protos.Command)
 }
 
 // SequencingEngine is used to cache the received commands and generate command_index to create order-attempts.
 type SequencingEngine interface {
+	// Sequencing is used to order the commands with pre-set strategies.
 	Sequencing(command *protos.Command)
+
+	// CommandIndexChan is used to produce the ordered command_index to generate order-attempts.
+	CommandIndexChan() <-chan *types.CommandIndex
 }
 
 // Relay (module for experiment) is used to relay the commands from specific client with pre-defined ordering strategy.

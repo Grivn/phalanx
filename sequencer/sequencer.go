@@ -31,9 +31,6 @@ type sequencerImpl struct {
 
 	//===================================== client commands manager ============================================
 
-	// eventC is used to receive local_event from other modules.
-	eventC chan types.LocalEvent
-
 	// closeC is used to stop log manager.
 	closeC chan bool
 
@@ -41,9 +38,6 @@ type sequencerImpl struct {
 
 	// singleTimer is used to control the timeout event to generate order with commands in waiting list.
 	singleTimer api.SingleTimer
-
-	// timeoutC is used to receive timeout event.
-	timeoutC <-chan bool
 
 	// engine is used to sequencing the commands received and create command_index to propose order-attempts.
 	engine api.SequencingEngine
@@ -59,18 +53,11 @@ type sequencerImpl struct {
 
 func NewSequencer(conf Config) *sequencerImpl {
 	conf.Logger.Infof("[%d] initiate log manager, replica count %d", conf.Author, conf.N)
-
-	// initiate communication channel.
-	eventC := make(chan types.LocalEvent)
-	timeoutC := make(chan bool)
-
 	return &sequencerImpl{
 		sequencerID: conf.Author,
-		singleTimer: utils.NewSingleTimer(timeoutC, conf.Duration, conf.Logger),
-		eventC:      eventC,
-		timeoutC:    timeoutC,
+		singleTimer: utils.NewSingleTimer(conf.Duration, conf.Logger),
 		closeC:      make(chan bool),
-		engine:      seqengine.NewSequencingEngine(conf.Author, eventC, conf.Logger),
+		engine:      seqengine.NewSequencingEngine(conf.Author, conf.Logger),
 		sender:      conf.Sender,
 		logger:      conf.Logger,
 		byz:         conf.Byz,
@@ -78,52 +65,7 @@ func NewSequencer(conf Config) *sequencerImpl {
 }
 
 func (ser *sequencerImpl) Run() {
-	for {
-		select {
-		case <-ser.closeC:
-			return
-		case ev := <-ser.eventC:
-			ser.dispatchLocalEvent(ev)
-		case <-ser.timeoutC:
-			if err := ser.generateOrderAttempt(); err != nil {
-				panic(fmt.Sprintf("log manager runtime error: %s", err))
-			}
-		}
-	}
-}
-
-func (ser *sequencerImpl) dispatchLocalEvent(event types.LocalEvent) {
-	switch event.Type {
-	case types.LocalEventCommand:
-		command, ok := event.Event.(*protos.Command)
-		if !ok {
-			return
-		}
-		ser.processCommand(command)
-	case types.LocalEventCommandIndex:
-		cIndex, ok := event.Event.(*types.CommandIndex)
-		if !ok {
-			return
-		}
-		ser.processCommandIndex(cIndex)
-	default:
-		ser.logger.Errorf("[%d] Received illegal local event, type: %s", ser.sequencerID, event.Type)
-		return
-	}
-}
-
-func (ser *sequencerImpl) processCommand(command *protos.Command) {
-	// Relay the command with pre-defined strategy.
-	ser.engine.Sequencing(command)
-}
-
-func (ser *sequencerImpl) processCommandIndex(cIndex *types.CommandIndex) {
-	if len(ser.commandSet) == 0 {
-		ser.singleTimer.StartTimer()
-	}
-
-	// command list with receive-order.
-	ser.commandSet = append(ser.commandSet, cIndex)
+	go ser.listener()
 }
 
 func (ser *sequencerImpl) Quit() {
@@ -135,8 +77,36 @@ func (ser *sequencerImpl) Quit() {
 	}
 }
 
-func (ser *sequencerImpl) ReceiveLocalEvent(event types.LocalEvent) {
-	ser.eventC <- event
+func (ser *sequencerImpl) Sequencing(command *protos.Command) {
+	ser.processCommand(command)
+}
+
+func (ser *sequencerImpl) listener() {
+	for {
+		select {
+		case <-ser.closeC:
+			return
+		case cIndex := <-ser.engine.CommandIndexChan():
+			ser.processCommandIndex(cIndex)
+		case <-ser.singleTimer.TimeoutChan():
+			if err := ser.generateOrderAttempt(); err != nil {
+				panic(fmt.Sprintf("log manager runtime error: %s", err))
+			}
+		}
+	}
+}
+
+func (ser *sequencerImpl) processCommand(command *protos.Command) {
+	ser.engine.Sequencing(command)
+}
+
+func (ser *sequencerImpl) processCommandIndex(cIndex *types.CommandIndex) {
+	if len(ser.commandSet) == 0 {
+		ser.singleTimer.StartTimer()
+	}
+
+	// command list with receive-order.
+	ser.commandSet = append(ser.commandSet, cIndex)
 }
 
 func (ser *sequencerImpl) generateOrderAttempt() error {
