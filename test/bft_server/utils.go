@@ -1,26 +1,27 @@
 package main
 
 import (
-	"github.com/Grivn/phalanx/common/protos"
-	"github.com/Grivn/phalanx/common/types"
-	phalanx "github.com/Grivn/phalanx/core"
 	"time"
+
+	"github.com/Grivn/phalanx"
+	"github.com/Grivn/phalanx/pkg/common/protos"
+	"github.com/Grivn/phalanx/pkg/common/types"
 )
 
 //nolint
 func transactionSendInstance(num, client int, phx map[uint64]phalanx.Provider) {
-	for i:=0; i<num; i++ {
-		time.Sleep(2*time.Microsecond)
-		for c:=0; c<client; c++ {
+	for i := 0; i < num; i++ {
+		time.Sleep(2 * time.Microsecond)
+		for c := 0; c < client; c++ {
 			go transactionSender(uint64(c+1), phx)
 		}
 	}
 }
 
 func commandSendInstance(num, client int, phx map[uint64]phalanx.Provider) {
-	for i:=0; i<num; i++ {
-		time.Sleep(2*time.Microsecond)
-		for c:=0; c<client; c++ {
+	for i := 0; i < num; i++ {
+		time.Sleep(2 * time.Microsecond)
+		for c := 0; c < client; c++ {
 			go commandSender(uint64(c+1), uint64(i+1), phx)
 		}
 	}

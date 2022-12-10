@@ -20,11 +20,11 @@ Therefore, Phalanx has achieved satisfying performance and performs better in re
 
 The Phalanx mempool is constructed as following image.
 
-![image](img/workflow-detail.jpg)
+![image](docs/img/workflow-detail.jpg)
 
 One of the consensus journey as follows.
 
-![image](img/process-consensus.jpg)
+![image](docs/img/process-consensus.jpg)
 
 If you need to start the service for Phalanx, please go into the [bamboo-phalanx](https://github.com/Grivn/bamboo-phalanx) repo, and start the service on [grivn/phalanx-mempool](https://github.com/Grivn/bamboo-phalanx/tree/grivn/phalanx-mempool) branch.
 

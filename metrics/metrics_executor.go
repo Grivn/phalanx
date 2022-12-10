@@ -1,11 +1,10 @@
 package metrics
 
 import (
+	"github.com/Grivn/phalanx/pkg/common/protos"
+	"github.com/Grivn/phalanx/pkg/common/types"
 	"sync"
 	"time"
-
-	"github.com/Grivn/phalanx/common/protos"
-	"github.com/Grivn/phalanx/common/types"
 )
 
 type ExecutorMetrics struct {
@@ -106,7 +105,7 @@ func (m *ExecutorMetrics) AveCommitStreamLatency() float64 {
 func (m *ExecutorMetrics) CurCommitStreamLatency() float64 {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	
+
 	// curCommitStreamLatency returns average latency of commitment of query stream.
 	if m.IntervalStreams == 0 {
 		return 0

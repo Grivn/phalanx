@@ -1,9 +1,8 @@
 package metrics
 
 import (
+	"github.com/Grivn/phalanx/pkg/common/types"
 	"sync"
-
-	"github.com/Grivn/phalanx/common/types"
 )
 
 type SnappingUpMetrics struct {

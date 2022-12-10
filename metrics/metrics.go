@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	"github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/pkg/common/types"
 )
 
 type Metrics struct {
