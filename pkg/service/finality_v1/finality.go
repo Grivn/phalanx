@@ -1,14 +1,17 @@
-package finality
+package finality_v1
 
 import (
-	"github.com/Grivn/phalanx/pkg/common/api"
-	"github.com/Grivn/phalanx/pkg/common/config"
-	"github.com/Grivn/phalanx/pkg/common/protos"
-	"github.com/Grivn/phalanx/pkg/common/types"
-	"github.com/Grivn/phalanx/pkg/external"
-	"github.com/Grivn/phalanx/pkg/utils/streamcache"
 	"sort"
 	"sync"
+	"time"
+
+	"github.com/Grivn/phalanx/metrics"
+	"github.com/Grivn/phalanx/pkg/common/api"
+	"github.com/Grivn/phalanx/pkg/common/config"
+	"github.com/Grivn/phalanx/pkg/common/types"
+	"github.com/Grivn/phalanx/pkg/external"
+	"github.com/Grivn/phalanx/pkg/service/finality_v1/finengine_v1"
+	"github.com/Grivn/phalanx/pkg/utils/streamcache"
 )
 
 type finalityImpl struct {
@@ -33,12 +36,22 @@ type finalityImpl struct {
 	// orderSeq tracks the real committed partial order sequence number.
 	orderSeq map[uint64]uint64
 
-	// engine is used to generate blocks with finality ordering strategy.
-	engine api.FinalityEngine
+	// phalanxAnchor is used to generate blocks with phalanx anchor-based ordering rule.
+	phalanxAnchor api.FinalityEngine
+
+	// timestampAnchor is used to generate blocks with timestamp anchor-based ordering rule.
+	timestampAnchor api.FinalityEngine
+
+	// timestampBased is used to generate blocks with timestamp-based ordering rule.
+	timestampBased api.FinalityEngine
 
 	//============================= internal interfaces =========================================
 
-	attemptTracker api.AttemptTracker
+	// reader is used to read partial orders from meta pool tracker.
+	reader api.MetaReader
+
+	// metrics is used to record the metric of current node's executor.
+	metrics *metrics.ExecutorMetrics
 
 	//============================== external interfaces ==========================================
 
@@ -48,9 +61,10 @@ type finalityImpl struct {
 
 func NewFinality(
 	conf config.PhalanxConf,
-	attemptTracker api.AttemptTracker,
-	engine api.FinalityEngine,
-	logger external.Logger) *finalityImpl {
+	meta api.MetaPool,
+	executor external.Executor,
+	logger external.Logger,
+	ms *metrics.Metrics) *finalityImpl {
 	author := conf.NodeID
 	orderSeq := make(map[uint64]uint64)
 
@@ -60,13 +74,16 @@ func NewFinality(
 	}
 
 	return &finalityImpl{
-		author:         author,
-		cache:          streamcache.NewStreamCache(),
-		closeC:         make(chan bool),
-		orderSeq:       orderSeq,
-		engine:         engine,
-		attemptTracker: attemptTracker,
-		logger:         logger,
+		author:          author,
+		cache:           streamcache.NewStreamCache(),
+		closeC:          make(chan bool),
+		orderSeq:        orderSeq,
+		phalanxAnchor:   finengine_v1.NewPhalanxAnchorBasedOrdering(conf, meta, executor, logger, ms),
+		timestampAnchor: finengine_v1.NewTimestampAnchorBasedOrdering(conf, meta, executor, logger, ms),
+		timestampBased:  finengine_v1.NewTimestampBasedOrdering(conf, meta, logger, ms),
+		reader:          meta,
+		metrics:         ms.ExecutorMetrics,
+		logger:          logger,
 	}
 }
 
@@ -116,15 +133,19 @@ func (ei *finalityImpl) commitStream(qStream types.QueryStream) {
 		return
 	}
 
+	start := time.Now()
 	ei.logger.Debugf("[%d] commit query stream len %d: %v", ei.author, len(qStream), qStream)
 
 	var oStream types.OrderStream
-	attempts := ei.readOrderAttempts(qStream)
-	for _, attempt := range attempts {
+	partials := ei.reader.ReadPartials(qStream)
+	for _, pOrder := range partials {
+		// commit metrics.
+		ei.metrics.CommitPartialOrder(pOrder)
+
 		// select the command infos we need to commit, and update the latest committed sequence number.
-		startNo := ei.orderSeq[attempt.NodeID]
-		infos, endNo := types.OrderAttemptToOrderInfos(startNo, attempt)
-		ei.orderSeq[attempt.NodeID] = endNo
+		startNo := ei.orderSeq[pOrder.Author()]
+		infos, endNo := types.PartialOrderToOrderInfos(startNo, pOrder)
+		ei.orderSeq[pOrder.Author()] = endNo
 
 		// record the committed command infos.
 		oStream = append(oStream, infos...)
@@ -132,26 +153,10 @@ func (ei *finalityImpl) commitStream(qStream types.QueryStream) {
 	sort.Sort(oStream) // sort the command infos according to generator id and sequence number.
 	ei.logger.Debugf("[%d] commit order info stream len %d: %v", ei.author, len(oStream), oStream)
 
-	ei.engine.CommitOrderStream(oStream)
-}
+	ei.phalanxAnchor.CommitOrderStream(oStream)
+	ei.timestampBased.CommitOrderStream(oStream)
+	ei.timestampAnchor.CommitOrderStream(oStream)
 
-func (ei *finalityImpl) readOrderAttempts(qStream types.QueryStream) []*protos.OrderAttempt {
-	var res []*protos.OrderAttempt
-
-	for _, qIndex := range qStream {
-		attempt := ei.attemptTracker.Get(qIndex)
-
-		for {
-			if attempt != nil {
-				break
-			}
-
-			// if we could not read the partial order, just try the next time.
-			attempt = ei.attemptTracker.Get(qIndex)
-		}
-
-		res = append(res, attempt)
-	}
-
-	return res
+	// record metrics.
+	ei.metrics.CommitStream(start)
 }

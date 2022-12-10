@@ -1,4 +1,4 @@
-package finality
+package finengine_v1
 
 import (
 	"sort"
@@ -13,7 +13,7 @@ import (
 	"github.com/google/btree"
 )
 
-type timestampAnchorBasedOrdering struct {
+type phalanxAnchorBasedOrdering struct {
 	//============================== basic info =====================================
 
 	// author indicates the identifier of current node.
@@ -61,19 +61,22 @@ type timestampAnchorBasedOrdering struct {
 
 	// metrics is used to record the metric info of current node's order rule module.
 	metrics *metrics.ManipulationMetrics
+
+	// cMetrics is used to record the metric to commit command info in phalanx anchor-based ordering.
+	cMetrics *metrics.CommitmentMetrics
 }
 
-func newTimestampAnchorBasedOrdering(
+func NewPhalanxAnchorBasedOrdering(
 	conf config.PhalanxConf,
 	meta api.MetaPool,
 	executor external.Executor,
 	logger external.Logger,
-	ms *metrics.Metrics) *timestampAnchorBasedOrdering {
+	ms *metrics.Metrics) api.FinalityEngine {
 	democracy := make(map[uint64]*btree.BTree)
 	for i := 0; i < conf.NodeCount; i++ {
 		democracy[uint64(i+1)] = btree.New(2)
 	}
-	return &timestampAnchorBasedOrdering{
+	return &phalanxAnchorBasedOrdering{
 		author:     conf.NodeID,
 		fault:      types.CalculateFault(conf.NodeCount),
 		oneCorrect: types.CalculateOneCorrect(conf.NodeCount),
@@ -86,11 +89,12 @@ func newTimestampAnchorBasedOrdering(
 		democracy:  democracy,
 		exec:       executor,
 		logger:     logger,
-		metrics:    ms.TimestampAnchorMetrics,
+		metrics:    ms.PhalanxAnchorMetrics,
+		cMetrics:   ms.CommitmentMetrics,
 	}
 }
 
-func (tab *timestampAnchorBasedOrdering) commitOrderStream(oStream types.OrderStream) {
+func (pab *phalanxAnchorBasedOrdering) CommitOrderStream(oStream types.OrderStream) {
 	if len(oStream) == 0 {
 		return
 	}
@@ -98,123 +102,132 @@ func (tab *timestampAnchorBasedOrdering) commitOrderStream(oStream types.OrderSt
 	updated := false // if we have updated the command collector.
 	for _, oInfo := range oStream {
 		// order rule 1: collection rule, collect the partial order info.
-		updated = tab.collectPartials(oInfo)
+		updated = pab.collectPartials(oInfo)
 	}
 
 	if updated {
 		// if the collector has been updated, try to process the committed partial orders.
-		tab.processPartialOrder()
+		pab.processPartialOrder()
 	}
 }
 
 // processPartialOrder is used to process partial order with phalanx anchor-based ordering rules.
-func (tab *timestampAnchorBasedOrdering) processPartialOrder() {
+func (pab *phalanxAnchorBasedOrdering) processPartialOrder() {
 	for {
 		// order rule 2: execution rule, select commands to execute with natural order.
-		anchorSet := tab.fetchAnchorSet()
+		anchorSet := pab.fetchAnchorSet()
 
 		// order rule 3: commitment rule, generate ordered blocks with free will.
-		blocks, frontNo := tab.freeWill(anchorSet)
+		blocks, frontNo := pab.freeWill(anchorSet)
 		if len(blocks) == 0 {
 			// there isn't a committed inner block.
 			break
 		}
 
 		// commit blocks.
-		tab.logger.Debugf("[%d] commit front group, front-no. %d, safe %v, blocks count %d", tab.author, frontNo, anchorSet.Safe, len(blocks))
+		pab.logger.Debugf("[%d] commit front group, front-no. %d, safe %v, blocks count %d", pab.author, frontNo, anchorSet.Safe, len(blocks))
 		for _, blk := range blocks {
-			tab.seqNo++
-			tab.exec.CommandExecution(blk, tab.seqNo)
-			tab.reload.Committed(blk.Command.Author, blk.Command.Sequence)
+			pab.seqNo++
+			pab.exec.CommandExecution(blk, pab.seqNo)
+			pab.reload.Committed(blk.Command.Author, blk.Command.Sequence)
 
 			// record metrics.
-			tab.metrics.CommitBlock(blk)
+			pab.metrics.CommitBlock(blk)
 		}
 	}
 }
 
-func (tab *timestampAnchorBasedOrdering) collectPartials(oInfo types.OrderInfo) bool {
+func (pab *phalanxAnchorBasedOrdering) collectPartials(oInfo types.OrderInfo) bool {
 	// collect indicates the collection rule of phalanx:
 	// which partial orders would be selected into execution process to compare order.
-	tab.logger.Infof("[%d] collect partial order: %s", tab.author, oInfo.Format())
+	pab.logger.Infof("[%d] collect partial order: %s", pab.author, oInfo.Format())
 
 	// find the digest for current command the partial order refers to.
 	commandD := oInfo.Command
 
 	// check if current command has been committed or not.
-	if tab.cRecorder.IsCommitted(commandD) {
-		tab.logger.Debugf("[%d] committed command %s, ignore it", tab.author, commandD)
+	if pab.cRecorder.IsCommitted(commandD) {
+		pab.logger.Debugf("[%d] committed command %s, ignore it", pab.author, commandD)
 		return false
 	}
 
 	// push back partial order into recorder.queue.
-	if err := tab.cRecorder.PushBack(oInfo); err != nil {
-		tab.logger.Errorf("[%d] push back partial order failed: %s", tab.author, err)
+	if err := pab.cRecorder.PushBack(oInfo); err != nil {
+		pab.logger.Errorf("[%d] push back partial order failed: %s", pab.author, err)
 		return false
 	}
 
 	// read command info from command cRecorder.
-	info := tab.cRecorder.ReadCommandInfo(commandD)
+	info := pab.cRecorder.ReadCommandInfo(commandD)
 	info.OrderAppend(oInfo)
 
 	// already committed by quorum replicas, then update the timestamp list.
-	if tab.cRecorder.IsQuorum(commandD) {
-		info.UpdateTrustedTS(tab.oneCorrect)
+	if pab.cRecorder.IsQuorum(commandD) {
+		info.UpdateTrustedTS(pab.oneCorrect)
 	}
 
 	// check the command status.
 	switch info.OrderCount() {
-	case tab.oneCorrect:
+	case pab.oneCorrect:
 		// current command has reached correct sequenced status.
-		tab.cRecorder.CorrectStatus(commandD)
-		tab.logger.Infof("[%d] found correct sequenced command %s", tab.author, commandD)
-	case tab.quorum:
+		pab.cRecorder.CorrectStatus(commandD)
+		pab.logger.Infof("[%d] found correct sequenced command %s", pab.author, commandD)
+	case pab.quorum:
 		// current command has reached quorum sequenced status.
-		tab.cRecorder.QuorumStatus(commandD)
-		tab.logger.Infof("[%d] found quorum sequenced command %s", tab.author, commandD)
-		info.UpdateTrustedTS(tab.oneCorrect)
+		pab.cRecorder.QuorumStatus(commandD)
+		pab.logger.Infof("[%d] found quorum sequenced command %s", pab.author, commandD)
+		info.UpdateTrustedTS(pab.oneCorrect)
 	}
 	return true
 }
 
-func (tab *timestampAnchorBasedOrdering) fetchAnchorSet() types.FrontStream {
+func (pab *phalanxAnchorBasedOrdering) fetchAnchorSet() types.FrontStream {
 	// execute indicates the execution rule of phalanx:
 	// which commands would be selected into commitment process to generate blocks.
 	// here, we should take 'Natural Order' into thought.
 
 	// oligarchy mode, relying on certain leader ordering.
-	if tab.oligarchy != uint64(0) {
-		return tab.oligarchyExecution()
+	if pab.oligarchy != uint64(0) {
+		return pab.oligarchyExecution()
 	}
 
 	// read the front set.
+	commands, safe := pab.cRecorder.FrontCommands()
+
 	var cStream types.CommandStream
-	if qInfo := tab.cRecorder.PickQuorumInfo(); qInfo != nil {
-		// we cannot make sure the validation of front set.
-		cStream = interceptor.NewInterceptor(tab.author, tab.cRecorder, tab.oneCorrect, tab.logger).SelectToCommit(types.CommandStream{qInfo})
+	for _, digest := range commands {
+		info := pab.cRecorder.ReadCommandInfo(digest)
+		cStream = append(cStream, info)
 	}
 
-	return types.FrontStream{Safe: false, Stream: cStream}
+	if !safe {
+		if qInfo := pab.cRecorder.PickQuorumInfo(); qInfo != nil {
+			// we cannot make sure the validation of front set.
+			cStream = interceptor.NewInterceptor(pab.author, pab.cRecorder, pab.oneCorrect, pab.logger).SelectToCommit(types.CommandStream{qInfo})
+		}
+	}
+
+	return types.FrontStream{Safe: safe, Stream: cStream}
 }
 
-func (tab *timestampAnchorBasedOrdering) oligarchyExecution() types.FrontStream {
-	digest := tab.cRecorder.OligarchyLeaderFront(tab.oligarchy)
-	commandInfo := tab.cRecorder.ReadCommandInfo(digest)
-	if len(commandInfo.Orders) < tab.quorum {
+func (pab *phalanxAnchorBasedOrdering) oligarchyExecution() types.FrontStream {
+	digest := pab.cRecorder.OligarchyLeaderFront(pab.oligarchy)
+	commandInfo := pab.cRecorder.ReadCommandInfo(digest)
+	if len(commandInfo.Orders) < pab.quorum {
 		return types.FrontStream{Safe: true, Stream: nil}
 	}
 	return types.FrontStream{Safe: true, Stream: types.CommandStream{commandInfo}}
 }
 
-func (tab *timestampAnchorBasedOrdering) freeWill(frontStream types.FrontStream) ([]types.InnerBlock, uint64) {
+func (pab *phalanxAnchorBasedOrdering) freeWill(frontStream types.FrontStream) ([]types.InnerBlock, uint64) {
 	// commit indicates the commitment rule of phalanx:
 	// generate blocks and assign sequence order for them.
 	// here, the block generation would follow the 'Free Will' of participants.
 	if len(frontStream.Stream) == 0 {
-		return nil, tab.frontNo
+		return nil, pab.frontNo
 	}
 
-	tab.frontNo++
+	pab.frontNo++
 
 	// free will:
 	// generate blocks and sort according to the trusted timestamp
@@ -222,15 +235,15 @@ func (tab *timestampAnchorBasedOrdering) freeWill(frontStream types.FrontStream)
 	var sortable types.SortableInnerBlocks
 	for _, frontC := range frontStream.Stream {
 		// record metrics.
-		//tab.rMetrics.CommitFrontCommandInfo(frontC)
+		pab.cMetrics.CommitFrontCommandInfo(frontC)
 
 		// generate block, try to fetch the raw command to fulfill the block.
-		rawCommand := tab.reader.ReadCommand(frontC.Digest)
-		block := types.NewInnerBlock(tab.frontNo, frontStream.Safe, rawCommand, frontC.TrustedTS)
-		tab.logger.Infof("[%d] generate block %s", tab.author, block.Format())
+		rawCommand := pab.reader.ReadCommand(frontC.Digest)
+		block := types.NewInnerBlock(pab.frontNo, frontStream.Safe, rawCommand, frontC.TrustedTS)
+		pab.logger.Infof("[%d] generate block %s", pab.author, block.Format())
 
 		// finished the block generation for command (digest), update the status of digest in command recorder.
-		tab.cRecorder.CommittedStatus(frontC.Digest)
+		pab.cRecorder.CommittedStatus(frontC.Digest)
 
 		// append the current block into sortable slice, waiting for order-determination.
 		sortable = append(sortable, block)
@@ -239,5 +252,5 @@ func (tab *timestampAnchorBasedOrdering) freeWill(frontStream types.FrontStream)
 	// determine the order of commands which do not have any natural orders according to trusted timestamp.
 	sort.Sort(sortable)
 
-	return sortable, tab.frontNo
+	return sortable, pab.frontNo
 }

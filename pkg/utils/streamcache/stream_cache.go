@@ -1,10 +1,10 @@
-package finality
+package streamcache
 
 import (
 	"container/list"
 	"sync"
 
-	"github.com/Grivn/phalanx/pkg/common/types"
+	"github.com/Grivn/phalanx/pkg/common/api"
 )
 
 type streamCache struct {
@@ -15,25 +15,20 @@ type streamCache struct {
 	streamList *list.List
 }
 
-func newStreamCache() *streamCache {
+func NewStreamCache() api.StreamCache {
 	return &streamCache{
 		streamList: list.New(),
 	}
 }
 
-func (mgr *streamCache) append(qStream types.QueryStream) {
-	if len(qStream) == 0 {
-		// skip blank query stream.
-		return
-	}
-
+func (mgr *streamCache) Append(item interface{}) {
 	// append the query stream into stream list.
 	mgr.mutex.Lock()
-	mgr.streamList.PushBack(qStream)
+	mgr.streamList.PushBack(item)
 	mgr.mutex.Unlock()
 }
 
-func (mgr *streamCache) front() types.QueryStream {
+func (mgr *streamCache) Front() interface{} {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -45,5 +40,5 @@ func (mgr *streamCache) front() types.QueryStream {
 	// pop the first value in the stream list.
 	item := mgr.streamList.Front()
 	mgr.streamList.Remove(item)
-	return item.Value.(types.QueryStream)
+	return item.Value
 }

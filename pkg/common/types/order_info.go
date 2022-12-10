@@ -23,7 +23,26 @@ type OrderInfo struct {
 	AfterQuorum bool
 }
 
-func NewOrderInfos(seqNo uint64, pOrder *protos.PartialOrder) ([]OrderInfo, uint64) {
+func OrderAttemptToOrderInfos(seqNo uint64, attempt *protos.OrderAttempt) ([]OrderInfo, uint64) {
+	nodeID := attempt.NodeID
+
+	commandList := attempt.CommandList()
+
+	timestampList := attempt.TimestampList()
+
+	var infos []OrderInfo
+
+	for index, command := range commandList {
+		timestamp := timestampList[index]
+		seqNo++
+		info := OrderInfo{Author: nodeID, Sequence: seqNo, Command: command, Timestamp: timestamp}
+		infos = append(infos, info)
+	}
+
+	return infos, seqNo
+}
+
+func PartialOrderToOrderInfos(seqNo uint64, pOrder *protos.PartialOrder) ([]OrderInfo, uint64) {
 	author := pOrder.Author()
 
 	commandList := pOrder.CommandList()

@@ -130,3 +130,8 @@ func CalculateBatchHash(pBatch *protos.PartialOrderBatch) string {
 	payload, _ := proto.Marshal(pBatch)
 	return CalculatePayloadHash(payload, 0)
 }
+
+func CalculateProposalHash(proposal *protos.Proposal) string {
+	payload, _ := proto.Marshal(proposal)
+	return CalculatePayloadHash(payload, 0)
+}

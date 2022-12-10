@@ -103,10 +103,16 @@ func (si *sequencerInstance) minAttempt() *protos.OrderAttempt {
 }
 
 func (si *sequencerInstance) verifySeqNo(attempt *protos.OrderAttempt) bool {
+	if si.highestAttempt == nil {
+		return attempt.SeqNo == 1
+	}
 	return attempt.SeqNo == si.highestAttempt.SeqNo+1
 }
 
 func (si *sequencerInstance) verifyDigest(attempt *protos.OrderAttempt) bool {
+	if si.highestAttempt == nil {
+		return types.CheckOrderAttemptDigest(attempt)
+	}
 	if attempt.ParentDigest != si.highestAttempt.Digest {
 		return false
 	}

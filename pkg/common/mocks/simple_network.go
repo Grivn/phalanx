@@ -11,6 +11,7 @@ type SimpleNetwork struct {
 	async    bool
 	networkC map[uint64]chan *protos.ConsensusMessage
 	commandC map[uint64]chan *protos.Command
+	attemptC map[uint64]chan *protos.OrderAttempt
 	logger   external.Logger
 }
 
@@ -51,6 +52,12 @@ func (net *SimpleNetwork) broadcast(message *protos.ConsensusMessage) {
 func (net *SimpleNetwork) sendCommand(command *protos.Command) {
 	for _, ch := range net.commandC {
 		ch <- command
+	}
+}
+
+func (net *SimpleNetwork) sendOrderAttempt(attempt *protos.OrderAttempt) {
+	for _, ch := range net.attemptC {
+		ch <- attempt
 	}
 }
 

@@ -6,16 +6,14 @@ import (
 
 	"github.com/Grivn/phalanx/metrics"
 	"github.com/Grivn/phalanx/pkg/common/api"
+	"github.com/Grivn/phalanx/pkg/common/config"
 	"github.com/Grivn/phalanx/pkg/common/protos"
 	"github.com/Grivn/phalanx/pkg/common/types"
 	"github.com/Grivn/phalanx/pkg/external"
-	"github.com/Grivn/phalanx/pkg/service/conengine"
 	"github.com/Grivn/phalanx/pkg/utils/instance"
 )
 
 type memoryPoolImpl struct {
-	conf Config
-
 	//===================================== basic information =========================================
 
 	// mutex is used to deal with the concurrent problems of log-manager.
@@ -68,22 +66,28 @@ type memoryPoolImpl struct {
 	logger external.Logger
 }
 
-func NewMemoryPool(conf Config) *memoryPoolImpl {
-	conf.Logger.Infof("[%d] initiate log manager, replica count %d", conf.Author, conf.N)
-
-	// initiate committed number tracker.
-	committedTracker := make(map[uint64]uint64)
-
+func NewMemoryPool(
+	conf config.PhalanxConf,
+	engine api.ConsensusEngine,
+	commandTracker api.CommandTracker,
+	attemptTracker api.AttemptTracker,
+	checkpointTracker api.CheckpointTracker,
+	cryptoService api.CryptoService,
+	logger external.Logger) *memoryPoolImpl {
+	logger.Infof("[%d] initiate log manager, replica count %d", conf.NodeID, conf.NodeCount)
 	return &memoryPoolImpl{
-		conf:                 conf,
-		author:               conf.Author,
-		n:                    conf.N,
+		author:               conf.NodeID,
+		n:                    conf.NodeCount,
 		multi:                conf.Multi,
-		quorum:               types.CalculateQuorum(conf.N),
-		consensusEngine:      conengine.NewConsensusEngine(conengine.Config{}),
+		quorum:               types.CalculateQuorum(conf.NodeCount),
+		consensusEngine:      engine,
+		commandTracker:       commandTracker,
+		attemptTracker:       attemptTracker,
+		checkpointTracker:    checkpointTracker,
+		crypto:               cryptoService,
 		sequencerInstanceMap: make(map[uint64]api.SequencerInstance),
-		metrics:              conf.Metrics,
-		commitNo:             committedTracker,
+		commitNo:             make(map[uint64]uint64),
+		logger:               logger,
 	}
 }
 
@@ -101,6 +105,10 @@ func (mp *memoryPoolImpl) ProcessOrderAttempt(attempt *protos.OrderAttempt) {
 		mp.mutex.Lock()
 		mp.sequencerInstanceMap[attempt.NodeID] = sequencerInstance
 		mp.mutex.Unlock()
+	}
+
+	if attempt == nil {
+		return
 	}
 	sequencerInstance.Append(attempt)
 }
@@ -127,7 +135,7 @@ func (mp *memoryPoolImpl) GenerateProposal() (*protos.Proposal, error) {
 
 		idx := types.QueryIndex{Author: hAttempt.NodeID, SeqNo: hAttempt.SeqNo}
 		if !mp.checkpointTracker.IsExist(idx) {
-			mp.consensusEngine.ProcessLocalEvent(types.LocalEvent{Type: types.LocalEventOrderAttempt, Event: hAttempt})
+			go mp.consensusEngine.ProcessLocalEvent(types.LocalEvent{Type: types.LocalEventOrderAttempt, Event: hAttempt})
 		}
 
 		for {
@@ -155,7 +163,7 @@ func (mp *memoryPoolImpl) VerifyProposal(proposal *protos.Proposal) (types.Query
 
 		if no <= mp.commitNo[id] {
 			// committed previous partial order for node id, including partial number 0.
-			mp.logger.Debugf("[%d] haven't updated committed partial order for node %d", mp.author, id)
+			mp.logger.Debugf("[%d] haven't updated committed partial order for node %d, no %d", mp.author, id, no)
 			continue
 		}
 

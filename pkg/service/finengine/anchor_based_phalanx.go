@@ -1,9 +1,9 @@
-package finality
+package finengine
 
 import (
+	"github.com/Grivn/phalanx/pkg/common/protos"
 	"sort"
 
-	"github.com/Grivn/phalanx/metrics"
 	"github.com/Grivn/phalanx/pkg/common/api"
 	"github.com/Grivn/phalanx/pkg/common/config"
 	"github.com/Grivn/phalanx/pkg/common/types"
@@ -39,17 +39,13 @@ type phalanxAnchorBasedOrdering struct {
 
 	//============================= internal interfaces =========================================
 
-	// reload is used to notify client instance the committed sequence number.
-	reload api.MetaCommitter
-
 	// cRecorder is used to record the command info.
 	cRecorder api.CommandRecorder
 
 	// democracy is used to generate block with free will committee.
 	democracy map[uint64]*btree.BTree
 
-	// reader is used to read raw commands from meta pool.
-	reader api.MetaReader
+	commandTracker api.CommandTracker
 
 	//============================== external interfaces ==========================================
 
@@ -58,43 +54,33 @@ type phalanxAnchorBasedOrdering struct {
 
 	// logger is used to print logs.
 	logger external.Logger
-
-	// metrics is used to record the metric info of current node's order rule module.
-	metrics *metrics.ManipulationMetrics
-
-	// cMetrics is used to record the metric to commit command info in phalanx anchor-based ordering.
-	cMetrics *metrics.CommitmentMetrics
 }
 
-func newPhalanxAnchorBasedOrdering(
+func NewPhalanxAnchorBasedOrdering(
 	conf config.PhalanxConf,
-	meta api.MetaPool,
+	commandTracker api.CommandTracker,
 	executor external.Executor,
-	logger external.Logger,
-	ms *metrics.Metrics) *phalanxAnchorBasedOrdering {
+	logger external.Logger) api.FinalityEngine {
 	democracy := make(map[uint64]*btree.BTree)
 	for i := 0; i < conf.NodeCount; i++ {
 		democracy[uint64(i+1)] = btree.New(2)
 	}
 	return &phalanxAnchorBasedOrdering{
-		author:     conf.NodeID,
-		fault:      types.CalculateFault(conf.NodeCount),
-		oneCorrect: types.CalculateOneCorrect(conf.NodeCount),
-		quorum:     types.CalculateQuorum(conf.NodeCount),
-		oligarchy:  conf.OligarchID,
-		frontNo:    uint64(0),
-		reload:     meta,
-		cRecorder:  recorder.NewCommandRecorder(conf.NodeID, conf.NodeCount, logger),
-		reader:     meta,
-		democracy:  democracy,
-		exec:       executor,
-		logger:     logger,
-		metrics:    ms.PhalanxAnchorMetrics,
-		cMetrics:   ms.CommitmentMetrics,
+		author:         conf.NodeID,
+		fault:          types.CalculateFault(conf.NodeCount),
+		oneCorrect:     types.CalculateOneCorrect(conf.NodeCount),
+		quorum:         types.CalculateQuorum(conf.NodeCount),
+		oligarchy:      conf.OligarchID,
+		frontNo:        uint64(0),
+		cRecorder:      recorder.NewCommandRecorder(conf.NodeID, conf.NodeCount, logger),
+		commandTracker: commandTracker,
+		democracy:      democracy,
+		exec:           executor,
+		logger:         logger,
 	}
 }
 
-func (pab *phalanxAnchorBasedOrdering) commitOrderStream(oStream types.OrderStream) {
+func (pab *phalanxAnchorBasedOrdering) CommitOrderStream(oStream types.OrderStream) {
 	if len(oStream) == 0 {
 		return
 	}
@@ -129,10 +115,6 @@ func (pab *phalanxAnchorBasedOrdering) processPartialOrder() {
 		for _, blk := range blocks {
 			pab.seqNo++
 			pab.exec.CommandExecution(blk, pab.seqNo)
-			pab.reload.Committed(blk.Command.Author, blk.Command.Sequence)
-
-			// record metrics.
-			pab.metrics.CommitBlock(blk)
 		}
 	}
 }
@@ -234,11 +216,9 @@ func (pab *phalanxAnchorBasedOrdering) freeWill(frontStream types.FrontStream) (
 	// here, the command-pair with natural order cannot take part in concurrent command set.
 	var sortable types.SortableInnerBlocks
 	for _, frontC := range frontStream.Stream {
-		// record metrics.
-		pab.cMetrics.CommitFrontCommandInfo(frontC)
 
 		// generate block, try to fetch the raw command to fulfill the block.
-		rawCommand := pab.reader.ReadCommand(frontC.Digest)
+		rawCommand := pab.readCommand(frontC.Digest)
 		block := types.NewInnerBlock(pab.frontNo, frontStream.Safe, rawCommand, frontC.TrustedTS)
 		pab.logger.Infof("[%d] generate block %s", pab.author, block.Format())
 
@@ -253,4 +233,19 @@ func (pab *phalanxAnchorBasedOrdering) freeWill(frontStream types.FrontStream) (
 	sort.Sort(sortable)
 
 	return sortable, pab.frontNo
+}
+
+func (pab *phalanxAnchorBasedOrdering) readCommand(commandD string) *protos.Command {
+	command := pab.commandTracker.Get(commandD)
+
+	for {
+		if command != nil {
+			break
+		}
+
+		// if we could not read the command, just try the next time.
+		command = pab.commandTracker.Get(commandD)
+	}
+
+	return command
 }

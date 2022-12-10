@@ -11,6 +11,15 @@ type Finality interface {
 	CommitStream(qStream types.QueryStream)
 }
 
+type FinalityEngine interface {
+	CommitOrderStream(oStream types.OrderStream)
+}
+
+type StreamCache interface {
+	Append(item interface{})
+	Front() interface{}
+}
+
 //=============================================== Command Reader for Finality =====================================================
 
 type CommandRecorder interface {

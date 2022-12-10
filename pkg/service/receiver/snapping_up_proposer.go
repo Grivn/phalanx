@@ -3,6 +3,7 @@ package receiver
 import (
 	"time"
 
+	"github.com/Grivn/phalanx/pkg/common/config"
 	"github.com/Grivn/phalanx/pkg/common/types"
 	"github.com/Grivn/phalanx/pkg/external"
 )
@@ -25,7 +26,7 @@ type buyerImpl struct {
 	logger external.Logger
 }
 
-func newBuyer(id uint64, conf Config) *buyerImpl {
+func newBuyer(id uint64, conf config.PhalanxConf, sender external.Sender, logger external.Logger) *buyerImpl {
 	snappingUpC := make(chan bool)
 	return &buyerImpl{
 		id:          id,
@@ -34,8 +35,8 @@ func newBuyer(id uint64, conf Config) *buyerImpl {
 		snappingUpC: snappingUpC,
 		closeC:      make(chan bool),
 		selected:    conf.Selected,
-		sender:      conf.Sender,
-		logger:      conf.Logger,
+		sender:      sender,
+		logger:      logger,
 	}
 }
 

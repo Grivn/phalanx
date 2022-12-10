@@ -9,7 +9,7 @@ import (
 	"github.com/Grivn/phalanx/pkg/common/protos"
 	"github.com/Grivn/phalanx/pkg/common/types"
 	"github.com/Grivn/phalanx/pkg/external"
-	"github.com/Grivn/phalanx/pkg/service/finality"
+	"github.com/Grivn/phalanx/pkg/service/finality_v1"
 	"github.com/Grivn/phalanx/pkg/service/metapool"
 	"github.com/Grivn/phalanx/pkg/service/receiver"
 	"github.com/gogo/protobuf/proto"
@@ -65,7 +65,7 @@ func NewPhalanxProvider(
 	mPool := metapool.NewMetaPool(conf, privateKey, publicKeys, sender, mLogs.metaPoolLog, ms)
 
 	// initiate executor.
-	final := finality.NewFinality(conf, mPool, executor, mLogs.executorLog, ms)
+	final := finality_v1.NewFinality(conf, mPool, executor, mLogs.executorLog, ms)
 
 	return &phalanxImpl{
 		author:   conf.NodeID,
@@ -78,9 +78,9 @@ func NewPhalanxProvider(
 }
 
 func (phi *phalanxImpl) Run() {
-	go phi.metaPool.Run()
-	go phi.proposer.Run()
-	go phi.finality.Run()
+	phi.metaPool.Run()
+	phi.proposer.Run()
+	phi.finality.Run()
 }
 
 func (phi *phalanxImpl) Quit() {

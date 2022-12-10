@@ -5,21 +5,18 @@ import (
 	"sort"
 
 	"github.com/Grivn/phalanx/pkg/common/api"
+	"github.com/Grivn/phalanx/pkg/common/config"
 	"github.com/Grivn/phalanx/pkg/common/protos"
 	"github.com/Grivn/phalanx/pkg/common/types"
 	"github.com/Grivn/phalanx/pkg/external"
-	"github.com/Grivn/phalanx/pkg/service/seqengine"
 	"github.com/Grivn/phalanx/pkg/utils/timer"
 )
 
 type sequencerImpl struct {
 	//===================================== basic information =========================================
 
-	// author is the identifier for current node.
-	sequencerID uint64
-
-	// byz indicates if current node is the adversary.
-	byz bool
+	// nodeID is the identifier for current node.
+	nodeID uint64
 
 	//==================================== sub-chain management =============================================
 
@@ -51,16 +48,15 @@ type sequencerImpl struct {
 	logger external.Logger
 }
 
-func NewSequencer(conf Config) *sequencerImpl {
-	conf.Logger.Infof("[%d] initiate log manager, replica count %d", conf.Author, conf.N)
+func NewSequencer(conf config.PhalanxConf, engine api.SequencingEngine, sender external.Sender, logger external.Logger) *sequencerImpl {
+	logger.Infof("[%d] initiate log manager, replica count %d", conf.NodeID, conf.NodeCount)
 	return &sequencerImpl{
-		sequencerID: conf.Author,
-		singleTimer: timer.NewSingleTimer(conf.Duration, conf.Logger),
+		nodeID:      conf.NodeID,
+		singleTimer: timer.NewSingleTimer(conf.Timeout, logger),
 		closeC:      make(chan bool),
-		engine:      seqengine.NewSequencingEngine(conf.Author, conf.Logger),
-		sender:      conf.Sender,
-		logger:      conf.Logger,
-		byz:         conf.Byz,
+		engine:      engine,
+		sender:      sender,
+		logger:      logger,
 	}
 }
 
@@ -97,7 +93,7 @@ func (ser *sequencerImpl) listener() {
 }
 
 func (ser *sequencerImpl) processCommand(command *protos.Command) {
-	ser.engine.Sequencing(command)
+	go ser.engine.Sequencing(command)
 }
 
 func (ser *sequencerImpl) processCommandIndex(cIndex *types.CommandIndex) {
@@ -129,7 +125,7 @@ func (ser *sequencerImpl) generateOrderAttempt() error {
 	}
 	ser.sender.BroadcastPCM(cm)
 
-	ser.logger.Infof("[%d] generated order-attempt %s", ser.sequencerID, attempt.Format())
+	ser.logger.Infof("[%d] generated order-attempt %s", ser.nodeID, attempt.Format())
 	return nil
 }
 
@@ -151,7 +147,7 @@ func (ser *sequencerImpl) createOrderAttempt() (*protos.OrderAttempt, error) {
 	}
 
 	// Create order attempt.
-	attempt := protos.NewOrderAttempt(ser.sequencerID, ser.highestAttempt, contentDigest, content)
+	attempt := protos.NewOrderAttempt(ser.nodeID, ser.highestAttempt, contentDigest, content)
 	digest, err := types.CalculateOrderAttemptDigest(attempt)
 	if err != nil {
 		return nil, fmt.Errorf("generate order-attempt digest failed: %s", err)

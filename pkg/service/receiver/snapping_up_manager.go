@@ -2,6 +2,7 @@ package receiver
 
 import (
 	"github.com/Grivn/phalanx/pkg/common/api"
+	"github.com/Grivn/phalanx/pkg/common/config"
 	"github.com/Grivn/phalanx/pkg/common/protos"
 	"github.com/Grivn/phalanx/pkg/external"
 )
@@ -25,19 +26,19 @@ type snappingUpManagerImpl struct {
 	logger external.Logger
 }
 
-func NewSnappingUpManager(conf Config) api.Proposer {
+func NewSnappingUpManager(conf config.PhalanxConf, sender external.Sender, logger external.Logger) api.Proposer {
 	buyers := make(map[uint64]*buyerImpl)
-	base := int(conf.Author-1) * conf.Multi
+	base := int(conf.NodeID-1) * conf.Multi
 	for i := base; i < base+conf.Multi; i++ {
 		id := uint64(i + 1)
-		buyer := newBuyer(id, conf)
+		buyer := newBuyer(id, conf, sender, logger)
 		buyers[id] = buyer
 	}
 
 	return &snappingUpManagerImpl{
-		author: conf.Author,
+		author: conf.NodeID,
 		buyers: buyers,
-		logger: conf.Logger,
+		logger: logger,
 	}
 }
 

@@ -1,4 +1,4 @@
-package finality
+package finengine
 
 import (
 	"sort"
@@ -47,11 +47,11 @@ type timestampBasedOrdering struct {
 	logger external.Logger
 }
 
-func newTimestampBasedOrdering(
+func NewTimestampBasedOrdering(
 	conf config.PhalanxConf,
 	meta api.MetaPool,
 	logger external.Logger,
-	ms *metrics.Metrics) *timestampBasedOrdering {
+	ms *metrics.Metrics) api.FinalityEngine {
 	return &timestampBasedOrdering{
 		author:     conf.NodeID,
 		seqNo:      uint64(1),
@@ -65,7 +65,7 @@ func newTimestampBasedOrdering(
 	}
 }
 
-func (tb *timestampBasedOrdering) commitOrderStream(oStream types.OrderStream) {
+func (tb *timestampBasedOrdering) CommitOrderStream(oStream types.OrderStream) {
 	if len(oStream) == 0 {
 		return
 	}

@@ -132,6 +132,20 @@ func (m *OrderAttempt) Less(item btree.Item) bool {
 	return m.SeqNo < (item.(*OrderAttempt)).SeqNo
 }
 
+func (m *OrderAttempt) CommandList() []string {
+	if m.Content == nil {
+		return nil
+	}
+	return m.Content.CommandList
+}
+
+func (m *OrderAttempt) TimestampList() []int64 {
+	if m.Content == nil {
+		return nil
+	}
+	return m.Content.TimestampList
+}
+
 func (m *OrderAttempt) Format() string {
 	return fmt.Sprintf("[OrderAttempt: nodeID %d, seqNo %d, digest %s, parentDigest %s]", m.NodeID, m.SeqNo, m.Digest, m.ParentDigest)
 }
@@ -244,5 +258,10 @@ func NewCheckpoint(attempt *OrderAttempt) *Checkpoint {
 }
 
 func NewProposal(author uint64, count int) *Proposal {
-	return &Proposal{Author: author, HighestCheckpointList: make([]*Checkpoint, count), SeqList: make([]uint64, count)}
+	proposal := &Proposal{Author: author, HighestCheckpointList: make([]*Checkpoint, count), SeqList: make([]uint64, count)}
+	for i := 0; i < count; i++ {
+		proposal.HighestCheckpointList[i] = NewNopCheckpoint()
+		proposal.SeqList[i] = 0
+	}
+	return proposal
 }

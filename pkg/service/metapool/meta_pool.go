@@ -175,6 +175,10 @@ func NewMetaPool(conf config.PhalanxConf,
 }
 
 func (mp *metaPool) Run() {
+	go mp.listener()
+}
+
+func (mp *metaPool) listener() {
 	for {
 		select {
 		case <-mp.closeC:

@@ -3,6 +3,7 @@ package conengine
 import (
 	"fmt"
 	"github.com/Grivn/phalanx/pkg/common/api"
+	"github.com/Grivn/phalanx/pkg/common/config"
 	"github.com/Grivn/phalanx/pkg/common/protos"
 	"github.com/Grivn/phalanx/pkg/common/types"
 	"github.com/Grivn/phalanx/pkg/external"
@@ -21,6 +22,8 @@ type consensusEngine struct {
 
 	// aggregateMap is used to create aggregated-QC for checkpoints.
 	aggregateMap map[string]*protos.Checkpoint
+
+	highest map[uint64]uint64
 
 	// eventC is used to receive event messages from local modules.
 	eventC chan types.LocalEvent
@@ -44,36 +47,26 @@ type consensusEngine struct {
 	logger external.Logger
 }
 
-func NewConsensusEngine(conf Config) api.ConsensusEngine {
+func NewConsensusEngine(conf config.PhalanxConf, checkpointTracker api.CheckpointTracker, cryptoService api.CryptoService, sender external.Sender, logger external.Logger) api.ConsensusEngine {
 	return &consensusEngine{
 		nodeID:            conf.NodeID,
-		n:                 conf.N,
-		quorum:            types.CalculateQuorum(conf.N),
+		n:                 conf.NodeCount,
+		quorum:            types.CalculateQuorum(conf.NodeCount),
 		aggregateMap:      make(map[string]*protos.Checkpoint),
+		highest:           make(map[uint64]uint64),
 		eventC:            make(chan types.LocalEvent),
 		consensusMessageC: make(chan *protos.ConsensusMessage),
 		closeC:            make(chan bool),
-		sender:            conf.External,
-		logger:            conf.External,
+		checkpointTracker: checkpointTracker,
+		crypto:            cryptoService,
+		sender:            sender,
+		logger:            logger,
 	}
 }
 
 // Run is used to start the processor for consensus messages in phalanx.
 func (con *consensusEngine) Run() {
-	for {
-		select {
-		case <-con.closeC:
-			return
-		case message := <-con.consensusMessageC:
-			if err := con.dispatchConsensusMessage(message); err != nil {
-				con.logger.Errorf("[%d] process consensus message error: %s", con.nodeID, err)
-			}
-		case event := <-con.eventC:
-			if err := con.dispatchLocalEvent(event); err != nil {
-				con.logger.Errorf("[%d] process local event error: %s", con.nodeID, err)
-			}
-		}
-	}
+	go con.listener()
 }
 
 // Quit is used to stop the process.
@@ -91,6 +84,23 @@ func (con *consensusEngine) ProcessConsensusMessage(message *protos.ConsensusMes
 
 func (con *consensusEngine) ProcessLocalEvent(event types.LocalEvent) {
 	con.eventC <- event
+}
+
+func (con *consensusEngine) listener() {
+	for {
+		select {
+		case <-con.closeC:
+			return
+		case message := <-con.consensusMessageC:
+			if err := con.dispatchConsensusMessage(message); err != nil {
+				con.logger.Errorf("[%d] process consensus message error: %s", con.nodeID, err)
+			}
+		case event := <-con.eventC:
+			if err := con.dispatchLocalEvent(event); err != nil {
+				con.logger.Errorf("[%d] process local event error: %s", con.nodeID, err)
+			}
+		}
+	}
 }
 
 func (con *consensusEngine) dispatchConsensusMessage(message *protos.ConsensusMessage) error {
@@ -140,6 +150,11 @@ func (con *consensusEngine) processOrderAttempt(attempt *protos.OrderAttempt) er
 		return nil
 	}
 
+	if attempt.SeqNo <= con.highest[attempt.NodeID] {
+		return nil
+	}
+	con.highest[attempt.NodeID] = attempt.SeqNo
+
 	checkpoint := protos.NewCheckpoint(attempt)
 	signature, err := con.crypto.PrivateSign(types.StringToBytes(attempt.Digest))
 	if err != nil {
@@ -157,6 +172,7 @@ func (con *consensusEngine) processOrderAttempt(attempt *protos.OrderAttempt) er
 	con.sender.BroadcastPCM(cm)
 	con.aggregateMap[attempt.Digest] = checkpoint
 
+	con.logger.Infof("[%d] try to generate checkpoint for attempt %s", con.nodeID, attempt.Format())
 	return nil
 }
 
@@ -176,6 +192,7 @@ func (con *consensusEngine) processCheckpointRequest(request *protos.CheckpointR
 		return fmt.Errorf("generate consensus message error: %s", err)
 	}
 	con.sender.BroadcastPCM(cm)
+	con.logger.Infof("[%d] process checkpoint request %s", con.nodeID, request.OrderAttempt.Format())
 	return nil
 }
 
@@ -203,8 +220,9 @@ func (con *consensusEngine) processCheckpointVote(vote *protos.CheckpointVote) e
 	}
 
 	// check the quorum size for proof-certs
+	con.logger.Debugf("[%d] found %d votes, need %d", con.nodeID, len(checkpoint.QC.Certs), con.quorum)
 	if checkpoint.IsValid(con.quorum) {
-		con.logger.Debugf("[%d] found quorum votes, generate quorum order %s", con.nodeID, checkpoint.Format())
+		con.logger.Debugf("[%d] found quorum votes, generate checkpoint %s", con.nodeID, checkpoint.Format())
 		delete(con.aggregateMap, vote.Digest)
 		con.checkpointTracker.Record(checkpoint)
 	}
