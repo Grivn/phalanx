@@ -2,6 +2,7 @@ package memorypool
 
 import (
 	"fmt"
+	"github.com/gogo/protobuf/proto"
 	"sync"
 
 	"github.com/Grivn/phalanx/metrics"
@@ -114,7 +115,15 @@ func (mp *memoryPoolImpl) ProcessOrderAttempt(attempt *protos.OrderAttempt) {
 }
 
 func (mp *memoryPoolImpl) ProcessConsensusMessage(consensusMessage *protos.ConsensusMessage) {
-	mp.consensusEngine.ProcessConsensusMessage(consensusMessage)
+	switch consensusMessage.Type {
+	case protos.MessageType_ORDER_ATTEMPT:
+		attemtp := &protos.OrderAttempt{}
+		_ = proto.Unmarshal(consensusMessage.Payload, attemtp)
+		go mp.ProcessOrderAttempt(attemtp)
+		return
+	default:
+		mp.consensusEngine.ProcessConsensusMessage(consensusMessage)
+	}
 }
 
 func (mp *memoryPoolImpl) GenerateProposal() (*protos.Proposal, error) {

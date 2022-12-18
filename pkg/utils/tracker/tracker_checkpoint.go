@@ -36,6 +36,7 @@ func (ct *checkpointTracker) Record(checkpoint *protos.Checkpoint) {
 		return
 	}
 
+	ct.logger.Debugf("[%d] record checkpoint %s", ct.author, checkpoint.Format())
 	ct.checkpointMap.Store(qIdx, checkpoint)
 }
 

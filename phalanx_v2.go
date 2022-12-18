@@ -16,7 +16,6 @@ import (
 	"github.com/Grivn/phalanx/pkg/service/seqengine"
 	"github.com/Grivn/phalanx/pkg/service/sequencer"
 	"github.com/Grivn/phalanx/pkg/utils/tracker"
-	"github.com/gogo/protobuf/proto"
 )
 
 type phalanxV2Impl struct {
@@ -48,9 +47,9 @@ func NewPhalanxV2(
 	}
 
 	prop := receiver.NewTxManager(conf, sender, mLogs.proposerLog)
-	commandTracker := tracker.NewCommandTracker(conf.NodeID, logger)
-	attemptTracker := tracker.NewAttemptTracker(conf.NodeID, logger)
-	checkpointTracker := tracker.NewCheckpointTracker(conf.NodeID, logger)
+	commandTracker := tracker.NewCommandTracker(conf.NodeID, mLogs.commandTrackerLog)
+	attemptTracker := tracker.NewAttemptTracker(conf.NodeID, mLogs.attemptTrackerLog)
+	checkpointTracker := tracker.NewCheckpointTracker(conf.NodeID, mLogs.checkpointTrackerLog)
 	cryptoService := crypto.NewCryptoService(privateKey, publicKeys)
 	sequencingEngine := seqengine.NewSequencingEngine(conf, mLogs.sequencingEngineLog)
 	seq := sequencer.NewSequencer(conf, sequencingEngine, sender, mLogs.sequencerLog)
@@ -104,13 +103,7 @@ func (p *phalanxV2Impl) ReceiveOrderAttempt(attempt *protos.OrderAttempt) {
 
 // ReceiveConsensusMessage is used process the consensus messages from phalanx replica.
 func (p *phalanxV2Impl) ReceiveConsensusMessage(message *protos.ConsensusMessage) {
-	if message.Type == protos.MessageType_ORDER_ATTEMPT {
-		attemtp := &protos.OrderAttempt{}
-		proto.Unmarshal(message.Payload, attemtp)
-		go p.memoryPool.ProcessOrderAttempt(attemtp)
-		return
-	}
-	go p.consensusEngine.ProcessConsensusMessage(message)
+	go p.memoryPool.ProcessConsensusMessage(message)
 }
 
 // MakeProposal is used to generate phalanx proposal for consensus.

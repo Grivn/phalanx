@@ -63,6 +63,7 @@ func (ct *commandTracker) Record(command *protos.Command) {
 		return
 	}
 
+	ct.logger.Debugf("[%d] record command %s", ct.author, command.Format())
 	ct.commandMap[command.Digest] = command
 }
 

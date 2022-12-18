@@ -36,6 +36,7 @@ func (at *attemptTracker) Record(attempt *protos.OrderAttempt) {
 		return
 	}
 
+	at.logger.Debugf("[%d] record attempt %s", at.author, attempt.Format())
 	at.attemptMap.Store(qIdx, attempt)
 }
 
