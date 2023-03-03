@@ -6,6 +6,7 @@ import (
 	"github.com/Grivn/phalanx/pkg/external"
 )
 
+// Config provides phalanx configuration contents.
 type Config struct {
 	OligarchID  uint64
 	IsByzantine bool
