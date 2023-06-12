@@ -1,14 +1,13 @@
 package main
 
 import (
-	"github.com/Grivn/phalanx/common/protos"
 	"sync"
 	"time"
 
-	"github.com/Grivn/phalanx/common/types"
-	"github.com/Grivn/phalanx/core"
-	"github.com/Grivn/phalanx/external"
-
+	"github.com/Grivn/phalanx"
+	"github.com/Grivn/phalanx/pkg/common/protos"
+	"github.com/Grivn/phalanx/pkg/common/types"
+	"github.com/Grivn/phalanx/pkg/external"
 	"github.com/google/btree"
 )
 
@@ -33,7 +32,7 @@ type replica struct {
 	cache    map[uint64]*bftMessage
 	aggMap   map[uint64]int
 
-	executedSeq uint64
+	executedSeq  uint64
 	executeCache *btree.BTree
 
 	logger external.Logger
@@ -50,7 +49,7 @@ type bftMessage struct {
 
 func newReplica(n int, author uint64, phx phalanx.Provider, sendC chan *bftMessage, bftC chan *bftMessage, closeC chan bool, logger external.Logger) *replica {
 	return &replica{
-		quorum:       n-(n-1)/3,
+		quorum:       n - (n-1)/3,
 		author:       author,
 		phalanx:      phx,
 		sendC:        sendC,
@@ -98,7 +97,7 @@ func (replica *replica) run() {
 func (replica *replica) runningProposal() {
 	timerC := make(chan bool)
 	go func() {
-		time.Sleep(500*time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		timerC <- true
 	}()
 	for {

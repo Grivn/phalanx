@@ -1,8 +1,8 @@
 package metrics
 
 import (
-	"github.com/Grivn/phalanx/common/protos"
-	"github.com/Grivn/phalanx/common/types"
+	"github.com/Grivn/phalanx/pkg/common/protos"
+	types "github.com/Grivn/phalanx/pkg/common/types"
 	"sync"
 	"time"
 )

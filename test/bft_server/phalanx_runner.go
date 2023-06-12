@@ -6,10 +6,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Grivn/phalanx/common/mocks"
-	"github.com/Grivn/phalanx/common/protos"
-	"github.com/Grivn/phalanx/common/types"
-	phalanx "github.com/Grivn/phalanx/core"
+	"github.com/Grivn/phalanx"
+	"github.com/Grivn/phalanx/pkg/common/config"
+	"github.com/Grivn/phalanx/pkg/common/mocks"
+	"github.com/Grivn/phalanx/pkg/common/protos"
+	"github.com/Grivn/phalanx/pkg/common/types"
 )
 
 func phalanxRunner() {
@@ -35,41 +36,32 @@ func phalanxRunner() {
 		nc[id] = make(chan *protos.ConsensusMessage)
 		cc[id] = make(chan *protos.Command)
 	}
-	net := mocks.NewSimpleNetwork(nc, cc, types.NewRawLogger(), async)
+	sender := mocks.NewSimpleNetwork(nc, cc, types.NewRawLogger(), async)
 	for i := 0; i < n; i++ {
 		logger := types.NewRawLoggerFile(logDir + "/bft-node-" + strconv.Itoa(i+1) + ".log")
 		loggerExec := types.NewRawLoggerFile(logDir + "/bft-node-" + strconv.Itoa(i+1) + ".exec.log")
 		id := uint64(i + 1)
-		exec := mocks.NewSimpleExecutor(id, types.NewRawLogger(), loggerExec)
+		executor := mocks.NewSimpleExecutor(id, types.NewRawLogger(), loggerExec)
 		byz := false
 		if id <= uint64(byzRange) {
 			byz = true
 		}
-		privKey, pubKeys, err := mocks.GenerateKeys(id, n)
+		privateKey, publicKeys, err := mocks.GenerateExternalCrypto(id, n)
 		if err != nil {
 			panic(fmt.Sprintf("generate keys error: %s", err))
 		}
-		conf := phalanx.Config{
-			Author:      id,
-			OLeader:     oLeader,
-			Byz:         byz,
-			OpenLatency: 0,
-			Duration:    types.DefaultTimeDuration,
-			Interval:    types.DefaultInterval,
-			CDuration:   types.DefaultTimeDuration,
-			N:           n,
+		conf := config.PhalanxConf{
+			OligarchID:  oLeader,
+			IsByzantine: byz,
+			NodeID:      id,
+			NodeCount:   n,
+			Timeout:     types.DefaultTimeDuration,
 			Multi:       types.DefaultMulti,
-			LogCount:    types.DefaultLogCount,
 			MemSize:     types.DefaultMemSize,
 			CommandSize: types.SingleCommandSize,
 			Selected:    1,
-			PrivateKey:  privKey,
-			PublicKeys:  pubKeys,
-			Exec:        exec,
-			Network:     net,
-			Logger:      logger,
 		}
-		phx[id] = phalanx.NewPhalanxProvider(conf)
+		phx[id] = phalanx.NewPhalanxProvider(conf, privateKey, publicKeys, executor, sender, logger)
 		phx[id].Run()
 	}
 

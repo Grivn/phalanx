@@ -1,10 +1,9 @@
 package metrics
 
 import (
+	types "github.com/Grivn/phalanx/pkg/common/types"
 	"sync"
 	"time"
-
-	"github.com/Grivn/phalanx/common/types"
 )
 
 type CommitmentMetrics struct {
