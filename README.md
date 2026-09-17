@@ -18,7 +18,7 @@ Therefore, Phalanx has achieved satisfying performance and performs better in re
 
 ## Overview
 
-The Phalanx mempool is constructed as following image.
+The Phalanx mempool is constructed as the following image.
 
 ![image](img/workflow-detail.jpg)
 
